@@ -7,7 +7,7 @@ Getting `400 Bad Request` when trying to sign up
 
 ### Option 1: Disable Email Confirmation (Recommended for Testing)
 
-1. Go to your Supabase Dashboard: https://supabase.com/dashboard/project/xwfqthoqmkuzfjpsyxtt
+1. Go to your Supabase Dashboard: https://supabase.com/dashboard/project/eukloerbmjedwyploxdd
 2. Click **Authentication** in the left sidebar
 3. Click **Settings**
 4. Find **"Enable email confirmations"**

@@ -9,7 +9,7 @@ This happens because Supabase has stricter email validation in production that r
 
 ### Option 1: Change Supabase Email Validation Settings (Recommended)
 
-1. Go to your Supabase Dashboard: https://supabase.com/dashboard/project/xwfqthoqmkuzfjpsyxtt
+1. Go to your Supabase Dashboard: https://supabase.com/dashboard/project/eukloerbmjedwyploxdd
 2. Click **Authentication** in the left sidebar
 3. Click **Settings** (or **Configuration**)
 4. Scroll down to **Email validation**
