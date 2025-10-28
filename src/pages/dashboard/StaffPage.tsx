@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { UserPlus, Clock, Users as UsersIcon, CreditCard as Edit, Trash2, ExternalLink, Copy, KeyRound } from 'lucide-react';
+import { UserPlus, Clock, Users as UsersIcon, Trash2, ExternalLink, Copy, KeyRound, Pencil } from 'lucide-react';
 
 interface Shop {
   plan_type: 'basic' | 'pro';
@@ -278,7 +278,7 @@ export default function StaffPage() {
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Edit employee"
                     >
-                      <Edit className="w-5 h-5" />
+                      <Pencil className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDeleteEmployee(employee.id)}
