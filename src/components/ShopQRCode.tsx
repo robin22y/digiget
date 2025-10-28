@@ -29,13 +29,22 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
         if (shop?.qr_url) {
           setQrUrl(shop.qr_url);
         } else {
-          // Generate and save if not exists
+          // Generate and save if not exists (for existing shops without QR codes)
           const newQrUrl = defaultCheckInUrl;
-          await supabase
+          const { error: updateError } = await supabase
             .from('shops')
-            .update({ qr_url: newQrUrl })
+            .update({ 
+              qr_url: newQrUrl,
+              qr_code_active: true 
+            })
             .eq('id', shopId);
-          setQrUrl(newQrUrl);
+          
+          if (!updateError) {
+            setQrUrl(newQrUrl);
+          } else {
+            console.error('Error generating QR URL:', updateError);
+            setQrUrl(defaultCheckInUrl); // Use default even if save fails
+          }
         }
       } catch (error) {
         console.error('Error loading QR URL:', error);
@@ -56,23 +65,33 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   };
 
   const handleRegenerate = async () => {
+    if (!confirm('Regenerate QR code? The link will remain the same, but this will refresh the code.')) {
+      return;
+    }
+
     setRegenerating(true);
     try {
-      // Regenerate QR URL (same URL, just updates timestamp)
+      // Regenerate QR URL (ensures it uses the current domain)
       const newQrUrl = defaultCheckInUrl;
-      await supabase
+      const { error } = await supabase
         .from('shops')
-        .update({ qr_url: newQrUrl, updated_at: new Date().toISOString() })
+        .update({ 
+          qr_url: newQrUrl, 
+          qr_code_active: true,
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', shopId);
+      
+      if (error) throw error;
       
       setQrUrl(newQrUrl);
       setTimeout(() => {
         setRegenerating(false);
-        alert('QR Code regenerated successfully!');
+        alert('QR Code regenerated successfully! You can now reprint or download it.');
       }, 500);
     } catch (error: any) {
       console.error('Error regenerating QR:', error);
-      alert('Failed to regenerate QR code');
+      alert(`Failed to regenerate QR code: ${error.message}`);
       setRegenerating(false);
     }
   };
@@ -120,18 +139,21 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Check-In QR Code</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Customers can scan this QR code to go directly to your check-in page
+            Customers can scan this QR code to go directly to your check-in page. 
+            Print or download to display at your shop.
           </p>
         </div>
-        <button
-          onClick={handleRegenerate}
-          disabled={regenerating}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
-          title="Re-generate QR Code"
-        >
-          <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} />
-          Re-Generate
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRegenerate}
+            disabled={regenerating || !qrUrl}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Re-generate QR Code"
+          >
+            <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} />
+            {regenerating ? 'Regenerating...' : 'Re-Generate'}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
@@ -197,7 +219,56 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
               Download QR as PNG
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                // Open print dialog with only the QR code section
+                const printContent = qrRef.current?.innerHTML || '';
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                  printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title>${shopName} - Check-In QR Code</title>
+                        <style>
+                          @page { margin: 20mm; size: A4; }
+                          body { 
+                            font-family: Arial, sans-serif;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            min-height: 100vh;
+                            margin: 0;
+                            padding: 20px;
+                          }
+                          h1 { margin: 0 0 10px 0; font-size: 24px; color: #1f2937; }
+                          p { margin: 0 0 30px 0; color: #6b7280; font-size: 14px; }
+                          .qr-container { 
+                            border: 2px solid #e5e7eb;
+                            padding: 20px;
+                            border-radius: 8px;
+                            background: white;
+                          }
+                          svg { display: block; }
+                        </style>
+                      </head>
+                      <body>
+                        <h1>${shopName}</h1>
+                        <p>Check-In QR Code - Scan to check in instantly</p>
+                        <div class="qr-container">${printContent}</div>
+                        <p style="margin-top: 30px; font-size: 12px; color: #9ca3af;">
+                          Powered by DigiGet - digiget.uk
+                        </p>
+                      </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                  printWindow.onload = () => {
+                    printWindow.focus();
+                    printWindow.print();
+                  };
+                }
+              }}
               className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
             >
               Print

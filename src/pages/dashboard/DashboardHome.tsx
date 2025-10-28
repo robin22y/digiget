@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Clock, TrendingUp, Award, Users } from 'lucide-react';
+import { Clock, TrendingUp, Award, Users, QrCode } from 'lucide-react';
 import DashboardNotifications from '../../components/DashboardNotifications';
 
 interface Shop {
@@ -164,6 +164,17 @@ export default function DashboardHome() {
           >
             <div className="font-bold text-lg text-gray-900">View All Customers</div>
             <div className="text-sm text-gray-600">See all your customers</div>
+          </Link>
+          <Link
+            to={`/dashboard/${shopId}/qr-code`}
+            className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl text-white hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+          >
+            <div className="font-bold text-lg flex items-center gap-2">
+              <QrCode className="w-5 h-5" />
+              QR Code
+            </div>
+            <div className="text-sm text-indigo-100">View, print, or download your check-in QR</div>
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">📱</div>
           </Link>
           {shop.plan_type === 'pro' && (
             <>

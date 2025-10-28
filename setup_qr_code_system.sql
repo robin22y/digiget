@@ -22,9 +22,11 @@ BEGIN
 END $$;
 
 -- Update existing shops to have QR URLs
+-- Note: This uses a generic placeholder. The component will auto-generate with the correct domain
 UPDATE shops
-SET qr_url = 'https://digiget.uk/dashboard/' || id::text || '/checkin'
-WHERE qr_url IS NULL;
+SET qr_url = 'https://digiget.uk/dashboard/' || id::text || '/checkin',
+    qr_code_active = COALESCE(qr_code_active, true)
+WHERE qr_url IS NULL OR qr_url = '';
 
 -- Create index for faster queries
 CREATE INDEX IF NOT EXISTS idx_shops_qr_url ON shops(qr_url);
