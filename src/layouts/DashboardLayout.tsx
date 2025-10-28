@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation } from 'lucide-react';
+import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -75,9 +75,11 @@ export default function DashboardLayout() {
     ...(shop.plan_type === 'pro' ? [
       { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Staff' },
       { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Staff Locations' },
+      { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers' },
+      { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals' },
       { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Tasks' },
       { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Incidents' },
-      { to: `/dashboard/${shopId}/clock-requests`, icon: MapPin, label: 'Clock Requests' },
+      { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Clock Requests' },
     ] : []),
     ...(shop.diary_enabled ? [
       { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary' },

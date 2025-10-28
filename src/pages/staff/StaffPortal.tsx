@@ -620,6 +620,7 @@ function StaffClockView({
 
       let isRemoteClockIn = false;
       let distance = 0;
+      let hasPreApproval = false;
 
       // Calculate distance if shop location is set
       if (shop.latitude && shop.longitude) {
@@ -631,6 +632,25 @@ function StaffClockView({
         );
 
         isRemoteClockIn = distance > 100;
+      }
+
+      // Check for pre-approval if remote clock-in
+      if (isRemoteClockIn) {
+        const today = new Date();
+        const currentDay = today.getDay();
+        const todayDate = today.toISOString().split('T')[0];
+
+        const { data: preApprovals } = await supabase
+          .from('remote_clock_in_approvals')
+          .select('*')
+          .eq('employee_id', employee.id)
+          .eq('shop_id', employee.shop_id)
+          .eq('is_active', true)
+          .contains('days_of_week', [currentDay])
+          .lte('start_date', todayDate)
+          .gte('end_date', todayDate);
+
+        hasPreApproval = !!(preApprovals && preApprovals.length > 0);
       }
 
       // Clock in immediately (allow work to continue)
@@ -646,8 +666,8 @@ function StaffClockView({
 
       if (error) throw error;
 
-      // If remote clock-in, create approval request for shop owner
-      if (isRemoteClockIn) {
+      // If remote clock-in, create approval request for shop owner (unless pre-approved)
+      if (isRemoteClockIn && !hasPreApproval) {
         const { error: requestError } = await supabase
           .from('clock_in_requests')
           .insert({
@@ -675,6 +695,17 @@ function StaffClockView({
           `✅ You're clocked in!\n\n` +
           `You are ${distanceText} away from the shop location. ` +
           `You can continue working - ${ownerName} will review and approve your shift.`
+        );
+      } else if (isRemoteClockIn && hasPreApproval) {
+        // Pre-approved remote clock-in
+        const distanceText = distance < 1000 
+          ? `${Math.round(distance)}m` 
+          : `${(distance / 1000).toFixed(2)}km`;
+        
+        alert(
+          `✅ You're clocked in!\n\n` +
+          `You are ${distanceText} away from the shop location. ` +
+          `Your remote clock-in is pre-approved - you're all set!`
         );
       }
       

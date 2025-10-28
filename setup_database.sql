@@ -358,5 +358,55 @@ CREATE INDEX IF NOT EXISTS idx_location_checkins_clock_entry_id ON staff_locatio
 CREATE INDEX IF NOT EXISTS idx_location_checkins_check_in_time ON staff_location_checkins(check_in_time DESC);
 CREATE INDEX IF NOT EXISTS idx_location_checkins_active ON staff_location_checkins(employee_id, check_out_time) WHERE check_out_time IS NULL;
 
+-- 8. Create remote_clock_in_approvals table (for pre-approving remote clock-ins)
+CREATE TABLE IF NOT EXISTS remote_clock_in_approvals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id UUID REFERENCES shops(id) ON DELETE CASCADE NOT NULL,
+  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE NOT NULL,
+  
+  days_of_week INTEGER[] DEFAULT ARRAY[]::INTEGER[], -- 0=Sunday, 1=Monday, ..., 6=Saturday
+  start_date DATE,
+  end_date DATE,
+  is_active BOOLEAN DEFAULT true,
+  
+  notes TEXT,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+ALTER TABLE remote_clock_in_approvals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Shop owners can manage remote approvals"
+  ON remote_clock_in_approvals
+  FOR ALL
+  TO authenticated
+  USING (
+    shop_id IN (
+      SELECT id FROM shops WHERE user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    shop_id IN (
+      SELECT id FROM shops WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Employees can view their approvals"
+  ON remote_clock_in_approvals
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Public can view remote approvals"
+  ON remote_clock_in_approvals
+  FOR SELECT
+  USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_remote_approvals_shop_id ON remote_clock_in_approvals(shop_id);
+CREATE INDEX IF NOT EXISTS idx_remote_approvals_employee_id ON remote_clock_in_approvals(employee_id);
+CREATE INDEX IF NOT EXISTS idx_remote_approvals_active ON remote_clock_in_approvals(shop_id, is_active, start_date, end_date) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_remote_approvals_date_range ON remote_clock_in_approvals(start_date, end_date);
+
 -- Run this SQL in Supabase Dashboard to create the essential tables!
 

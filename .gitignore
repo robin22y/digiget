@@ -21,3 +21,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Firebase files (if ever migrated back)
+.firebaserc
+firebase.json
+firestore.*
+seedFirestore*.js
