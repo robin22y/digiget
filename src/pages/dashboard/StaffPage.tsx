@@ -93,6 +93,7 @@ export default function StaffPage() {
   };
 
   const handleEditEmployee = (employee: Employee) => {
+    console.log('Editing employee:', employee);
     setEditingEmployee(employee);
     setShowModal(true);
   };
@@ -375,7 +376,16 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
 
   // Update form fields when employee prop changes (for editing)
   useEffect(() => {
+    console.log('EmployeeModal: employee prop changed', employee);
     if (employee) {
+      console.log('Setting form fields from employee:', {
+        first_name: employee.first_name,
+        last_name: employee.last_name,
+        phone: employee.phone,
+        email: employee.email,
+        hourly_rate: employee.hourly_rate,
+        role: employee.role
+      });
       setFirstName(employee.first_name || '');
       setLastName(employee.last_name || '');
       setPhone(employee.phone || '');
@@ -553,8 +563,12 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
               type="text"
               required
               value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(e) => {
+                console.log('First name changed:', e.target.value);
+                setFirstName(e.target.value);
+              }}
+              disabled={loading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -579,7 +593,8 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={loading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -591,7 +606,8 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={loading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               placeholder="staff@example.com"
             />
             {!employee && email && (
@@ -613,7 +629,8 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
                 min="0"
                 value={hourlyRate}
                 onChange={(e) => setHourlyRate(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="12.50"
               />
             </div>
@@ -628,8 +645,12 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
             </label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(e) => {
+                console.log('Role changed:', e.target.value);
+                setRole(e.target.value);
+              }}
+              disabled={loading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               required
             >
               <option value="staff">Staff</option>
