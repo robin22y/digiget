@@ -21,14 +21,30 @@ export default function LoginPage() {
       const { error: signInError } = await signIn(email, password);
       if (signInError) throw signInError;
 
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Unable to verify user. Please try again.');
+        return;
+      }
+
+      // Query shops with explicit user_id filter for better RLS compliance
       const { data: shops, error: shopsError } = await supabase
         .from('shops')
         .select('id')
+        .eq('user_id', user.id)
         .limit(1);
 
       if (shopsError) {
         console.error('Shops query error:', shopsError);
-        setError('Unable to load your shop. Please contact support.');
+        // Provide more specific error message
+        if (shopsError.code === 'PGRST116') {
+          setError('Database tables not set up. Please contact support.');
+        } else if (shopsError.code === '42501') {
+          setError('Permission denied. Please check your account permissions.');
+        } else {
+          setError(`Unable to load your shop: ${shopsError.message}`);
+        }
         return;
       }
 
