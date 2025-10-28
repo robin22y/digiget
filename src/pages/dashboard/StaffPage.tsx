@@ -373,6 +373,28 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
   const [error, setError] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
 
+  // Update form fields when employee prop changes (for editing)
+  useEffect(() => {
+    if (employee) {
+      setFirstName(employee.first_name || '');
+      setLastName(employee.last_name || '');
+      setPhone(employee.phone || '');
+      setEmail(employee.email || '');
+      setHourlyRate(employee.hourly_rate?.toString() || '');
+      setRole(employee.role || 'staff');
+      setError('');
+    } else {
+      // Reset form for new employee
+      setFirstName('');
+      setLastName('');
+      setPhone('');
+      setEmail('');
+      setHourlyRate('');
+      setRole('staff');
+      setError('');
+    }
+  }, [employee]);
+
   const generatePin = () => {
     return Math.floor(1000 + Math.random() * 9000).toString();
   };
@@ -395,16 +417,27 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
 
       if (employee) {
         // Update existing employee
-        const { error: updateError } = await supabase
+        console.log('Updating employee:', employee.id, employeeData);
+        
+        const { data: updatedData, error: updateError } = await supabase
           .from('employees')
           .update(employeeData)
-          .eq('id', employee.id);
+          .eq('id', employee.id)
+          .select();
 
         if (updateError) {
-          console.error('Update error:', updateError);
-          throw updateError;
+          console.error('Update error details:', {
+            message: updateError.message,
+            details: updateError.details,
+            hint: updateError.hint,
+            code: updateError.code
+          });
+          setError(`Failed to update: ${updateError.message || 'Unknown error'}`);
+          setLoading(false);
+          return;
         }
         
+        console.log('Employee updated successfully:', updatedData);
         alert('Staff member updated successfully!');
         onSave();
       } else {
@@ -501,12 +534,13 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          {employee ? 'Edit Staff Member' : 'Add Staff Member'}
+          {employee ? `Edit Staff Member${employee.first_name ? `: ${employee.first_name}` : ''}` : 'Add Staff Member'}
         </h2>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-lg mb-4">
+            <p className="font-semibold">Error:</p>
+            <p>{error}</p>
           </div>
         )}
 

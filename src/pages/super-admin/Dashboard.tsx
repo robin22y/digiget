@@ -123,14 +123,57 @@ export default function SuperAdminDashboard() {
       // Load inactive shops (no activity in 14 days)
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      const fourteenDaysAgoISO = fourteenDaysAgo.toISOString();
 
-      const { data: inactiveShopsData, error: inactiveError } = await supabase
+      // Fetch shops that haven't been updated in 14 days
+      // Use separate queries to avoid or() syntax issues with null checks
+      const { data: shopsBeforeDate, error: error1 } = await supabase
         .from('shops')
         .select('id, shop_name, postcode, owner_email, updated_at')
-        .or(`updated_at.lt.${fourteenDaysAgo.toISOString()},updated_at.is.null`)
-        .limit(10);
+        .lt('updated_at', fourteenDaysAgoISO)
+        .limit(20);
 
-      if (!inactiveError && inactiveShopsData) {
+      const { data: shopsWithNull, error: error2 } = await supabase
+        .from('shops')
+        .select('id, shop_name, postcode, owner_email, updated_at')
+        .is('updated_at', null)
+        .limit(20);
+
+      const inactiveError = error1 || error2;
+      const inactiveShopsData = [
+        ...(shopsBeforeDate || []),
+        ...(shopsWithNull || [])
+      ]
+        .filter((shop, index, self) => 
+          index === self.findIndex(s => s.id === shop.id)
+        ) // Remove duplicates
+        .slice(0, 10);
+
+      if (inactiveError) {
+        console.error('Error loading inactive shops:', inactiveError);
+        // Fallback: load all shops and filter client-side
+        const { data: allShopsData } = await supabase
+          .from('shops')
+          .select('id, shop_name, postcode, owner_email, updated_at')
+          .limit(50); // Get more to filter client-side
+
+        if (allShopsData) {
+          const filtered = allShopsData.filter(shop => {
+            if (!shop.updated_at) return true;
+            return new Date(shop.updated_at) < fourteenDaysAgo;
+          }).slice(0, 10);
+
+          setInactiveShops(
+            filtered.map(shop => ({
+              id: shop.id,
+              shop_name: shop.shop_name,
+              postcode: shop.postcode,
+              owner_email: shop.owner_email,
+              last_login: shop.updated_at,
+            }))
+          );
+        }
+      } else if (inactiveShopsData) {
         setInactiveShops(
           inactiveShopsData.map(shop => ({
             id: shop.id,

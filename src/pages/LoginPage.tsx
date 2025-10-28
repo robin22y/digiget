@@ -19,7 +19,27 @@ export default function LoginPage() {
 
     try {
       const { error: signInError } = await signIn(email, password);
-      if (signInError) throw signInError;
+      if (signInError) {
+        console.error('Sign in error:', signInError);
+        
+        // Provide more helpful error messages
+        if (signInError.message?.includes('Invalid login credentials') || 
+            signInError.message?.includes('invalid_credentials')) {
+          setError('Invalid email or password. Please check your credentials and try again.');
+        } else if (signInError.message?.includes('Email not confirmed') || 
+                   signInError.message?.includes('email_not_confirmed')) {
+          setError('Please check your email and confirm your account before logging in. Check your inbox for a confirmation email.');
+        } else if (signInError.message?.includes('Email rate limit exceeded')) {
+          setError('Too many login attempts. Please wait a few minutes and try again.');
+        } else if (signInError.status === 400) {
+          // For 400 errors, show more detail
+          const errorMsg = signInError.message || signInError.msg || 'Invalid request. Please check your email and password.';
+          setError(`Login failed: ${errorMsg} (Error code: ${signInError.status || '400'})`);
+        } else {
+          setError(signInError.message || signInError.msg || 'Login failed. Please try again.');
+        }
+        return;
+      }
 
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -28,7 +48,31 @@ export default function LoginPage() {
         return;
       }
 
-      // Query shops with explicit user_id filter for better RLS compliance
+      // Check if user is super admin
+      // Check email ending with @digiget.uk (case-insensitive)
+      const emailLower = user.email?.toLowerCase() || '';
+      const isSuperAdminByEmail = emailLower.endsWith('@digiget.uk');
+      const isSuperAdminByMetadata = user.user_metadata?.role === 'super' || 
+                                     user.user_metadata?.is_super_admin === true;
+      const isSuperAdmin = isSuperAdminByEmail || isSuperAdminByMetadata;
+
+      console.log('Login check:', {
+        email: user.email,
+        emailLower,
+        isSuperAdminByEmail,
+        isSuperAdminByMetadata,
+        user_metadata: user.user_metadata,
+        isSuperAdmin
+      });
+
+      if (isSuperAdmin) {
+        // Redirect super admin to super admin dashboard
+        console.log('Redirecting super admin to dashboard');
+        navigate('/super-admin/dashboard');
+        return;
+      }
+
+      // For regular users, check for shops
       const { data: shops, error: shopsError } = await supabase
         .from('shops')
         .select('id')
@@ -54,7 +98,8 @@ export default function LoginPage() {
         setError('No shop found. Please sign up first.');
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error('Login error:', err);
+      setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
