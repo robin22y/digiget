@@ -1,0 +1,334 @@
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+import { Calendar, Download, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import { formatLocation, getGoogleMapsLink } from '../../utils/geolocation';
+
+interface Employee {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  hourly_rate: number | null;
+}
+
+interface PayrollData {
+  employee: Employee;
+  totalHours: number;
+  daysWorked: number;
+  totalPay: number;
+  dailyBreakdown: Array<{
+    date: string;
+    clockIn: string;
+    clockOut: string;
+    hours: number;
+    clockInLat: number | null;
+    clockInLng: number | null;
+    clockOutLat: number | null;
+    clockOutLng: number | null;
+  }>;
+}
+
+export default function PayrollPage() {
+  const { shopId } = useParams();
+  const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
+  const [period, setPeriod] = useState<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth'>('thisWeek');
+  const [loading, setLoading] = useState(true);
+  const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadPayrollData();
+  }, [shopId, period]);
+
+  const getDateRange = () => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (period) {
+      case 'today':
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'yesterday':
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(now.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'thisWeek':
+        start.setDate(now.getDate() - now.getDay());
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'lastWeek':
+        start.setDate(now.getDate() - now.getDay() - 7);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(now.getDate() - now.getDay() - 1);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'thisMonth':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'lastMonth':
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+    }
+
+    return { start, end };
+  };
+
+  const loadPayrollData = async () => {
+    setLoading(true);
+    try {
+      const { start, end } = getDateRange();
+
+      const { data: employees } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('shop_id', shopId)
+        .eq('active', true);
+
+      if (!employees) return;
+
+      const payrollPromises = employees.map(async (employee) => {
+        const { data: clockEntries } = await supabase
+          .from('clock_entries')
+          .select('*')
+          .eq('employee_id', employee.id)
+          .gte('clock_in_time', start.toISOString())
+          .lte('clock_in_time', end.toISOString())
+          .not('clock_out_time', 'is', null)
+          .order('clock_in_time', { ascending: true });
+
+        const totalHours = clockEntries?.reduce((sum, entry) => sum + (entry.hours_worked || 0), 0) || 0;
+        const daysWorked = new Set(clockEntries?.map(e => new Date(e.clock_in_time).toDateString())).size;
+        const totalPay = totalHours * (employee.hourly_rate || 0);
+
+        const dailyBreakdown = clockEntries?.map(entry => ({
+          date: new Date(entry.clock_in_time).toLocaleDateString('en-GB'),
+          clockIn: new Date(entry.clock_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          clockOut: entry.clock_out_time ? new Date(entry.clock_out_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-',
+          hours: entry.hours_worked || 0,
+          clockInLat: entry.clock_in_latitude,
+          clockInLng: entry.clock_in_longitude,
+          clockOutLat: entry.clock_out_latitude,
+          clockOutLng: entry.clock_out_longitude,
+        })) || [];
+
+        return {
+          employee,
+          totalHours,
+          daysWorked,
+          totalPay,
+          dailyBreakdown
+        };
+      });
+
+      const data = await Promise.all(payrollPromises);
+      setPayrollData(data.filter(d => d.totalHours > 0).sort((a, b) => b.totalHours - a.totalHours));
+    } catch (error) {
+      console.error('Error loading payroll:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Employee', 'Date', 'Clock In', 'Clock Out', 'Hours', 'Hourly Rate', 'Pay'];
+    const rows: string[][] = [];
+
+    payrollData.forEach(({ employee, dailyBreakdown }) => {
+      dailyBreakdown.forEach(day => {
+        rows.push([
+          `${employee.first_name} ${employee.last_name || ''}`.trim(),
+          day.date,
+          day.clockIn,
+          day.clockOut,
+          day.hours.toFixed(2),
+          employee.hourly_rate ? `£${employee.hourly_rate.toFixed(2)}` : '-',
+          employee.hourly_rate ? `£${(day.hours * employee.hourly_rate).toFixed(2)}` : '-'
+        ]);
+      });
+    });
+
+    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payroll-${period}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const totalHours = payrollData.reduce((sum, d) => sum + d.totalHours, 0);
+  const totalPay = payrollData.reduce((sum, d) => sum + d.totalPay, 0);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Payroll Report</h1>
+        <button
+          onClick={exportToCSV}
+          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+        >
+          <Download className="w-5 h-5 mr-2" />
+          Export CSV
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center space-x-4 mb-4">
+          <Calendar className="w-5 h-5 text-gray-600" />
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as any)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="thisWeek">This Week</option>
+            <option value="lastWeek">Last Week</option>
+            <option value="thisMonth">This Month</option>
+            <option value="lastMonth">Last Month</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+          <div>
+            <p className="text-sm text-gray-600">Total Hours</p>
+            <p className="text-2xl font-bold text-gray-900">{totalHours.toFixed(1)}h</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Staff Members</p>
+            <p className="text-2xl font-bold text-gray-900">{payrollData.length}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Total Payroll</p>
+            <p className="text-2xl font-bold text-gray-900">£{totalPay.toFixed(2)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {payrollData.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <p className="text-gray-600">No clock entries for this period</p>
+          </div>
+        ) : (
+          payrollData.map(({ employee, totalHours, daysWorked, totalPay, dailyBreakdown }) => (
+            <div key={employee.id} className="bg-white rounded-lg shadow">
+              <div
+                className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => setExpandedEmployee(expandedEmployee === employee.id ? null : employee.id)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {employee.first_name} {employee.last_name || ''}
+                    </h3>
+                    <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Hours</p>
+                        <p className="font-semibold text-gray-900">{totalHours.toFixed(1)}h</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Days Worked</p>
+                        <p className="font-semibold text-gray-900">{daysWorked}</p>
+                      </div>
+                      {employee.hourly_rate && (
+                        <>
+                          <div>
+                            <p className="text-sm text-gray-600">Hourly Rate</p>
+                            <p className="font-semibold text-gray-900">£{employee.hourly_rate.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Total Pay</p>
+                            <p className="font-semibold text-green-600">£{totalPay.toFixed(2)}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    {expandedEmployee === employee.id ? (
+                      <ChevronUp className="w-5 h-5 text-gray-600" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-600" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {expandedEmployee === employee.id && (
+                <div className="px-6 pb-6 border-t border-gray-200">
+                  <h4 className="font-semibold text-gray-900 mt-4 mb-3">Daily Breakdown</h4>
+                  <div className="space-y-2">
+                    {dailyBreakdown.map((day, index) => (
+                      <div key={index} className="py-2 border-b border-gray-100 last:border-0">
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-900">{day.date}</span>
+                          </div>
+                          <div className="flex-1 text-center">
+                            <span className="text-sm text-gray-600">
+                              {day.clockIn} - {day.clockOut}
+                            </span>
+                          </div>
+                          <div className="flex-1 text-right">
+                            <span className="text-sm font-medium text-gray-900">{day.hours.toFixed(2)}h</span>
+                          </div>
+                        </div>
+                        {(day.clockInLat || day.clockOutLat) && (
+                          <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                            {day.clockInLat && day.clockInLng && (
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                <span>In:</span>
+                                <a
+                                  href={getGoogleMapsLink(day.clockInLat, day.clockInLng) || '#'}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {formatLocation(day.clockInLat, day.clockInLng)}
+                                </a>
+                              </div>
+                            )}
+                            {day.clockOutLat && day.clockOutLng && (
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                <span>Out:</span>
+                                <a
+                                  href={getGoogleMapsLink(day.clockOutLat, day.clockOutLng) || '#'}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {formatLocation(day.clockOutLat, day.clockOutLng)}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
