@@ -15,6 +15,7 @@ import TaskHistoryPage from './pages/dashboard/TaskHistoryPage';
 import DiaryPage from './pages/dashboard/DiaryPage';
 import IncidentsPage from './pages/dashboard/IncidentsPage';
 import ClockInRequestsPage from './pages/dashboard/ClockInRequestsPage';
+import StaffLocationsPage from './pages/dashboard/StaffLocationsPage';
 import FlashOffersPage from './pages/dashboard/FlashOffersPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import TabletInterface from './pages/tablet/TabletInterface';
@@ -60,6 +61,7 @@ function App() {
             <Route path="customers/:customerId" element={<CustomerDetail />} />
             <Route path="staff" element={<StaffPage />} />
             <Route path="staff/payroll" element={<PayrollPage />} />
+            <Route path="staff-locations" element={<StaffLocationsPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="tasks/history" element={<TaskHistoryPage />} />
             <Route path="diary" element={<DiaryPage />} />

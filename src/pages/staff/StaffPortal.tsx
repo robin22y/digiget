@@ -6,6 +6,7 @@ import StaffCustomerManagement from '../../components/StaffCustomerManagement';
 import StaffTaskManagement from '../../components/StaffTaskManagement';
 import StaffWorkHistory from '../../components/StaffWorkHistory';
 import StaffIncidentReport from '../../components/StaffIncidentReport';
+import StaffLocationCheckins from '../../components/StaffLocationCheckins';
 import { getCurrentPosition, formatLocation, calculateDistance } from '../../utils/geolocation';
 
 interface Employee {
@@ -20,6 +21,7 @@ interface Employee {
 interface Shop {
   id: string;
   shop_name: string;
+  owner_name?: string;
   auto_logout_hours: number;
   latitude: number | null;
   longitude: number | null;
@@ -32,7 +34,7 @@ interface ClockEntry {
   hours_worked: number | null;
 }
 
-type View = 'auth' | 'home' | 'customers' | 'tasks' | 'clock' | 'history' | 'incident';
+type View = 'auth' | 'home' | 'customers' | 'tasks' | 'clock' | 'history' | 'incident' | 'locations';
 
 export default function StaffPortal() {
   const { shopName, staffName } = useParams();
@@ -85,7 +87,7 @@ export default function StaffPortal() {
       // Find all shops matching the name
       const { data: shops, error: shopError } = await supabase
         .from('shops')
-        .select('id, shop_name, auto_logout_hours, latitude, longitude')
+        .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude')
         .ilike('shop_name', normalizedShopName || '');
 
       if (shopError) {
@@ -137,19 +139,22 @@ export default function StaffPortal() {
         return;
       }
 
-      setShop(shopData);
       setEmployee(employeeData);
       console.log('Loaded employee:', employeeData.first_name, 'for shop:', shopData.shop_name);
 
+      // Get full shop data including auto_logout_hours
       const { data: fullShopData } = await supabase
         .from('shops')
-        .select('auto_logout_hours')
+        .select('auto_logout_hours, owner_name')
         .eq('id', shopData.id)
         .single();
 
-      if (fullShopData) {
-        setShop({ ...shopData, auto_logout_hours: fullShopData.auto_logout_hours || 13 });
-      }
+      // Set shop with all data
+      setShop({
+        ...shopData,
+        owner_name: fullShopData?.owner_name || shopData.owner_name,
+        auto_logout_hours: fullShopData?.auto_logout_hours || 13,
+      });
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Failed to load staff portal');
@@ -436,6 +441,17 @@ export default function StaffPortal() {
               </p>
             </button>
 
+            {currentClockEntry && (
+              <button
+                onClick={() => setView('locations')}
+                className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-purple-500"
+              >
+                <MapPin className="w-12 h-12 text-purple-600 mb-4" />
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Locations</h3>
+                <p className="text-gray-600">Check in/out of work locations</p>
+              </button>
+            )}
+
             <button
               onClick={() => setView('history')}
               className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-blue-500"
@@ -533,6 +549,28 @@ export default function StaffPortal() {
         </div>
       )}
 
+      {view === 'locations' && currentClockEntry && (
+        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <button
+            onClick={() => setView('home')}
+            className="mb-6 text-blue-600 hover:text-blue-700 font-medium"
+          >
+            ← Back to Home
+          </button>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <MapPin className="w-8 h-8 text-purple-600" />
+              <h2 className="text-2xl font-bold text-gray-900">Location Check-In</h2>
+            </div>
+            <StaffLocationCheckins 
+              employeeId={employee.id} 
+              shopId={shop.id} 
+              clockEntryId={currentClockEntry.id}
+            />
+          </div>
+        </div>
+      )}
+
       {view === 'incident' && (
         <div className="max-w-3xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
           <button
@@ -580,40 +618,22 @@ function StaffClockView({
         return;
       }
 
+      let isRemoteClockIn = false;
+      let distance = 0;
+
+      // Calculate distance if shop location is set
       if (shop.latitude && shop.longitude) {
-        const distance = calculateDistance(
+        distance = calculateDistance(
           location.latitude,
           location.longitude,
           shop.latitude,
           shop.longitude
         );
 
-        if (distance > 100) {
-          const confirmMessage = `You are ${Math.round(distance)}m away from the shop location. Your clock-in request will need approval from management. Continue?`;
-          if (!confirm(confirmMessage)) {
-            setLoading(false);
-            return;
-          }
-
-          const { error: requestError } = await supabase
-            .from('clock_in_requests')
-            .insert({
-              shop_id: employee.shop_id,
-              employee_id: employee.id,
-              request_latitude: location.latitude,
-              request_longitude: location.longitude,
-              distance_from_shop: distance,
-              requested_at: new Date().toISOString(),
-            });
-
-          if (requestError) throw requestError;
-
-          alert('Clock-in request submitted for approval. You will be notified once approved.');
-          setLoading(false);
-          return;
-        }
+        isRemoteClockIn = distance > 100;
       }
 
+      // Clock in immediately (allow work to continue)
       const { error } = await supabase
         .from('clock_entries')
         .insert({
@@ -625,6 +645,40 @@ function StaffClockView({
         });
 
       if (error) throw error;
+
+      // If remote clock-in, create approval request for shop owner
+      if (isRemoteClockIn) {
+        const { error: requestError } = await supabase
+          .from('clock_in_requests')
+          .insert({
+            shop_id: employee.shop_id,
+            employee_id: employee.id,
+            request_latitude: location.latitude,
+            request_longitude: location.longitude,
+            distance_from_shop: distance,
+            requested_at: new Date().toISOString(),
+            status: 'pending',
+          });
+
+        if (requestError) {
+          console.warn('Failed to create clock-in request:', requestError);
+          // Don't block the clock-in if request creation fails
+        }
+
+        // Show friendly message with owner name
+        const ownerName = shop.owner_name || 'the shop owner';
+        const distanceText = distance < 1000 
+          ? `${Math.round(distance)}m` 
+          : `${(distance / 1000).toFixed(2)}km`;
+        
+        alert(
+          `✅ You're clocked in!\n\n` +
+          `You are ${distanceText} away from the shop location. ` +
+          `You can continue working - ${ownerName} will review and approve your shift.`
+        );
+      }
+      
+      // Always refresh the clock entry to update UI
       await onClockAction();
     } catch (err) {
       console.error('Error clocking in:', err);
