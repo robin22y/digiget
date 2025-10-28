@@ -26,7 +26,7 @@ export default function SignupPage() {
   });
 
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
 
   const businessCategories = [
     { value: 'hair_salon', label: 'Hair Salon / Barbershop' },
@@ -69,25 +69,43 @@ export default function SignupPage() {
         throw signUpError;
       }
       
-      // Check if email confirmation is required
-      if (data?.user && !data.session) {
-        setError('Please check your email to confirm your account before continuing.');
-        return;
-      }
-      
       // Check if signup was successful
       if (!data?.user) {
         setError('Signup failed. Please try again.');
         return;
       }
 
+      // Automatically sign in the user after successful signup (bypasses email confirmation)
+      let userId = data.user.id;
+      
+      if (!data.session) {
+        // No session from signup, try to sign in automatically
+        const { error: signInError } = await signIn(
+          signupData.email!,
+          signupData.password!
+        );
+
+        if (signInError) {
+          // If auto-signin fails, log it but continue with user creation
+          console.warn('Auto sign-in failed:', signInError.message);
+          // Note: We still have the user ID from signup, so we can create the shop
+        }
+        
+        // Get the current user ID (might have changed after sign-in)
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          userId = currentUser.id;
+        }
+      }
+
+      // Create the shop record
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 90);
 
       const { data: shop, error: shopError } = await supabase
         .from('shops')
         .insert({
-          user_id: data.user.id,
+          user_id: userId,
           shop_name: signupData.shopName!,
           owner_name: signupData.ownerName!,
           owner_email: signupData.email!,
@@ -107,9 +125,20 @@ export default function SignupPage() {
 
       if (shopError) throw shopError;
 
-      navigate(`/dashboard/${shop.id}`);
+      // Check if we have an active session before navigating
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (currentSession) {
+        navigate(`/dashboard/${shop.id}`);
+      } else {
+        // If no session, redirect to login with a message
+        setError('Account created! Please check your email to confirm your account, then log in.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
     } catch (err: any) {
-      setError(err.message);
+      console.error('Signup error:', err);
+      setError(err.message || 'An error occurred during signup. Please try again.');
     } finally {
       setLoading(false);
     }
