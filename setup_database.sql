@@ -119,6 +119,7 @@ CREATE TABLE customers (
   
   phone TEXT NOT NULL,
   name TEXT,
+  classification TEXT CHECK (classification IN ('VIP', 'Regular', 'New')) DEFAULT 'New',
   
   current_points INTEGER DEFAULT 0,
   lifetime_points INTEGER DEFAULT 0,

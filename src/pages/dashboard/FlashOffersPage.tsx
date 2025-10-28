@@ -11,6 +11,7 @@ interface FlashOffer {
   active: boolean;
   starts_at: string;
   ends_at: string | null;
+  target_classifications: string[] | null;
   created_at: string;
 }
 
@@ -26,7 +27,19 @@ export default function FlashOffersPage() {
     offer_value: '',
     starts_at: '',
     ends_at: '',
+    target_classifications: [] as string[],
   });
+
+  const toggleClassification = (classification: string) => {
+    setNewOffer(prev => {
+      const current = prev.target_classifications || [];
+      if (current.includes(classification)) {
+        return { ...prev, target_classifications: current.filter(c => c !== classification) };
+      } else {
+        return { ...prev, target_classifications: [...current, classification] };
+      }
+    });
+  };
 
   useEffect(() => {
     loadOffers();
@@ -60,6 +73,7 @@ export default function FlashOffersPage() {
         offer_value: newOffer.offer_value ? parseFloat(newOffer.offer_value) : null,
         starts_at: newOffer.starts_at || new Date().toISOString(),
         ends_at: newOffer.ends_at || null,
+        target_classifications: newOffer.target_classifications.length > 0 ? newOffer.target_classifications : null,
         active: true,
       });
 
@@ -72,6 +86,7 @@ export default function FlashOffersPage() {
         offer_value: '',
         starts_at: '',
         ends_at: '',
+        target_classifications: [],
       });
       loadOffers();
       alert('Flash offer created successfully!');
@@ -192,6 +207,27 @@ export default function FlashOffersPage() {
                         {offer.ends_at && (
                           <p>
                             <strong>Ends:</strong> {new Date(offer.ends_at).toLocaleString('en-GB')}
+                          </p>
+                        )}
+                        {offer.target_classifications && offer.target_classifications.length > 0 && (
+                          <p>
+                            <strong>Target:</strong>{' '}
+                            <span className="inline-flex gap-1 mt-1">
+                              {offer.target_classifications.map((c) => (
+                                <span
+                                  key={c}
+                                  className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                    c === 'VIP'
+                                      ? 'bg-purple-100 text-purple-700'
+                                      : c === 'Regular'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-green-100 text-green-700'
+                                  }`}
+                                >
+                                  {c}
+                                </span>
+                              ))}
+                            </span>
                           </p>
                         )}
                       </div>
@@ -366,6 +402,73 @@ export default function FlashOffersPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">Leave empty for no end date</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Target Customer Classifications
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Select specific customer types, or leave all unchecked to show to ALL customers
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Clear all selections for "All Customers"
+                      setNewOffer(prev => ({ ...prev, target_classifications: [] }));
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      newOffer.target_classifications.length === 0
+                        ? 'bg-gray-700 text-white border-2 border-gray-700'
+                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    All Customers
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleClassification('VIP')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                      newOffer.target_classifications.includes('VIP')
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-purple-300'
+                    }`}
+                  >
+                    <span className="text-xs">👑</span>
+                    VIP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleClassification('Regular')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      newOffer.target_classifications.includes('Regular')
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    Regular
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleClassification('New')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      newOffer.target_classifications.includes('New')
+                        ? 'bg-green-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-green-300'
+                    }`}
+                  >
+                    New
+                  </button>
+                </div>
+                {newOffer.target_classifications.length === 0 ? (
+                  <p className="text-xs text-gray-600 mt-2 font-medium">
+                    ✓ Will show to ALL customers
+                  </p>
+                ) : (
+                  <p className="text-xs text-blue-600 mt-2">
+                    Will show to: {newOffer.target_classifications.join(', ')} only
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
                 <button

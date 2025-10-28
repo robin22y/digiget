@@ -610,20 +610,21 @@ function StaffClockView({
   const handleClockIn = async () => {
     setLoading(true);
     try {
-      const location = await getCurrentPosition();
-
-      if (!location) {
-        alert('Location permission required to clock in');
-        setLoading(false);
-        return;
+      // Try to get location, but don't block clock-in if it fails
+      let location: { latitude: number; longitude: number } | null = null;
+      try {
+        location = await getCurrentPosition();
+      } catch (locationError) {
+        console.warn('Could not get location:', locationError);
+        // Continue without location - don't block clock-in
       }
 
       let isRemoteClockIn = false;
       let distance = 0;
       let hasPreApproval = false;
 
-      // Calculate distance if shop location is set
-      if (shop.latitude && shop.longitude) {
+      // Only calculate distance if both shop location and user location are available
+      if (location && shop.latitude && shop.longitude) {
         distance = calculateDistance(
           location.latitude,
           location.longitude,
@@ -632,42 +633,43 @@ function StaffClockView({
         );
 
         isRemoteClockIn = distance > 100;
-      }
 
-      // Check for pre-approval if remote clock-in
-      if (isRemoteClockIn) {
-        const today = new Date();
-        const currentDay = today.getDay();
-        const todayDate = today.toISOString().split('T')[0];
+        // Check for pre-approval if remote clock-in
+        if (isRemoteClockIn) {
+          const today = new Date();
+          const currentDay = today.getDay();
+          const todayDate = today.toISOString().split('T')[0];
 
-        const { data: preApprovals } = await supabase
-          .from('remote_clock_in_approvals')
-          .select('*')
-          .eq('employee_id', employee.id)
-          .eq('shop_id', employee.shop_id)
-          .eq('is_active', true)
-          .contains('days_of_week', [currentDay])
-          .lte('start_date', todayDate)
-          .gte('end_date', todayDate);
+          const { data: preApprovals } = await supabase
+            .from('remote_clock_in_approvals')
+            .select('*')
+            .eq('employee_id', employee.id)
+            .eq('shop_id', employee.shop_id)
+            .eq('is_active', true)
+            .contains('days_of_week', [currentDay])
+            .lte('start_date', todayDate)
+            .gte('end_date', todayDate);
 
-        hasPreApproval = !!(preApprovals && preApprovals.length > 0);
+          hasPreApproval = !!(preApprovals && preApprovals.length > 0);
+        }
       }
 
       // Clock in immediately (allow work to continue)
+      // Location is optional - null values are allowed
       const { error } = await supabase
         .from('clock_entries')
         .insert({
           shop_id: employee.shop_id,
           employee_id: employee.id,
           clock_in_time: new Date().toISOString(),
-          clock_in_latitude: location.latitude,
-          clock_in_longitude: location.longitude,
+          clock_in_latitude: location?.latitude || null,
+          clock_in_longitude: location?.longitude || null,
         });
 
       if (error) throw error;
 
       // If remote clock-in, create approval request for shop owner (unless pre-approved)
-      if (isRemoteClockIn && !hasPreApproval) {
+      if (location && isRemoteClockIn && !hasPreApproval) {
         const { error: requestError } = await supabase
           .from('clock_in_requests')
           .insert({
@@ -696,7 +698,7 @@ function StaffClockView({
           `You are ${distanceText} away from the shop location. ` +
           `You can continue working - ${ownerName} will review and approve your shift.`
         );
-      } else if (isRemoteClockIn && hasPreApproval) {
+      } else if (location && isRemoteClockIn && hasPreApproval) {
         // Pre-approved remote clock-in
         const distanceText = distance < 1000 
           ? `${Math.round(distance)}m` 
@@ -707,13 +709,19 @@ function StaffClockView({
           `You are ${distanceText} away from the shop location. ` +
           `Your remote clock-in is pre-approved - you're all set!`
         );
+      } else if (!location && shop.latitude && shop.longitude) {
+        // Location permission denied but shop has location set
+        alert('✅ You\'re clocked in!\n\nNote: Location permission was not granted. GPS tracking is disabled for this clock-in.');
+      } else {
+        // Successful clock-in with or without location
+        alert('✅ You\'re clocked in!');
       }
       
       // Always refresh the clock entry to update UI
       await onClockAction();
     } catch (err) {
       console.error('Error clocking in:', err);
-      alert('Failed to clock in');
+      alert('Failed to clock in: ' + (err as Error).message);
     } finally {
       setLoading(false);
     }

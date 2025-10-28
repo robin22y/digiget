@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { CheckCircle, Star } from 'lucide-react';
+import { Star, Calendar, Clock, User, Crown } from 'lucide-react';
 
 interface Shop {
   id: string;
@@ -9,11 +9,12 @@ interface Shop {
   reward_description: string;
 }
 
-interface Customer {
+interface Appointment {
   id: string;
-  phone: string;
-  name: string | null;
-  current_points: number;
+  customer_name: string | null;
+  appointment_date: string;
+  appointment_time: string;
+  service_type: string | null;
 }
 
 export default function CheckInPage() {
@@ -23,6 +24,10 @@ export default function CheckInPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [recentCheckins, setRecentCheckins] = useState<any[]>([]);
+  const [foundAppointment, setFoundAppointment] = useState<Appointment | null>(null);
+  const [customerName, setCustomerName] = useState('');
+  const [classification, setClassification] = useState<'VIP' | 'Regular' | 'New' | ''>('');
+  const [showAdditionalFields, setShowAdditionalFields] = useState(false);
 
   useEffect(() => {
     loadRecentCheckins();
@@ -57,9 +62,44 @@ export default function CheckInPage() {
     return `${numbers.slice(0, 5)} ${numbers.slice(5, 8)} ${numbers.slice(8, 11)}`;
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setPhone(formatted);
+    setFoundAppointment(null);
+    setCustomerName('');
+    setClassification('');
+    setShowAdditionalFields(false);
+
+    // Check for appointment when phone number is entered
+    const cleanPhone = formatted.replace(/\s/g, '');
+    if (cleanPhone.length >= 10) {
+      const today = new Date();
+      const todayDate = today.toISOString().split('T')[0];
+
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('shop_id', shopId)
+        .eq('customer_phone', cleanPhone)
+        .eq('appointment_date', todayDate)
+        .eq('status', 'scheduled')
+        .order('appointment_time', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (appointment) {
+        setFoundAppointment({
+          id: appointment.id,
+          customer_name: appointment.customer_name,
+          appointment_date: appointment.appointment_date,
+          appointment_time: appointment.appointment_time,
+          service_type: appointment.service_type,
+        });
+        if (appointment.customer_name) {
+          setCustomerName(appointment.customer_name);
+        }
+      }
+    }
   };
 
   const handleCheckIn = async (e: React.FormEvent) => {
@@ -70,22 +110,34 @@ export default function CheckInPage() {
     try {
       const cleanPhone = phone.replace(/\s/g, '');
 
-      let { data: customer, error: customerError } = await supabase
+      // Check for existing customer
+      let { data: customer } = await supabase
         .from('customers')
         .select('*')
         .eq('shop_id', shopId)
         .eq('phone', cleanPhone)
         .maybeSingle();
 
+      const updateData: any = {};
+      if (customerName.trim()) {
+        updateData.name = customerName.trim();
+      }
+      if (classification) {
+        updateData.classification = classification;
+      }
+
       if (!customer) {
+        // New customer
         const { data: newCustomer, error: createError } = await supabase
           .from('customers')
           .insert({
             shop_id: shopId!,
             phone: cleanPhone,
+            name: customerName.trim() || null,
+            classification: classification || 'New',
             current_points: 1,
             lifetime_points: 1,
-            total_visits: 1
+            total_visits: 1,
           })
           .select()
           .single();
@@ -100,26 +152,31 @@ export default function CheckInPage() {
             customer_id: customer.id,
             transaction_type: 'point_added',
             points_change: 1,
-            balance_after: 1
+            balance_after: 1,
           });
 
         setMessage({
           type: 'success',
-          text: `New customer! 1/${shop.points_needed} visits`
+          text: `New customer! 1/${shop.points_needed} visits`,
         });
       } else {
+        // Existing customer - update name/classification if provided
+        if (Object.keys(updateData).length > 0) {
+          await supabase.from('customers').update(updateData).eq('id', customer.id);
+        }
+
         const newPoints = customer.current_points + 1;
         const newTotalVisits = customer.total_visits + 1;
 
         if (newPoints >= shop.points_needed) {
           setMessage({
             type: 'success',
-            text: `🎉 REWARD READY! Customer has earned ${shop.reward_description}`
+            text: `🎉 REWARD READY! Customer has earned ${shop.reward_description}`,
           });
         } else {
           setMessage({
             type: 'success',
-            text: `Point added! ${newPoints}/${shop.points_needed} visits`
+            text: `Point added! ${newPoints}/${shop.points_needed} visits`,
           });
         }
 
@@ -129,7 +186,8 @@ export default function CheckInPage() {
             current_points: newPoints,
             lifetime_points: customer.lifetime_points + 1,
             total_visits: newTotalVisits,
-            last_visit_at: new Date().toISOString()
+            last_visit_at: new Date().toISOString(),
+            ...updateData,
           })
           .eq('id', customer.id);
 
@@ -140,11 +198,26 @@ export default function CheckInPage() {
             customer_id: customer.id,
             transaction_type: 'point_added',
             points_change: 1,
-            balance_after: newPoints
+            balance_after: newPoints,
           });
       }
 
+      // Mark appointment as checked in if found
+      if (foundAppointment) {
+        await supabase
+          .from('appointments')
+          .update({
+            checked_in_at: new Date().toISOString(),
+            status: 'completed',
+          })
+          .eq('id', foundAppointment.id);
+      }
+
       setPhone('');
+      setCustomerName('');
+      setClassification('');
+      setFoundAppointment(null);
+      setShowAdditionalFields(false);
       loadRecentCheckins();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
@@ -167,7 +240,7 @@ export default function CheckInPage() {
         .from('customers')
         .update({
           current_points: 0,
-          rewards_redeemed: customer.rewards_redeemed + 1
+          rewards_redeemed: customer.rewards_redeemed + 1,
         })
         .eq('id', customerId);
 
@@ -178,12 +251,12 @@ export default function CheckInPage() {
           customer_id: customerId,
           transaction_type: 'reward_redeemed',
           points_change: -shop.points_needed,
-          balance_after: 0
+          balance_after: 0,
         });
 
       setMessage({
         type: 'success',
-        text: 'Reward redeemed! Customer starts fresh at 0 visits'
+        text: 'Reward redeemed! Customer starts fresh at 0 visits',
       });
 
       loadRecentCheckins();
@@ -205,6 +278,11 @@ export default function CheckInPage() {
     return stars;
   };
 
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    return `${hours}:${minutes}`;
+  };
+
   return (
     <div>
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
@@ -213,8 +291,8 @@ export default function CheckInPage() {
         {message && (
           <div
             className={`mb-4 p-4 rounded-xl border-l-4 ${
-              message.type === 'success' 
-                ? 'bg-green-50 text-green-700 border-green-500' 
+              message.type === 'success'
+                ? 'bg-green-50 text-green-700 border-green-500'
                 : 'bg-red-50 text-red-700 border-red-500'
             }`}
           >
@@ -222,18 +300,123 @@ export default function CheckInPage() {
           </div>
         )}
 
+        {/* Appointment Info */}
+        {foundAppointment && (
+          <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900 mb-1">Appointment Found</h3>
+                {foundAppointment.customer_name && (
+                  <p className="text-blue-800 flex items-center gap-2 mb-1">
+                    <User className="w-4 h-4" />
+                    <strong>Name:</strong> {foundAppointment.customer_name}
+                  </p>
+                )}
+                <p className="text-blue-800 flex items-center gap-2 mb-1">
+                  <Clock className="w-4 h-4" />
+                  <strong>Time:</strong> {formatTime(foundAppointment.appointment_time)}
+                </p>
+                {foundAppointment.service_type && (
+                  <p className="text-blue-800 text-sm">
+                    <strong>Service:</strong> {foundAppointment.service_type}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleCheckIn}>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Enter customer phone number:
-          </label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={handlePhoneChange}
-            placeholder="07XXX XXX XXX"
-            required
-            className="w-full px-4 py-3.5 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4"
-          />
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Enter customer phone number:
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={handlePhoneChange}
+              placeholder="07XXX XXX XXX"
+              required
+              className="w-full px-4 py-3.5 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+
+          {/* Optional Fields */}
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {showAdditionalFields ? '−' : '+'} Add Optional Details
+            </button>
+          </div>
+
+          {showAdditionalFields && (
+            <div className="space-y-4 mb-4 p-4 bg-gray-50 rounded-xl">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter customer name"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+                {foundAppointment?.customer_name && !customerName && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Found in appointment: {foundAppointment.customer_name}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Classify Customer (Optional)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setClassification('VIP')}
+                    className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+                      classification === 'VIP'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-purple-300'
+                    }`}
+                  >
+                    <Crown className="w-4 h-4" />
+                    VIP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClassification('Regular')}
+                    className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+                      classification === 'Regular'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    Regular
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClassification('New')}
+                    className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+                      classification === 'New'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-green-300'
+                    }`}
+                  >
+                    New
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -258,9 +441,24 @@ export default function CheckInPage() {
                 <div key={checkin.id} className="border-b border-gray-200 pb-4 last:border-0">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium text-gray-900">
-                        {customer.name || customer.phone}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900">
+                          {customer.name || customer.phone}
+                        </p>
+                        {customer.classification && (
+                          <span
+                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                              customer.classification === 'VIP'
+                                ? 'bg-purple-100 text-purple-700'
+                                : customer.classification === 'Regular'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {customer.classification}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center mt-1">
                         {renderStars(customer.current_points)}
                         <span className="ml-2 text-sm text-gray-600">
