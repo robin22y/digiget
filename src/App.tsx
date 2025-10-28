@@ -18,6 +18,7 @@ import ClockInRequestsPage from './pages/dashboard/ClockInRequestsPage';
 import StaffLocationsPage from './pages/dashboard/StaffLocationsPage';
 import RemoteWorkers from './pages/dashboard/RemoteWorkers';
 import RemoteClockInApprovals from './pages/dashboard/RemoteClockInApprovals';
+import StaffRequestsPage from './pages/dashboard/StaffRequestsPage';
 import FlashOffersPage from './pages/dashboard/FlashOffersPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import TabletInterface from './pages/tablet/TabletInterface';
@@ -63,6 +64,7 @@ function App() {
             <Route path="customers/:customerId" element={<CustomerDetail />} />
             <Route path="staff" element={<StaffPage />} />
             <Route path="staff/payroll" element={<PayrollPage />} />
+            <Route path="staff-requests" element={<StaffRequestsPage />} />
             <Route path="staff-locations" element={<StaffLocationsPage />} />
             <Route path="remote-workers" element={<RemoteWorkers />} />
             <Route path="remote-approvals" element={<RemoteClockInApprovals />} />

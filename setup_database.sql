@@ -409,5 +409,74 @@ CREATE INDEX IF NOT EXISTS idx_remote_approvals_employee_id ON remote_clock_in_a
 CREATE INDEX IF NOT EXISTS idx_remote_approvals_active ON remote_clock_in_approvals(shop_id, is_active, start_date, end_date) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_remote_approvals_date_range ON remote_clock_in_approvals(start_date, end_date);
 
+-- 9. Create staff_requests table (for staff to submit requests for uniforms, equipment, etc.)
+CREATE TABLE IF NOT EXISTS staff_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id UUID REFERENCES shops(id) ON DELETE CASCADE NOT NULL,
+  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE NOT NULL,
+  
+  request_type TEXT NOT NULL CHECK (request_type IN ('uniform', 'equipment', 'supplies', 'time_off', 'other')),
+  title TEXT NOT NULL,
+  description TEXT,
+  priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+  
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed')),
+  response_notes TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  responded_at TIMESTAMPTZ,
+  responded_by UUID REFERENCES auth.users(id)
+);
+
+ALTER TABLE staff_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Employees can create requests"
+  ON staff_requests
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Public can create requests"
+  ON staff_requests
+  FOR INSERT
+  USING (true);
+
+CREATE POLICY "Employees can view their requests"
+  ON staff_requests
+  FOR SELECT
+  USING (true);
+
+CREATE POLICY "Shop owners can view all requests"
+  ON staff_requests
+  FOR SELECT
+  TO authenticated
+  USING (
+    shop_id IN (
+      SELECT id FROM shops WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Shop owners can manage requests"
+  ON staff_requests
+  FOR UPDATE
+  TO authenticated
+  USING (
+    shop_id IN (
+      SELECT id FROM shops WHERE user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    shop_id IN (
+      SELECT id FROM shops WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE INDEX IF NOT EXISTS idx_staff_requests_shop_id ON staff_requests(shop_id);
+CREATE INDEX IF NOT EXISTS idx_staff_requests_employee_id ON staff_requests(employee_id);
+CREATE INDEX IF NOT EXISTS idx_staff_requests_status ON staff_requests(status);
+CREATE INDEX IF NOT EXISTS idx_staff_requests_created_at ON staff_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_staff_requests_pending ON staff_requests(shop_id, status) WHERE status = 'pending';
+
 -- Run this SQL in Supabase Dashboard to create the essential tables!
 

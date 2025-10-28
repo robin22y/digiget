@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock } from 'lucide-react';
+import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -74,6 +74,7 @@ export default function DashboardLayout() {
     { to: `/dashboard/${shopId}/customers`, icon: Users, label: 'Customers' },
     ...(shop.plan_type === 'pro' ? [
       { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Staff' },
+      { to: `/dashboard/${shopId}/staff-requests`, icon: Package, label: 'Staff Requests' },
       { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Staff Locations' },
       { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers' },
       { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals' },

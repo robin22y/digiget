@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { LogOut, Users, CheckCircle, ClipboardList, Clock, History, AlertTriangle, MapPin } from 'lucide-react';
+import { LogOut, Users, CheckCircle, ClipboardList, Clock, History, AlertTriangle, MapPin, Package } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import StaffCustomerManagement from '../../components/StaffCustomerManagement';
 import StaffTaskManagement from '../../components/StaffTaskManagement';
 import StaffWorkHistory from '../../components/StaffWorkHistory';
 import StaffIncidentReport from '../../components/StaffIncidentReport';
 import StaffLocationCheckins from '../../components/StaffLocationCheckins';
+import StaffRequests from '../../components/StaffRequests';
 import { getCurrentPosition, formatLocation, calculateDistance } from '../../utils/geolocation';
 
 interface Employee {
@@ -34,7 +35,7 @@ interface ClockEntry {
   hours_worked: number | null;
 }
 
-type View = 'auth' | 'home' | 'customers' | 'tasks' | 'clock' | 'history' | 'incident' | 'locations';
+type View = 'auth' | 'home' | 'customers' | 'tasks' | 'clock' | 'history' | 'incident' | 'locations' | 'requests';
 
 export default function StaffPortal() {
   const { shopName, staffName } = useParams();
@@ -469,6 +470,15 @@ export default function StaffPortal() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Report Incident</h3>
               <p className="text-gray-600">Report issues or incidents to management</p>
             </button>
+
+            <button
+              onClick={() => setView('requests')}
+              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-indigo-500"
+            >
+              <Package className="w-12 h-12 text-indigo-600 mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Requests</h3>
+              <p className="text-gray-600">Request uniforms, equipment, or supplies</p>
+            </button>
           </div>
 
           {currentClockEntry && (
@@ -585,6 +595,24 @@ export default function StaffPortal() {
               <h2 className="text-2xl font-bold text-gray-900">Report Incident</h2>
             </div>
             <StaffIncidentReport employeeId={employee.id} shopId={shop.id} />
+          </div>
+        </div>
+      )}
+
+      {view === 'requests' && (
+        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <button
+            onClick={() => setView('home')}
+            className="mb-6 text-blue-600 hover:text-blue-700 font-medium"
+          >
+            ← Back to Home
+          </button>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Package className="w-8 h-8 text-indigo-600" />
+              <h2 className="text-2xl font-bold text-gray-900">Staff Requests</h2>
+            </div>
+            <StaffRequests employeeId={employee.id} shopId={shop.id} />
           </div>
         </div>
       )}
@@ -710,8 +738,22 @@ function StaffClockView({
           `Your remote clock-in is pre-approved - you're all set!`
         );
       } else if (!location && shop.latitude && shop.longitude) {
-        // Location permission denied but shop has location set
-        alert('✅ You\'re clocked in!\n\nNote: Location permission was not granted. GPS tracking is disabled for this clock-in.');
+        // Location permission denied but shop has location set - notify shop owner
+        const { error: notificationError } = await supabase
+          .from('notices')
+          .insert({
+            title: 'Location-Disabled Clock-In',
+            body: `${employee.first_name} ${employee.last_name} clocked in but location permission was disabled on their device. GPS tracking unavailable for this shift.`,
+            audience_filter: `shop:${shop.id}`,
+            sent_by: 'system',
+            show_on_dashboard: true,
+          });
+
+        if (notificationError) {
+          console.warn('Failed to create notification:', notificationError);
+        }
+
+        alert('✅ You\'re clocked in!\n\nNote: Location permission was not granted. GPS tracking is disabled for this clock-in. Shop owner has been notified.');
       } else {
         // Successful clock-in with or without location
         alert('✅ You\'re clocked in!');
