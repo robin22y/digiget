@@ -174,7 +174,7 @@ export default function ManageShops() {
 
     try {
       // In a real implementation, you'd also create the owner account in auth.users
-      const { error } = await supabase
+      const { data: newShopData, error } = await supabase
         .from('shops')
         .insert({
           shop_name: newShop.shop_name,
@@ -189,9 +189,22 @@ export default function ManageShops() {
           points_needed: 10,
           reward_type: 'free_product',
           reward_description: 'Free item',
-        });
+          qr_code_active: true,
+          user_id: '00000000-0000-0000-0000-000000000000' // Placeholder - should be set when creating actual user
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Generate and save QR URL
+      if (newShopData) {
+        const qrUrl = `${window.location.origin}/dashboard/${newShopData.id}/checkin`;
+        await supabase
+          .from('shops')
+          .update({ qr_url: qrUrl })
+          .eq('id', newShopData.id);
+      }
 
       setShowAddModal(false);
       setNewShop({ shop_name: '', owner_name: '', owner_email: '', phone: '', postcode: '', type: '' });

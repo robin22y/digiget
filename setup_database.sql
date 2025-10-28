@@ -39,6 +39,10 @@ CREATE TABLE shops (
   latitude DECIMAL(10, 8),
   longitude DECIMAL(11, 8),
   
+  -- QR Code fields
+  qr_url TEXT,
+  qr_code_active BOOLEAN DEFAULT true,
+  
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -68,6 +72,8 @@ CREATE POLICY "Public can view shops"
   USING (true);
 
 CREATE INDEX IF NOT EXISTS idx_shops_user_id ON shops(user_id);
+CREATE INDEX IF NOT EXISTS idx_shops_qr_url ON shops(qr_url);
+CREATE INDEX IF NOT EXISTS idx_shops_qr_active ON shops(qr_code_active) WHERE qr_code_active = true;
 
 -- 2. Create employees table
 CREATE TABLE employees (

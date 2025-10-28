@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Store, FileText, Bell, Settings, LogOut, Download } from 'lucide-react';
+import { Home, Store, FileText, Bell, Settings, LogOut, Download, QrCode } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function SuperAdminLayout() {
@@ -15,6 +15,7 @@ export default function SuperAdminLayout() {
   const navItems = [
     { to: '/super-admin/dashboard', icon: Home, label: 'Dashboard', end: true },
     { to: '/super-admin/shops', icon: Store, label: 'Manage Shops', end: false },
+    { to: '/super-admin/qr-management', icon: QrCode, label: 'QR Management', end: true },
     { to: '/super-admin/reports', icon: FileText, label: 'Reports', end: true },
     { to: '/super-admin/notices', icon: Bell, label: 'Notices', end: true },
     { to: '/super-admin/settings', icon: Settings, label: 'Settings', end: true },

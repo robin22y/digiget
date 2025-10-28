@@ -6,6 +6,7 @@ import CreateSuperAdmin from './pages/CreateSuperAdmin';
 import DashboardLayout from './layouts/DashboardLayout';
 import DashboardHome from './pages/dashboard/DashboardHome';
 import CheckInPage from './pages/dashboard/CheckInPage';
+import QRCodePage from './pages/dashboard/QRCodePage';
 import CustomersPage from './pages/dashboard/CustomersPage';
 import CustomerDetail from './pages/dashboard/CustomerDetail';
 import StaffPage from './pages/dashboard/StaffPage';
@@ -30,6 +31,7 @@ import SuperAdminLayout from './layouts/SuperAdminLayout';
 import SuperAdminDashboard from './pages/super-admin/Dashboard';
 import ManageShops from './pages/super-admin/ManageShops';
 import ShopDetail from './pages/super-admin/ShopDetail';
+import QRManagement from './pages/super-admin/QRManagement';
 import Reports from './pages/super-admin/Reports';
 import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
@@ -60,6 +62,7 @@ function App() {
           >
             <Route index element={<DashboardHome />} />
             <Route path="checkin" element={<CheckInPage />} />
+            <Route path="qr-code" element={<QRCodePage />} />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="customers/:customerId" element={<CustomerDetail />} />
             <Route path="staff" element={<StaffPage />} />
@@ -89,6 +92,7 @@ function App() {
             <Route path="dashboard" element={<SuperAdminDashboard />} />
             <Route path="shops" element={<ManageShops />} />
             <Route path="shops/:id" element={<ShopDetail />} />
+            <Route path="qr-management" element={<QRManagement />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notices" element={<Notices />} />
             <Route path="settings" element={<SuperAdminSettings />} />

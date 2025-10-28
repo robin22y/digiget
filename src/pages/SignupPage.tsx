@@ -126,12 +126,20 @@ export default function SignupPage() {
           points_needed: signupData.loyaltyVisits!,
           reward_type: 'free_product',
           reward_description: signupData.rewardDescription!,
-          diary_enabled: ['hair_salon', 'beauty_salon', 'health_wellness'].includes(signupData.businessCategory!)
+          diary_enabled: ['hair_salon', 'beauty_salon', 'health_wellness'].includes(signupData.businessCategory!),
+          qr_code_active: true
         })
         .select()
         .single();
 
       if (shopError) throw shopError;
+
+      // Generate and save QR URL after shop is created (so we have the ID)
+      const qrUrl = `${window.location.origin}/dashboard/${shop.id}/checkin`;
+      await supabase
+        .from('shops')
+        .update({ qr_url: qrUrl })
+        .eq('id', shop.id);
 
       // Check if we have an active session before navigating
       const { data: { session: currentSession } } = await supabase.auth.getSession();
