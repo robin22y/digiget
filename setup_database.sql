@@ -45,6 +45,11 @@ CREATE TABLE shops (
 
 ALTER TABLE shops ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own shop" ON shops;
+DROP POLICY IF EXISTS "Users can update own shop" ON shops;
+DROP POLICY IF EXISTS "Users can insert own shop" ON shops;
+DROP POLICY IF EXISTS "Public can view shops" ON shops;
+
 CREATE POLICY "Users can view own shop"
   ON shops FOR SELECT
   USING (auth.uid() = user_id);
@@ -93,6 +98,9 @@ CREATE TABLE employees (
 
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Shop owners can manage employees" ON employees;
+DROP POLICY IF EXISTS "Public can view employees" ON employees;
+
 CREATE POLICY "Shop owners can manage employees"
   ON employees FOR ALL
   USING (
@@ -135,6 +143,9 @@ CREATE TABLE customers (
 );
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Shop owners can manage customers" ON customers;
+DROP POLICY IF EXISTS "Public can view customer by phone" ON customers;
 
 CREATE POLICY "Shop owners can manage customers"
   ON customers FOR ALL
@@ -179,6 +190,9 @@ CREATE TABLE clock_entries (
 
 ALTER TABLE clock_entries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Shop owners can manage clock entries" ON clock_entries;
+DROP POLICY IF EXISTS "Anyone can manage clock entries for staff portal" ON clock_entries;
+
 CREATE POLICY "Shop owners can manage clock entries"
   ON clock_entries FOR ALL
   USING (
@@ -188,6 +202,13 @@ CREATE POLICY "Shop owners can manage clock entries"
       AND shops.user_id = auth.uid()
     )
   );
+
+-- Allow anonymous users to manage clock entries for staff portal
+CREATE POLICY "Anyone can manage clock entries for staff portal"
+  ON clock_entries FOR ALL
+  TO anon
+  USING (true)
+  WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_clock_entries_shop_id ON clock_entries(shop_id);
 CREATE INDEX IF NOT EXISTS idx_clock_entries_employee_id ON clock_entries(employee_id);
@@ -212,6 +233,10 @@ CREATE TABLE IF NOT EXISTS loyalty_transactions (
 );
 
 ALTER TABLE loyalty_transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Shop owners can view transactions" ON loyalty_transactions;
+DROP POLICY IF EXISTS "Shop owners can insert transactions" ON loyalty_transactions;
+DROP POLICY IF EXISTS "Public can view transactions" ON loyalty_transactions;
 
 CREATE POLICY "Shop owners can view transactions"
   ON loyalty_transactions FOR SELECT
@@ -262,6 +287,12 @@ CREATE TABLE IF NOT EXISTS clock_in_requests (
 
 ALTER TABLE clock_in_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can create clock in requests" ON clock_in_requests;
+DROP POLICY IF EXISTS "Users can view their employee requests" ON clock_in_requests;
+DROP POLICY IF EXISTS "Public can view clock in requests" ON clock_in_requests;
+DROP POLICY IF EXISTS "Anyone can create clock in requests for staff portal" ON clock_in_requests;
+DROP POLICY IF EXISTS "Shop owners can update requests" ON clock_in_requests;
+
 CREATE POLICY "Authenticated users can create clock in requests"
   ON clock_in_requests
   FOR INSERT
@@ -288,6 +319,12 @@ CREATE POLICY "Public can view clock in requests"
   ON clock_in_requests
   FOR SELECT
   USING (true);
+
+CREATE POLICY "Anyone can create clock in requests for staff portal"
+  ON clock_in_requests
+  FOR INSERT
+  TO anon
+  WITH CHECK (true);
 
 CREATE POLICY "Shop owners can update requests"
   ON clock_in_requests
@@ -326,6 +363,11 @@ CREATE TABLE IF NOT EXISTS staff_location_checkins (
 
 ALTER TABLE staff_location_checkins ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Employees can manage their own location checkins" ON staff_location_checkins;
+DROP POLICY IF EXISTS "Shop owners can view location checkins" ON staff_location_checkins;
+DROP POLICY IF EXISTS "Public can view location checkins" ON staff_location_checkins;
+DROP POLICY IF EXISTS "Anyone can manage location checkins for staff portal" ON staff_location_checkins;
+
 CREATE POLICY "Employees can manage their own location checkins"
   ON staff_location_checkins
   FOR ALL
@@ -353,6 +395,12 @@ CREATE POLICY "Public can view location checkins"
   FOR SELECT
   USING (true);
 
+CREATE POLICY "Anyone can manage location checkins for staff portal"
+  ON staff_location_checkins FOR ALL
+  TO anon
+  USING (true)
+  WITH CHECK (true);
+
 CREATE INDEX IF NOT EXISTS idx_location_checkins_shop_id ON staff_location_checkins(shop_id);
 CREATE INDEX IF NOT EXISTS idx_location_checkins_employee_id ON staff_location_checkins(employee_id);
 CREATE INDEX IF NOT EXISTS idx_location_checkins_clock_entry_id ON staff_location_checkins(clock_entry_id);
@@ -378,6 +426,10 @@ CREATE TABLE IF NOT EXISTS remote_clock_in_approvals (
 
 ALTER TABLE remote_clock_in_approvals ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Shop owners can manage remote approvals" ON remote_clock_in_approvals;
+DROP POLICY IF EXISTS "Employees can view their approvals" ON remote_clock_in_approvals;
+DROP POLICY IF EXISTS "Public can view remote approvals" ON remote_clock_in_approvals;
+
 CREATE POLICY "Shop owners can manage remote approvals"
   ON remote_clock_in_approvals
   FOR ALL
@@ -402,6 +454,7 @@ CREATE POLICY "Employees can view their approvals"
 CREATE POLICY "Public can view remote approvals"
   ON remote_clock_in_approvals
   FOR SELECT
+  TO anon
   USING (true);
 
 CREATE INDEX IF NOT EXISTS idx_remote_approvals_shop_id ON remote_clock_in_approvals(shop_id);
@@ -431,6 +484,12 @@ CREATE TABLE IF NOT EXISTS staff_requests (
 
 ALTER TABLE staff_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Employees can create requests" ON staff_requests;
+DROP POLICY IF EXISTS "Public can create requests" ON staff_requests;
+DROP POLICY IF EXISTS "Employees can view their requests" ON staff_requests;
+DROP POLICY IF EXISTS "Shop owners can view all requests" ON staff_requests;
+DROP POLICY IF EXISTS "Shop owners can manage requests" ON staff_requests;
+
 CREATE POLICY "Employees can create requests"
   ON staff_requests
   FOR INSERT
@@ -440,7 +499,8 @@ CREATE POLICY "Employees can create requests"
 CREATE POLICY "Public can create requests"
   ON staff_requests
   FOR INSERT
-  USING (true);
+  TO anon
+  WITH CHECK (true);
 
 CREATE POLICY "Employees can view their requests"
   ON staff_requests
