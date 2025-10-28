@@ -48,10 +48,25 @@ export default function ManageShops() {
     try {
       const { data, error } = await supabase
         .from('shops')
-        .select('*')
+        .select('id, shop_name, owner_name, owner_email, postcode, business_category, subscription_status, created_at, updated_at')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading shops:', error);
+        // If schema error, try with minimal fields
+        if (error.message?.includes('column') || error.code === '42703') {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('shops')
+            .select('id, shop_name, owner_name, owner_email, subscription_status, created_at')
+            .order('created_at', { ascending: false });
+          
+          if (!fallbackError) {
+            setShops(fallbackData || []);
+            return;
+          }
+        }
+        throw error;
+      }
       setShops(data || []);
     } catch (error) {
       console.error('Error loading shops:', error);
