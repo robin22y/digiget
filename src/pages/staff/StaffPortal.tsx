@@ -85,11 +85,25 @@ export default function StaffPortal() {
 
       console.log('Looking for:', { shop: normalizedShopName, staff: normalizedStaffName });
 
-      // Find all shops matching the name
-      const { data: shops, error: shopError } = await supabase
+      // Find all shops matching the name (case-insensitive, flexible matching)
+      // Try exact match first, then partial match
+      let { data: shops, error: shopError } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude')
         .ilike('shop_name', normalizedShopName || '');
+
+      // If no exact match, try partial match
+      if ((!shops || shops.length === 0) && normalizedShopName) {
+        const { data: partialShops, error: partialError } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude')
+          .ilike('shop_name', `%${normalizedShopName}%`);
+        
+        if (!partialError && partialShops && partialShops.length > 0) {
+          shops = partialShops;
+          shopError = null;
+        }
+      }
 
       if (shopError) {
         console.error('Shop lookup error:', shopError);
@@ -98,7 +112,21 @@ export default function StaffPortal() {
 
       if (!shops || shops.length === 0) {
         console.log('No shop found matching:', normalizedShopName);
-        setError(`Shop "${normalizedShopName}" not found`);
+        
+        // Get a list of available shops to help with debugging
+        const { data: allShops } = await supabase
+          .from('shops')
+          .select('shop_name')
+          .limit(10);
+        
+        const availableShops = allShops?.map(s => s.shop_name).join(', ') || 'none';
+        console.log('Available shops:', availableShops);
+        
+        setError(
+          `Shop "${normalizedShopName}" not found. ` +
+          `Available shops: ${availableShops}. ` +
+          `Make sure the shop name in the URL matches the shop name in the database (case-insensitive).`
+        );
         setLoading(false);
         return;
       }
@@ -708,11 +736,32 @@ function StaffClockView({
             distance_from_shop: distance,
             requested_at: new Date().toISOString(),
             status: 'pending',
-          });
+          })
+          .select()
+          .single();
 
         if (requestError) {
           console.warn('Failed to create clock-in request:', requestError);
           // Don't block the clock-in if request creation fails
+        } else {
+          // Create notification for shop owner
+          const distanceText = distance < 1000 
+            ? `${Math.round(distance)}m` 
+            : `${(distance / 1000).toFixed(2)}km`;
+          
+          const { error: noticeError } = await supabase
+            .from('notices')
+            .insert({
+              title: 'Remote Clock-In Request',
+              body: `${employee.first_name} ${employee.last_name} clocked in from ${distanceText} away from the shop location. Please review and approve in the Clock Requests section.`,
+              audience_filter: `shop:${shop.id}`,
+              sent_by: 'system',
+              show_on_dashboard: true,
+            });
+
+          if (noticeError) {
+            console.warn('Failed to create notification:', noticeError);
+          }
         }
 
         // Show friendly message with owner name

@@ -15,6 +15,7 @@ interface Employee {
   phone: string | null;
   email: string | null;
   hourly_rate: number | null;
+  role: string;
   active: boolean;
   photo_url: string | null;
 }
@@ -43,7 +44,7 @@ export default function StaffPage() {
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('*')
+        .select('id, first_name, last_name, phone, email, hourly_rate, role, active, photo_url')
         .eq('shop_id', shopId)
         .eq('active', true)
         .order('created_at', { ascending: true });
@@ -257,6 +258,9 @@ export default function StaffPage() {
                           <span className="font-medium">Hourly rate:</span> £{employee.hourly_rate.toFixed(2)}
                         </p>
                       )}
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">Role:</span> {employee.role === 'manager' ? 'Manager' : 'Staff'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -364,6 +368,7 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
   const [phone, setPhone] = useState(employee?.phone || '');
   const [email, setEmail] = useState(employee?.email || '');
   const [hourlyRate, setHourlyRate] = useState(employee?.hourly_rate?.toString() || '');
+  const [role, setRole] = useState(employee?.role || 'staff');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -379,20 +384,28 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
 
     try {
       const employeeData: any = {
-        first_name: firstName,
-        last_name: lastName || null,
-        phone: phone || null,
-        email: email || null,
-        hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null
+        first_name: firstName.trim(),
+        last_name: lastName?.trim() || null,
+        phone: phone?.trim() || null,
+        email: email?.trim() || null,
+        hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
+        role: role || 'staff',
+        updated_at: new Date().toISOString()
       };
 
       if (employee) {
+        // Update existing employee
         const { error: updateError } = await supabase
           .from('employees')
           .update(employeeData)
           .eq('id', employee.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
+        
+        alert('Staff member updated successfully!');
         onSave();
       } else {
         let generatedPin = generatePin();
@@ -422,6 +435,7 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
 
         employeeData.shop_id = shopId;
         employeeData.pin = generatedPin;
+        employeeData.role = role || 'staff';
         employeeData.pin_change_required = true;
         employeeData.last_pin_change_at = now;
         employeeData.pin_expires_at = expiryDate.toISOString();
@@ -573,6 +587,32 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
               Used for payroll calculations
             </p>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role *
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            >
+              <option value="staff">Staff</option>
+              <option value="manager">Manager</option>
+            </select>
+            <p className="text-sm text-gray-500 mt-1">
+              Managers have additional permissions
+            </p>
+          </div>
+
+          {employee && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Editing existing staff member.</span> Changes will be saved immediately.
+              </p>
+            </div>
+          )}
 
           <div className="flex space-x-3 pt-4">
             <button

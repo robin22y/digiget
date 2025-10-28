@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Clock, TrendingUp, Award, Users } from 'lucide-react';
+import DashboardNotifications from '../../components/DashboardNotifications';
 
 interface Shop {
   id: string;
@@ -91,6 +92,9 @@ export default function DashboardHome() {
 
   return (
     <div>
+      {/* Notifications Banner */}
+      <DashboardNotifications shopId={shopId || ''} />
+
       {/* Stats Grid with inline header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-3">
         {/* Shop name and badges at top of stats card */}

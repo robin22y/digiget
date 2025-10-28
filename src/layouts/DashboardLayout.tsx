@@ -15,12 +15,34 @@ export default function DashboardLayout() {
   const { shopId } = useParams();
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingClockRequests, setPendingClockRequests] = useState(0);
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadShop();
-  }, [shopId]);
+    if (shopId && shop?.plan_type === 'pro') {
+      loadPendingClockRequests();
+      const interval = setInterval(loadPendingClockRequests, 30000); // Check every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [shopId, shop?.plan_type]);
+
+  const loadPendingClockRequests = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('clock_in_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('shop_id', shopId)
+        .eq('status', 'pending');
+
+      if (!error && count !== null) {
+        setPendingClockRequests(count);
+      }
+    } catch (error) {
+      console.error('Error loading pending clock requests:', error);
+    }
+  };
 
   const loadShop = async () => {
     try {
@@ -101,23 +123,33 @@ export default function DashboardLayout() {
           </div>
 
           <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`
-                }
-              >
-                <item.icon className="w-4 h-4 mr-2.5" />
-                {item.label}
-              </NavLink>
-            ))}
+            {navItems.map((item) => {
+              const isClockRequests = item.to.includes('clock-requests');
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`
+                  }
+                >
+                  <div className="flex items-center">
+                    <item.icon className="w-4 h-4 mr-2.5" />
+                    {item.label}
+                  </div>
+                  {isClockRequests && pendingClockRequests > 0 && (
+                    <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                      {pendingClockRequests}
+                    </span>
+                  )}
+                </NavLink>
+              );
+            })}
 
             <a
               href={`/tablet/${shopId}`}
