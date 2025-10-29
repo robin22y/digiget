@@ -32,7 +32,10 @@ export default function CheckInPage() {
   const [recentCheckins, setRecentCheckins] = useState<any[]>([]);
   const [foundAppointment, setFoundAppointment] = useState<Appointment | null>(null);
   const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [showAdditionalFields, setShowAdditionalFields] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
@@ -170,13 +173,30 @@ export default function CheckInPage() {
     setPhone(formatted);
     setFoundAppointment(null);
     setCustomerName('');
+    setCustomerEmail('');
+    setCustomerAddress('');
     setShowAdditionalFields(false);
 
-    // Check for appointment when phone number is entered
+    // Check for appointment and load customer data when phone number is entered
     const cleanPhone = formatted.replace(/\s/g, '');
     if (cleanPhone.length >= 10) {
       // Load offers for this customer
       loadCustomerOffers(formatted);
+      
+      // Load existing customer profile data
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('name, email, address')
+        .eq('shop_id', shopId!)
+        .eq('phone', cleanPhone)
+        .maybeSingle();
+
+      if (existingCustomer) {
+        setCustomerName(existingCustomer.name || '');
+        setCustomerEmail(existingCustomer.email || '');
+        setCustomerAddress(existingCustomer.address || '');
+      }
+      
       const today = new Date();
       const todayDate = today.toISOString().split('T')[0];
 
@@ -511,6 +531,70 @@ export default function CheckInPage() {
     setRatingComment('');
   };
 
+  // Update customer profile
+  const handleUpdateProfile = async () => {
+    if (!shopId || !phone.trim()) {
+      setMessage({
+        type: 'error',
+        text: 'Please enter a phone number first.'
+      });
+      return;
+    }
+
+    setUpdatingProfile(true);
+    setMessage(null);
+
+    try {
+      const cleanPhone = phone.replace(/\s/g, '');
+      
+      // Find existing customer
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('shop_id', shopId)
+        .eq('phone', cleanPhone)
+        .maybeSingle();
+
+      if (!existingCustomer) {
+        setMessage({
+          type: 'error',
+          text: 'Please check in first to save your profile.'
+        });
+        setUpdatingProfile(false);
+        return;
+      }
+
+      // Update customer profile
+      const { error } = await supabase
+        .from('customers')
+        .update({
+          name: customerName.trim() || null,
+          email: customerEmail.trim() || null,
+          address: customerAddress.trim() || null,
+        })
+        .eq('id', existingCustomer.id);
+
+      if (error) throw error;
+
+      setMessage({
+        type: 'success',
+        text: 'Profile updated successfully!'
+      });
+      
+      // Close profile section after saving
+      setTimeout(() => {
+        setShowAdditionalFields(false);
+      }, 1500);
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.message || 'Failed to update profile'
+      });
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     return `${hours}:${minutes}`;
@@ -630,7 +714,7 @@ export default function CheckInPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name (Optional)
+                  Name (Optional)
                 </label>
                 <input
                   type="text"
@@ -645,6 +729,51 @@ export default function CheckInPage() {
                   </p>
                 )}
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="your.email@example.com"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  placeholder="Enter your address"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleUpdateProfile}
+                disabled={updatingProfile || !phone.trim()}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {updatingProfile ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <User className="w-4 h-4" />
+                    Save Profile
+                  </>
+                )}
+              </button>
             </div>
           </div>
         )}
