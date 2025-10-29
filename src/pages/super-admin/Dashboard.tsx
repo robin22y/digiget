@@ -83,11 +83,24 @@ export default function SuperAdminDashboard() {
       }
 
       // Load top performing shops (simplified - would need aggregation in real implementation)
-      const { data: allShops, error: allShopsError } = await supabase
+      let { data: allShops, error: allShopsError } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, owner_email, postcode')
         .order('updated_at', { ascending: false })
         .limit(10);
+
+      // Fallback if postcode column doesn't exist
+      if (allShopsError && (allShopsError.message?.includes('postcode') || allShopsError.code === '42703')) {
+        const { data: fallbackShops, error: fallbackError } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_name, owner_email')
+          .order('updated_at', { ascending: false })
+          .limit(10);
+        if (!fallbackError && fallbackShops) {
+          allShops = fallbackShops.map(shop => ({ ...shop, postcode: null }));
+          allShopsError = null;
+        }
+      }
 
       if (!allShopsError && allShops) {
         // Get staff counts and points for each shop
@@ -127,17 +140,36 @@ export default function SuperAdminDashboard() {
 
       // Fetch shops that haven't been updated in 14 days
       // Use separate queries to avoid or() syntax issues with null checks
-      const { data: shopsBeforeDate, error: error1 } = await supabase
+      let { data: shopsBeforeDate, error: error1 } = await supabase
         .from('shops')
         .select('id, shop_name, postcode, owner_email, updated_at')
         .lt('updated_at', fourteenDaysAgoISO)
         .limit(20);
 
-      const { data: shopsWithNull, error: error2 } = await supabase
+      let { data: shopsWithNull, error: error2 } = await supabase
         .from('shops')
         .select('id, shop_name, postcode, owner_email, updated_at')
         .is('updated_at', null)
         .limit(20);
+
+      // Fallback if postcode column doesn't exist
+      if ((error1 && (error1.message?.includes('postcode') || error1.code === '42703')) ||
+          (error2 && (error2.message?.includes('postcode') || error2.code === '42703'))) {
+        const { data: fallback1 } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_email, updated_at')
+          .lt('updated_at', fourteenDaysAgoISO)
+          .limit(20);
+        const { data: fallback2 } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_email, updated_at')
+          .is('updated_at', null)
+          .limit(20);
+        if (fallback1) shopsBeforeDate = fallback1.map(s => ({ ...s, postcode: null }));
+        if (fallback2) shopsWithNull = fallback2.map(s => ({ ...s, postcode: null }));
+        error1 = null;
+        error2 = null;
+      }
 
       const inactiveError = error1 || error2;
       const inactiveShopsData = [
@@ -152,10 +184,21 @@ export default function SuperAdminDashboard() {
       if (inactiveError) {
         console.error('Error loading inactive shops:', inactiveError);
         // Fallback: load all shops and filter client-side
-        const { data: allShopsData } = await supabase
+        let { data: allShopsData } = await supabase
           .from('shops')
           .select('id, shop_name, postcode, owner_email, updated_at')
           .limit(50); // Get more to filter client-side
+        
+        // If postcode doesn't exist, try without it
+        if (!allShopsData) {
+          const { data: fallbackAllShops } = await supabase
+            .from('shops')
+            .select('id, shop_name, owner_email, updated_at')
+            .limit(50);
+          if (fallbackAllShops) {
+            allShopsData = fallbackAllShops.map(s => ({ ...s, postcode: null }));
+          }
+        }
 
         if (allShopsData) {
           const filtered = allShopsData.filter(shop => {

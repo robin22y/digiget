@@ -3,6 +3,17 @@ import { Home, Store, FileText, Bell, Settings, LogOut, Download, QrCode, Zap, M
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
+// Add CSS to hide scrollbar but keep functionality
+const scrollbarHideStyle = `
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
 export default function SuperAdminLayout() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -94,10 +105,10 @@ export default function SuperAdminLayout() {
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation */}
+        {/* Mobile Bottom Navigation - Show all items scrollable */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
-          <div className="flex justify-around max-w-full overflow-x-hidden">
-            {navItems.slice(0, 4).map((item) => {
+          <div className="flex overflow-x-auto max-w-full scrollbar-hide">
+            {navItems.map((item) => {
               const active = isActive(item);
               return (
                 <NavLink
@@ -105,25 +116,23 @@ export default function SuperAdminLayout() {
                   to={item.to}
                   end={item.end}
                   onClick={() => setShowMobileMenu(false)}
-                  className={({ isActive }) =>
-                    `flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 ${
-                      isActive ? 'text-blue-600' : 'text-gray-600'
-                    }`
-                  }
+                  className={`flex flex-col items-center py-2 px-3 text-xs flex-shrink-0 min-w-[70px] ${
+                    active ? 'text-blue-600' : 'text-gray-600'
+                  }`}
                 >
                   <item.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" />
-                  <span className="truncate w-full text-center text-[10px] sm:text-xs">{item.label}</span>
+                  <span className="truncate w-full text-center text-[10px] sm:text-xs whitespace-nowrap">{item.label}</span>
                 </NavLink>
               );
             })}
             <button
               onClick={() => setShowMobileMenu(true)}
-              className={`flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 ${
+              className={`flex flex-col items-center py-2 px-3 text-xs flex-shrink-0 min-w-[70px] ${
                 showMobileMenu ? 'text-blue-600' : 'text-gray-600'
               }`}
             >
-              <Menu className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" />
-              <span className="truncate w-full text-center text-[10px] sm:text-xs">More</span>
+              <LogOut className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" />
+              <span className="truncate w-full text-center text-[10px] sm:text-xs whitespace-nowrap">Sign Out</span>
             </button>
           </div>
         </nav>

@@ -46,22 +46,29 @@ export default function ManageShops() {
 
   const loadShops = async () => {
     try {
-      const { data, error } = await supabase
+      // Try with all columns first
+      let { data, error } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, owner_email, postcode, business_category, subscription_status, created_at, updated_at')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error loading shops:', error);
-        // If schema error, try with minimal fields
-        if (error.message?.includes('column') || error.code === '42703') {
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('shops')
-            .select('id, shop_name, owner_name, owner_email, subscription_status, created_at')
-            .order('created_at', { ascending: false });
+      // If postcode or business_category columns don't exist, try without them
+      if (error && (error.message?.includes('column') || error.code === '42703')) {
+        console.warn('Some columns missing, trying fallback query');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_name, owner_email, subscription_status, created_at, updated_at')
+          .order('created_at', { ascending: false });
           
           if (!fallbackError) {
-            setShops(fallbackData || []);
+            // Add null for missing columns
+            const shopsWithDefaults = (fallbackData || []).map(shop => ({
+              ...shop,
+              postcode: null,
+              business_category: null,
+              updated_at: shop.updated_at || shop.created_at
+            }));
+            setShops(shopsWithDefaults);
             return;
           }
         }

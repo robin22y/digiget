@@ -54,10 +54,22 @@ export default function AllDeals() {
 
   const loadShops = async () => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('shops')
         .select('id, shop_name, postcode')
         .order('shop_name', { ascending: true });
+
+      // Fallback if postcode column doesn't exist
+      if (error && (error.message?.includes('postcode') || error.code === '42703')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('shops')
+          .select('id, shop_name')
+          .order('shop_name', { ascending: true });
+        if (!fallbackError && fallbackData) {
+          data = fallbackData.map(shop => ({ ...shop, postcode: null }));
+          error = null;
+        }
+      }
 
       if (error) throw error;
       setShops(data || []);
@@ -94,7 +106,41 @@ export default function AllDeals() {
         query = query.eq('active', false);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
+      
+      // Fallback if postcode column doesn't exist
+      if (error && (error.message?.includes('postcode') || error.code === '42703')) {
+        let fallbackQuery = supabase
+          .from('flash_offers')
+          .select(`
+            *,
+            shops (
+              id,
+              shop_name,
+              owner_name,
+              owner_email
+            )
+          `)
+          .order('created_at', { ascending: false });
+        
+        if (filterShop !== 'all') {
+          fallbackQuery = fallbackQuery.eq('shop_id', filterShop);
+        }
+        if (filterActive === 'active') {
+          fallbackQuery = fallbackQuery.eq('active', true);
+        } else if (filterActive === 'inactive') {
+          fallbackQuery = fallbackQuery.eq('active', false);
+        }
+        
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+        if (!fallbackError && fallbackData) {
+          data = fallbackData.map(offer => ({
+            ...offer,
+            shops: offer.shops ? { ...offer.shops, postcode: null } : null
+          }));
+          error = null;
+        }
+      }
 
       if (error) throw error;
 

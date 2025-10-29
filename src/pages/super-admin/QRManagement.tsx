@@ -31,10 +31,29 @@ export default function QRManagement() {
   const loadShops = async () => {
     try {
       setError(null);
-      const { data, error: queryError } = await supabase
+      // Try with postcode first
+      let { data, error: queryError } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, owner_email, postcode, qr_url, qr_code_active, subscription_status, branded_qr_url, branded_qr_pdf')
         .order('shop_name', { ascending: true });
+
+      // If postcode column doesn't exist, try without it
+      if (queryError && (queryError.message?.includes('postcode') || queryError.code === '42703')) {
+        console.warn('Postcode column not found, loading without it');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_name, owner_email, qr_url, qr_code_active, subscription_status, branded_qr_url, branded_qr_pdf')
+          .order('shop_name', { ascending: true });
+        
+        if (fallbackError) {
+          setError(`Failed to load shops: ${fallbackError.message}`);
+          setShops([]);
+          return;
+        }
+        // Add null postcode to all shops
+        data = (fallbackData || []).map(shop => ({ ...shop, postcode: null }));
+        queryError = null;
+      }
 
       if (queryError) {
         console.error('Error loading shops:', queryError);
