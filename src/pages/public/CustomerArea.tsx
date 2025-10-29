@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { getDistance, getDeviceType, getCooldownRemaining, formatCooldown } from '../../utils/customerAreaHelpers';
-import { getCurrentPosition, getAreaName } from '../../utils/geolocation';
+import { getCurrentPosition, getAreaName, calculateDistance } from '../../utils/geolocation';
 import { Star, MapPin, Gift, AlertCircle, X, CheckCircle, Cookie, Zap, LogOut, Edit2, Save } from 'lucide-react';
 
 interface Shop {
@@ -25,6 +25,7 @@ interface Customer {
   current_points: number;
   total_visits: number;
   rewards_redeemed: number;
+  tier: 'New' | 'VIP' | 'Super Star' | 'Royal' | null;
 }
 
 interface FlashOffer {
@@ -62,6 +63,10 @@ export default function CustomerArea() {
   const [nearbyDeals, setNearbyDeals] = useState<FlashOffer[]>([]);
   const [welcomeMessage, setWelcomeMessage] = useState<string>('');
   const [isRepeatCustomer, setIsRepeatCustomer] = useState(false);
+  const [customerLocation, setCustomerLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [distanceFromShop, setDistanceFromShop] = useState<number | null>(null);
+  const [locationName, setLocationName] = useState<string>('');
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   // Load shop on mount and check for saved customer session
   useEffect(() => {
@@ -106,6 +111,11 @@ export default function CustomerArea() {
           // Load offers and nearby deals for saved session
           loadOffers();
           loadNearbyDeals();
+          
+          // Get customer location when they log in
+          if (shop?.latitude && shop?.longitude) {
+            loadCustomerLocation();
+          }
           
           setLoading(false);
           return;
@@ -209,6 +219,43 @@ export default function CustomerArea() {
     setPhone(formatPhone(e.target.value));
   };
 
+  // Load customer's current location and calculate distance from shop
+  const loadCustomerLocation = async () => {
+    if (!shop || !shop.latitude || !shop.longitude) return;
+    
+    setLoadingLocation(true);
+    try {
+      const position = await getCurrentPosition();
+      
+      if (!position) {
+        setLoadingLocation(false);
+        return;
+      }
+      
+      setCustomerLocation(position);
+      
+      // Calculate distance in meters
+      const distance = calculateDistance(
+        position.latitude,
+        position.longitude,
+        shop.latitude!,
+        shop.longitude!
+      );
+      
+      // Convert to kilometers
+      const distanceKm = distance / 1000;
+      setDistanceFromShop(distanceKm);
+      
+      // Get location name (area/road)
+      const area = await getAreaName(position.latitude, position.longitude);
+      setLocationName(area);
+    } catch (error) {
+      console.error('Error loading customer location:', error);
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
+
   const loadNearbyDeals = async () => {
     if (!shopId || !shop) return;
     
@@ -299,6 +346,11 @@ export default function CustomerArea() {
         // Load offers and nearby deals for repeat customers
         loadOffers();
         loadNearbyDeals();
+        
+        // Get customer location when they log in
+        if (shop?.latitude && shop?.longitude) {
+          loadCustomerLocation();
+        }
       } else {
         // New customer
         setIsRepeatCustomer(false);
@@ -393,19 +445,34 @@ export default function CustomerArea() {
       if (!location || !shop.latitude || !shop.longitude) {
         // Allow check-in without location, but mark as pending
         await processCheckIn(null, 'pending', null);
+        setCheckingIn(false);
         return;
       }
 
-      // Get location name
-      const locationName = await getAreaName(location.latitude, location.longitude);
-      
-      // Calculate distance
-      const distance = getDistance(
+      // Calculate distance in meters
+      const distance = calculateDistance(
         location.latitude,
         location.longitude,
         shop.latitude,
         shop.longitude
       );
+      
+      // Convert to kilometers
+      const distanceKm = distance / 1000;
+      
+      // Check geofencing: customer must be within 10km to claim points
+      if (distanceKm > 10) {
+        const locationName = await getAreaName(location.latitude, location.longitude);
+        setMessage({
+          type: 'error',
+          text: `You are ${distanceKm.toFixed(1)} km away from the shop (in ${locationName}). You must be within 10 km to claim points.`
+        });
+        setCheckingIn(false);
+        return;
+      }
+
+      // Get location name
+      const locationName = await getAreaName(location.latitude, location.longitude);
 
       // Check 30-minute cooldown (unless relaxation granted)
       const { data: lastCheckIn } = await supabase
@@ -442,7 +509,8 @@ export default function CustomerArea() {
         }
       }
 
-      // Determine status based on distance
+      // Determine status based on distance (within 200m = approved, otherwise pending)
+      // But since we already checked 10km limit, approved if within 10km
       const status = distance <= 200 ? 'approved' : 'pending';
       
       await processCheckIn(location, status, locationName, distance);
@@ -816,23 +884,7 @@ export default function CustomerArea() {
               {shop.owner_address && (
                 <p className="text-sm text-gray-500 mb-2">{shop.owner_address}</p>
               )}
-              {welcomeMessage && customer ? (
-                <div>
-                  <p className="text-gray-700 text-lg font-semibold mb-2">{welcomeMessage}</p>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
-                    <p className="text-sm text-gray-700 mb-1">
-                      You have <span className="font-bold text-blue-600 text-lg">{customer.current_points}</span> accumulated point{customer.current_points !== 1 ? 's' : ''}
-                    </p>
-                    {customer.current_points >= shop.points_needed && (
-                      <p className="text-sm text-yellow-700 font-semibold">
-                        🎁 Reward available! You can redeem below
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-600">Welcome! Enter your phone number to get started.</p>
-              )}
+              <p className="text-gray-600">Welcome! Enter your phone number to get started.</p>
             </div>
 
             {/* Message */}
@@ -873,68 +925,8 @@ export default function CustomerArea() {
               >
                 {loading ? 'Checking...' : 'Continue'}
               </button>
-              
-              {/* Show redeem option for repeat customers */}
-              {customer && customer.current_points >= shop.points_needed && (
-                <button
-                  type="button"
-                  onClick={handleRedeem}
-                  disabled={redeeming}
-                  className="w-full bg-purple-600 text-white py-3 rounded-xl hover:bg-purple-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
-                >
-                  <Gift className="w-5 h-5" />
-                  {redeeming ? 'Redeeming...' : 'Redeem Reward Now'}
-                </button>
-              )}
             </form>
 
-            {/* Optional Details - Always visible for new customers */}
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl space-y-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Optional Details</p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email (Optional)
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Your address"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-              <button
-                onClick={handleSaveCustomer}
-                disabled={loading}
-                className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition-colors font-semibold disabled:opacity-50"
-              >
-                Save Profile
-              </button>
-            </div>
           </div>
         </div>
 
@@ -995,6 +987,28 @@ export default function CustomerArea() {
               {shop.owner_address && (
                 <p className="text-sm text-gray-500 mb-2">{shop.owner_address}</p>
               )}
+              
+              {/* Customer Tier Badge */}
+              <div className="mb-3">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                    customer.tier === 'VIP'
+                      ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                      : customer.tier === 'Super Star'
+                      ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                      : customer.tier === 'Royal'
+                      ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                      : 'bg-gray-100 text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  {customer.tier === 'VIP' && '🌟'}
+                  {customer.tier === 'Super Star' && '🔥'}
+                  {customer.tier === 'Royal' && '👑'}
+                  {(!customer.tier || customer.tier === 'New') && '🆕'}
+                  <span>{customer.tier || 'New'} {customer.tier === 'New' ? 'Customer' : 'Member'}</span>
+                </span>
+              </div>
+              
               <p className="text-gray-600 text-lg font-semibold">
                 {welcomeMessage || (customer.name ? `Hi ${customer.name}! 👋` : 'Hello 👋')}
               </p>
@@ -1007,6 +1021,29 @@ export default function CustomerArea() {
                     <p className="text-sm text-yellow-600 font-semibold mt-1">
                       🎁 Reward available! Click Redeem below
                     </p>
+                  )}
+                  
+                  {/* Location Info */}
+                  {loadingLocation && (
+                    <p className="text-xs text-gray-400 mt-2">📍 Detecting your location...</p>
+                  )}
+                  {!loadingLocation && distanceFromShop !== null && shop && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600">
+                        📍 You are in <span className="font-semibold">{locationName || 'your location'}</span>
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {distanceFromShop < 0.1 
+                          ? 'At the shop 🏪'
+                          : distanceFromShop < 1
+                          ? `${(distanceFromShop * 1000).toFixed(0)} m away from shop`
+                          : `${distanceFromShop.toFixed(1)} km away from shop`
+                        }
+                        {distanceFromShop > 10 && (
+                          <span className="text-red-600 font-semibold ml-1">⚠️ Too far to claim points</span>
+                        )}
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
@@ -1158,11 +1195,12 @@ export default function CustomerArea() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <button
             onClick={handleCheckIn}
-            disabled={checkingIn}
+            disabled={checkingIn || (distanceFromShop !== null && distanceFromShop > 10)}
             className="bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            title={distanceFromShop !== null && distanceFromShop > 10 ? 'You must be within 10 km to check in' : ''}
           >
             <MapPin className="w-5 h-5" />
-            {checkingIn ? 'Checking In...' : 'Check In'}
+            {checkingIn ? 'Checking In...' : distanceFromShop !== null && distanceFromShop > 10 ? 'Too Far Away (>10 km)' : 'Check In'}
           </button>
 
           <button

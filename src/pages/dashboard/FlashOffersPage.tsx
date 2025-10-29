@@ -257,12 +257,18 @@ export default function FlashOffersPage() {
                                   key={c}
                                   className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                                     c === 'VIP'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : c === 'Super Star'
+                                      ? 'bg-orange-100 text-orange-700'
+                                      : c === 'Royal'
                                       ? 'bg-purple-100 text-purple-700'
-                                      : c === 'Regular'
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-green-100 text-green-700'
+                                      : 'bg-gray-100 text-gray-700'
                                   }`}
                                 >
+                                  {c === 'VIP' && '🌟 '}
+                                  {c === 'Super Star' && '🔥 '}
+                                  {c === 'Royal' && '👑 '}
+                                  {c === 'New' && '🆕 '}
                                   {c}
                                 </span>
                               ))}
@@ -449,7 +455,7 @@ export default function FlashOffersPage() {
                 <p className="text-xs text-gray-500 mb-2">
                   Select specific customer types, or leave all unchecked to show to ALL customers
                 </p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -466,37 +472,51 @@ export default function FlashOffersPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => toggleClassification('New')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
+                      newOffer.target_classifications.includes('New')
+                        ? 'bg-gray-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-xs">🆕</span>
+                    New
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => toggleClassification('VIP')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
                       newOffer.target_classifications.includes('VIP')
+                        ? 'bg-yellow-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-yellow-300'
+                    }`}
+                  >
+                    <span className="text-xs">🌟</span>
+                    VIP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleClassification('Super Star')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
+                      newOffer.target_classifications.includes('Super Star')
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-orange-300'
+                    }`}
+                  >
+                    <span className="text-xs">🔥</span>
+                    Super Star
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleClassification('Royal')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1 ${
+                      newOffer.target_classifications.includes('Royal')
                         ? 'bg-purple-600 text-white'
                         : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-purple-300'
                     }`}
                   >
                     <span className="text-xs">👑</span>
-                    VIP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleClassification('Regular')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      newOffer.target_classifications.includes('Regular')
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
-                    }`}
-                  >
-                    Regular
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleClassification('New')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      newOffer.target_classifications.includes('New')
-                        ? 'bg-green-600 text-white'
-                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-green-300'
-                    }`}
-                  >
-                    New
+                    Royal
                   </button>
                 </div>
                 {newOffer.target_classifications.length === 0 ? (

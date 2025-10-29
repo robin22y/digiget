@@ -47,6 +47,12 @@ export default function SettingsPage() {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
 
+  // Tier criteria settings
+  const [tierAutoUpgradeEnabled, setTierAutoUpgradeEnabled] = useState(false);
+  const [tierVipThreshold, setTierVipThreshold] = useState('');
+  const [tierSuperStarThreshold, setTierSuperStarThreshold] = useState('');
+  const [tierRoyalThreshold, setTierRoyalThreshold] = useState('');
+
   useEffect(() => {
     loadShop();
   }, [shopId]);
@@ -77,6 +83,12 @@ export default function SettingsPage() {
       setAutoLogoutHours(data.auto_logout_hours || 13);
       setLatitude(data.latitude?.toString() || '');
       setLongitude(data.longitude?.toString() || '');
+
+      // Load tier criteria
+      setTierAutoUpgradeEnabled(data.tier_auto_upgrade_enabled || false);
+      setTierVipThreshold(data.tier_vip_threshold?.toString() || '');
+      setTierSuperStarThreshold(data.tier_super_star_threshold?.toString() || '');
+      setTierRoyalThreshold(data.tier_royal_threshold?.toString() || '');
     } catch (error) {
       console.error('Error loading shop:', error);
     } finally {
@@ -122,7 +134,11 @@ export default function SettingsPage() {
           points_needed: pointsNeeded,
           reward_type: rewardType,
           reward_value: rewardValue ? parseFloat(rewardValue) : null,
-          reward_description: rewardDescription
+          reward_description: rewardDescription,
+          tier_auto_upgrade_enabled: tierAutoUpgradeEnabled,
+          tier_vip_threshold: tierVipThreshold ? parseInt(tierVipThreshold) : null,
+          tier_super_star_threshold: tierSuperStarThreshold ? parseInt(tierSuperStarThreshold) : null,
+          tier_royal_threshold: tierRoyalThreshold ? parseInt(tierRoyalThreshold) : null
         })
         .eq('id', shopId);
 
@@ -417,6 +433,81 @@ export default function SettingsPage() {
                   </div>
                 </>
               )}
+
+                  {/* Customer Tier Classification */}
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Tier Classification</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Automatically upgrade customers to tiers based on their lifetime points. Manual tier assignments will override auto-upgrade.
+                    </p>
+
+                    <div className="flex items-center mb-4">
+                      <input
+                        type="checkbox"
+                        checked={tierAutoUpgradeEnabled}
+                        onChange={(e) => setTierAutoUpgradeEnabled(e.target.checked)}
+                        className="mr-2"
+                      />
+                      <label className="text-sm font-medium text-gray-700">Enable automatic tier upgrades</label>
+                    </div>
+
+                    {tierAutoUpgradeEnabled && (
+                      <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            🌟 VIP Tier Threshold (lifetime points)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={tierVipThreshold}
+                            onChange={(e) => setTierVipThreshold(e.target.value)}
+                            placeholder="e.g., 50"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Customers with this many lifetime points or more will be VIP</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            🔥 Super Star Tier Threshold (lifetime points)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={tierSuperStarThreshold}
+                            onChange={(e) => setTierSuperStarThreshold(e.target.value)}
+                            placeholder="e.g., 200"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Customers with this many lifetime points or more will be Super Star</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            👑 Royal Tier Threshold (lifetime points)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={tierRoyalThreshold}
+                            onChange={(e) => setTierRoyalThreshold(e.target.value)}
+                            placeholder="e.g., 500"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Customers with this many lifetime points or more will be Royal</p>
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                          <p className="text-xs text-blue-800">
+                            <strong>Note:</strong> Thresholds should be in ascending order (VIP &lt; Super Star &lt; Royal). 
+                            Customers will be assigned the highest tier they qualify for. 
+                            Manual tier assignments always override automatic upgrades.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
               <button
                 onClick={saveLoyaltySettings}

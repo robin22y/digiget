@@ -6,6 +6,7 @@ import { getDeviceType } from '../../utils/customerAreaHelpers';
 
 interface Shop {
   id: string;
+  shop_name?: string;
   points_needed: number;
   reward_description: string;
   plan_type?: 'basic' | 'pro';
@@ -44,6 +45,8 @@ export default function CheckInPage() {
   const [offers, setOffers] = useState<any[]>([]);
   const [currentCustomer, setCurrentCustomer] = useState<any | null>(null);
   const [showOffers, setShowOffers] = useState(false);
+  const [phoneSubmitted, setPhoneSubmitted] = useState(false);
+  const [loggedInCustomer, setLoggedInCustomer] = useState<any | null>(null);
 
   // Load shop data if not provided from outlet context
   useEffect(() => {
@@ -52,7 +55,7 @@ export default function CheckInPage() {
         try {
           const { data, error } = await supabase
             .from('shops')
-            .select('id, points_needed, reward_description, plan_type')
+            .select('id, shop_name, points_needed, reward_description, plan_type')
             .eq('id', shopId)
             .single();
 
@@ -95,7 +98,7 @@ export default function CheckInPage() {
     }
   };
 
-  const loadOffers = async (customerClassification?: string | null) => {
+  const loadOffers = async (customerTier?: string | null) => {
     if (!shopId) return;
     
     try {
@@ -113,7 +116,7 @@ export default function CheckInPage() {
       
       if (error) throw error;
 
-      // Filter offers based on customer classification
+      // Filter offers based on customer tier
       const filteredOffers = (data || []).filter((offer) => {
         // Check if offer has ended
         if (offer.ends_at && new Date(offer.ends_at) < new Date()) {
@@ -125,13 +128,11 @@ export default function CheckInPage() {
           return true;
         }
 
-        // If customer has no classification, only show offers with no target
-        if (!customerClassification) {
-          return false;
-        }
+        // If customer has no tier, default to 'New'
+        const tier = customerTier || 'New';
 
-        // Show if customer classification is in target list
-        return offer.target_classifications.includes(customerClassification);
+        // Show if customer tier is in target list
+        return offer.target_classifications.includes(tier);
       });
 
       setOffers(filteredOffers);
@@ -147,17 +148,17 @@ export default function CheckInPage() {
     const cleanPhone = phone.replace(/\s/g, '');
     const { data: customer } = await supabase
       .from('customers')
-      .select('id, classification')
+      .select('id, tier')
       .eq('shop_id', shopId)
       .eq('phone', cleanPhone)
       .maybeSingle();
 
     if (customer) {
       setCurrentCustomer(customer);
-      await loadOffers(customer.classification);
+      await loadOffers(customer.tier || 'New');
     } else {
-      // For new customers, load offers with no classification filter
-      await loadOffers(null);
+      // For new customers, load offers with no tier filter
+      await loadOffers('New');
     }
   };
 
@@ -176,6 +177,11 @@ export default function CheckInPage() {
     setCustomerEmail('');
     setCustomerAddress('');
     setShowAdditionalFields(false);
+    // Reset logged in customer when phone changes
+    if (!formatted || formatted.length < 10) {
+      setLoggedInCustomer(null);
+      setPhoneSubmitted(false);
+    }
 
     // Check for appointment and load customer data when phone number is entered
     const cleanPhone = formatted.replace(/\s/g, '');
@@ -186,7 +192,7 @@ export default function CheckInPage() {
       // Load existing customer profile data
       const { data: existingCustomer } = await supabase
         .from('customers')
-        .select('name, email, address')
+        .select('id, name, email, address, current_points, lifetime_points')
         .eq('shop_id', shopId!)
         .eq('phone', cleanPhone)
         .maybeSingle();
@@ -195,6 +201,11 @@ export default function CheckInPage() {
         setCustomerName(existingCustomer.name || '');
         setCustomerEmail(existingCustomer.email || '');
         setCustomerAddress(existingCustomer.address || '');
+        setLoggedInCustomer(existingCustomer);
+        setPhoneSubmitted(true);
+      } else {
+        setLoggedInCustomer(null);
+        setPhoneSubmitted(false);
       }
       
       const today = new Date();
@@ -326,6 +337,7 @@ export default function CheckInPage() {
 
         if (createError) throw createError;
         customer = newCustomer;
+        setLoggedInCustomer(newCustomer);
 
         await supabase
           .from('loyalty_transactions')
@@ -362,7 +374,7 @@ export default function CheckInPage() {
           });
         }
 
-        await supabase
+        const { data: updatedCustomer } = await supabase
           .from('customers')
           .update({
             current_points: newPoints,
@@ -371,7 +383,13 @@ export default function CheckInPage() {
             last_visit_at: new Date().toISOString(),
             ...updateData,
           })
-          .eq('id', customer.id);
+          .eq('id', customer.id)
+          .select()
+          .single();
+        
+        if (updatedCustomer) {
+          setLoggedInCustomer(updatedCustomer);
+        }
 
         await supabase
           .from('loyalty_transactions')
@@ -400,6 +418,18 @@ export default function CheckInPage() {
       setCustomerName('');
       setFoundAppointment(null);
       setShowAdditionalFields(false);
+      setPhoneSubmitted(true); // Mark that phone has been submitted
+      
+      // Update logged in customer - refresh from database to get accurate points
+      const { data: refreshedCustomer } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', customer.id)
+        .single();
+      
+      if (refreshedCustomer) {
+        setLoggedInCustomer(refreshedCustomer);
+      }
       if (shop) {
         loadRecentCheckins();
       }
@@ -426,13 +456,19 @@ export default function CheckInPage() {
 
       if (!customer) return;
 
-      await supabase
+      const { data: updatedCustomer } = await supabase
         .from('customers')
         .update({
           current_points: 0,
           rewards_redeemed: customer.rewards_redeemed + 1,
         })
-        .eq('id', customerId);
+        .eq('id', customerId)
+        .select()
+        .single();
+      
+      if (updatedCustomer) {
+        setLoggedInCustomer(updatedCustomer);
+      }
 
       await supabase
         .from('loyalty_transactions')
@@ -591,6 +627,9 @@ export default function CheckInPage() {
       if (!updatedCustomer) {
         throw new Error('Failed to retrieve updated customer data');
       }
+      
+      // Update logged in customer with new profile data
+      setLoggedInCustomer(updatedCustomer);
 
       setMessage({
         type: 'success',
@@ -656,6 +695,68 @@ export default function CheckInPage() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+        {/* DigiGet Logo and Shop Name Header */}
+        <div className="flex flex-col items-center mb-6 pb-4 border-b border-gray-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xl">
+              DigiGet
+            </div>
+          </div>
+          {shop?.shop_name && (
+            <h2 className="text-lg md:text-xl font-semibold text-gray-800 text-center">
+              {shop.shop_name}
+            </h2>
+          )}
+        </div>
+
+        {/* Welcome Section - Show when customer is logged in */}
+        {loggedInCustomer && phoneSubmitted && (
+          <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
+                  Hello {loggedInCustomer.name || 'Customer'}! 👋
+                </h2>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl font-bold text-blue-600">
+                    {loggedInCustomer.current_points}
+                  </span>
+                  <span className="text-gray-600">
+                    / {shop?.points_needed} points
+                  </span>
+                  {loggedInCustomer.current_points >= (shop?.points_needed || 0) && (
+                    <span className="px-3 py-1 bg-yellow-400 text-yellow-900 rounded-full text-sm font-bold">
+                      🎁 Reward Ready!
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {loggedInCustomer.current_points >= (shop?.points_needed || 0) && (
+                  <button
+                    onClick={() => {
+                      if (loggedInCustomer?.id) {
+                        handleRedeemReward(loggedInCustomer.id);
+                      }
+                    }}
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Gift className="w-5 h-5" />
+                    Redeem Reward
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <User className="w-5 h-5" />
+                  Update Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Check In Customer</h1>
 
         {message && (
@@ -795,7 +896,8 @@ export default function CheckInPage() {
         )}
       </div>
 
-      {/* Customer Actions Menu */}
+      {/* Customer Actions Menu - Only show after phone number is submitted */}
+      {phoneSubmitted && (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Customer Actions</h2>
         <div className="space-y-3">
@@ -901,9 +1003,9 @@ export default function CheckInPage() {
               <div className="text-center py-6">
                 <Gift className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                 <p className="text-gray-500 text-sm">No offers available for you right now</p>
-                {currentCustomer?.classification && (
+                {currentCustomer?.tier && currentCustomer.tier !== 'New' && (
                   <p className="text-gray-400 text-xs mt-1">
-                    As a {currentCustomer.classification} customer
+                    As a {currentCustomer.tier} customer
                   </p>
                 )}
               </div>
@@ -954,12 +1056,18 @@ export default function CheckInPage() {
                                 key={classification}
                                 className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                                   classification === 'VIP'
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : classification === 'Super Star'
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : classification === 'Royal'
                                     ? 'bg-purple-100 text-purple-700'
-                                    : classification === 'Regular'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-700'
                                 }`}
                               >
+                                {classification === 'VIP' && '🌟 '}
+                                {classification === 'Super Star' && '🔥 '}
+                                {classification === 'Royal' && '👑 '}
+                                {classification === 'New' && '🆕 '}
                                 {classification}
                               </span>
                             ))}
@@ -974,7 +1082,10 @@ export default function CheckInPage() {
           </div>
         )}
       </div>
+      )}
 
+      {/* Recent Check-Ins - Only show after phone number is submitted */}
+      {phoneSubmitted && (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Recent Check-Ins (Today)</h2>
         {recentCheckins.length === 0 ? (
@@ -993,17 +1104,22 @@ export default function CheckInPage() {
                         <p className="font-medium text-gray-900">
                           {customer.name || customer.phone}
                         </p>
-                        {customer.classification && (
+                        {customer.tier && customer.tier !== 'New' && (
                           <span
                             className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                              customer.classification === 'VIP'
+                              customer.tier === 'VIP'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : customer.tier === 'Super Star'
+                                ? 'bg-orange-100 text-orange-700'
+                                : customer.tier === 'Royal'
                                 ? 'bg-purple-100 text-purple-700'
-                                : customer.classification === 'Regular'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
                             }`}
                           >
-                            {customer.classification}
+                            {customer.tier === 'VIP' && '🌟 '}
+                            {customer.tier === 'Super Star' && '🔥 '}
+                            {customer.tier === 'Royal' && '👑 '}
+                            {customer.tier}
                           </span>
                         )}
                       </div>
@@ -1042,6 +1158,7 @@ export default function CheckInPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Rating Modal */}
       {showRatingModal && (
