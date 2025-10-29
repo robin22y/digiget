@@ -39,6 +39,7 @@ import AllDeals from './pages/super-admin/AllDeals';
 import Reports from './pages/super-admin/Reports';
 import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
+import TopRatedShops from './pages/super-admin/TopRatedShops';
 
 function App() {
   return (
@@ -108,6 +109,7 @@ function App() {
             <Route path="shops/:id" element={<ShopDetail />} />
             <Route path="qr-management" element={<QRManagement />} />
             <Route path="all-deals" element={<AllDeals />} />
+            <Route path="top-rated-shops" element={<TopRatedShops />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notices" element={<Notices />} />
             <Route path="settings" element={<SuperAdminSettings />} />

@@ -26,6 +26,7 @@ export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [ratings, setRatings] = useState<any[]>([]);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'actions' | 'feedbacks'>('actions');
 
   useEffect(() => {
     loadStats();
@@ -201,10 +202,40 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-3">
-        <h2 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Tabs Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-3">
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('actions')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'actions'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Quick Actions
+            </button>
+            <button
+              onClick={() => setActiveTab('feedbacks')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'feedbacks'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Feedbacks from Customers
+            </button>
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-4">
+          {activeTab === 'actions' ? (
+            <>
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link
             to={`/dashboard/${shopId}/customers`}
             className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-xl text-white hover:from-teal-700 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
@@ -300,110 +331,113 @@ export default function DashboardHome() {
             </>
           )}
         </div>
-      </div>
-
-      {/* Feedbacks from Customers */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-3">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Feedbacks from Customers</h2>
-          </div>
-          <Link
-            to={`/dashboard/${shopId}/ratings`}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            View All →
-          </Link>
-        </div>
-
-        {ratings.length === 0 ? (
-          <div className="text-center py-8">
-            <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500 text-sm">No customer feedback yet</p>
-            <p className="text-gray-400 text-xs mt-1">Customer ratings will appear here once they submit feedback</p>
-          </div>
-        ) : (
-          <>
-            {/* Average Rating Display */}
-            {averageRating !== null && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Average Rating</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-blue-700">{averageRating.toFixed(1)}</span>
-                      {renderStars(Math.round(averageRating))}
-                      <span className="text-sm text-gray-600">
-                        ({ratings.length} {ratings.length === 1 ? 'rating' : 'ratings'})
-                      </span>
-                    </div>
-                  </div>
+            </>
+          ) : (
+            <>
+              {/* Feedbacks from Customers Tab */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-blue-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">Feedbacks from Customers</h2>
                 </div>
+                <Link
+                  to={`/dashboard/${shopId}/ratings`}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  View All →
+                </Link>
               </div>
-            )}
 
-            {/* Recent Ratings List */}
-            <div className="space-y-3">
-              {ratings.slice(0, 5).map((rating) => {
-                const customer = rating.customers;
-                return (
-                  <div
-                    key={rating.id}
-                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          {renderStars(rating.rating)}
-                          <span className="text-sm font-medium text-gray-700">
-                            {rating.rating} / 5
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(rating.created_at).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </span>
-                        </div>
-
-                        {/* Masked Customer Information */}
-                        <div className="text-xs text-gray-500 space-y-1 mb-2">
-                          {customer.name && (
-                            <p>
-                              <span className="font-medium">Name:</span> {maskName(customer.name)}
-                            </p>
-                          )}
-                          {customer.phone && (
-                            <p>
-                              <span className="font-medium">Phone:</span> {maskPhone(customer.phone)}
-                            </p>
-                          )}
-                          {customer.email && (
-                            <p>
-                              <span className="font-medium">Email:</span> {maskEmail(customer.email)}
-                            </p>
-                          )}
-                          <p>
-                            <span className="font-medium">ID:</span> {maskCustomerId(customer.id)}
-                          </p>
-                        </div>
-
-                        {/* Comment */}
-                        {rating.comment && (
-                          <div className="mt-2 pt-2 border-t border-gray-200">
-                            <p className="text-sm text-gray-700 italic">"{rating.comment}"</p>
+              {ratings.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No customer feedback yet</p>
+                  <p className="text-gray-400 text-xs mt-1">Customer ratings will appear here once they submit feedback</p>
+                </div>
+              ) : (
+                <>
+                  {/* Average Rating Display */}
+                  {averageRating !== null && (
+                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1">Average Rating</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-blue-700">{averageRating.toFixed(1)}</span>
+                            {renderStars(Math.round(averageRating))}
+                            <span className="text-sm text-gray-600">
+                              ({ratings.length} {ratings.length === 1 ? 'rating' : 'ratings'})
+                            </span>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* Recent Ratings List */}
+                  <div className="space-y-3">
+                    {ratings.slice(0, 5).map((rating) => {
+                      const customer = rating.customers;
+                      return (
+                        <div
+                          key={rating.id}
+                          className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                {renderStars(rating.rating)}
+                                <span className="text-sm font-medium text-gray-700">
+                                  {rating.rating} / 5
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(rating.created_at).toLocaleDateString('en-GB', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+
+                              {/* Masked Customer Information */}
+                              <div className="text-xs text-gray-500 space-y-1 mb-2">
+                                {customer.name && (
+                                  <p>
+                                    <span className="font-medium">Name:</span> {maskName(customer.name)}
+                                  </p>
+                                )}
+                                {customer.phone && (
+                                  <p>
+                                    <span className="font-medium">Phone:</span> {maskPhone(customer.phone)}
+                                  </p>
+                                )}
+                                {customer.email && (
+                                  <p>
+                                    <span className="font-medium">Email:</span> {maskEmail(customer.email)}
+                                  </p>
+                                )}
+                                <p>
+                                  <span className="font-medium">ID:</span> {maskCustomerId(customer.id)}
+                                </p>
+                              </div>
+
+                              {/* Comment */}
+                              {rating.comment && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                  <p className="text-sm text-gray-700 italic">"{rating.comment}"</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Active Staff Alert */}
