@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Star, Search, Users } from 'lucide-react';
+import { maskPhone } from '../../utils/maskCustomerData';
 
 export default function CustomersPage() {
   const { shopId } = useParams();
@@ -84,7 +85,7 @@ export default function CustomersPage() {
                     <h3 className="font-bold text-gray-900 group-hover:text-blue-600">
                       {customer.name || 'Unnamed Customer'}
                     </h3>
-                    <p className="text-sm text-gray-600">{customer.phone}</p>
+                    <p className="text-sm text-gray-600">{maskPhone(customer.phone)}</p>
                     <div className="flex items-center mt-1">
                       {Array.from({ length: Math.min(customer.current_points, 6) }).map((_, i) => (
                         <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />

@@ -22,6 +22,7 @@ import RemoteClockInApprovals from './pages/dashboard/RemoteClockInApprovals';
 import StaffRequestsPage from './pages/dashboard/StaffRequestsPage';
 import FlashOffersPage from './pages/dashboard/FlashOffersPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
+import RatingsPage from './pages/dashboard/RatingsPage';
 import TabletInterface from './pages/tablet/TabletInterface';
 import TabletInterfaceByName from './pages/tablet/TabletInterfaceByName';
 import CustomerBalance from './pages/public/CustomerBalance';
@@ -89,6 +90,7 @@ function App() {
             <Route path="incidents" element={<IncidentsPage />} />
             <Route path="clock-requests" element={<ClockInRequestsPage />} />
             <Route path="flash-offers" element={<FlashOffersPage />} />
+            <Route path="ratings" element={<RatingsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
 

@@ -188,7 +188,8 @@ export default function CustomerDetail() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {customer.name || 'Unnamed Customer'}
             </h1>
-            <p className="text-lg text-gray-600">{customer.phone}</p>
+            <p className="text-lg text-gray-600">{maskPhone(customer.phone)}</p>
+            <p className="text-xs text-gray-400 mt-1">ID: {maskCustomerId(customer.id)}</p>
           </div>
           <div className="text-right">
             {isRewardReady && (

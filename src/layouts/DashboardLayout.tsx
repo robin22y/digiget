@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X } from 'lucide-react';
+import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -114,6 +114,7 @@ export default function DashboardLayout() {
     ...(shop.plan_type === 'pro' ? [
       { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Deals' },
     ] : []),
+    { to: `/dashboard/${shopId}/ratings`, icon: Star, label: 'Ratings' },
     { to: `/dashboard/${shopId}/settings`, icon: Settings, label: 'Shop Settings' },
   ];
 

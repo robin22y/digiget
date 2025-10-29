@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Star, Calendar, Clock, User, ArrowLeft } from 'lucide-react';
+import { Star, Calendar, Clock, User, ArrowLeft, MessageSquare, X } from 'lucide-react';
+import { getDeviceType } from '../../utils/customerAreaHelpers';
 
 interface Shop {
   id: string;
@@ -32,6 +33,11 @@ export default function CheckInPage() {
   const [foundAppointment, setFoundAppointment] = useState<Appointment | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [showAdditionalFields, setShowAdditionalFields] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [currentCustomerId, setCurrentCustomerId] = useState<string | null>(null);
 
   // Load shop data if not provided from outlet context
   useEffect(() => {
@@ -294,6 +300,7 @@ export default function CheckInPage() {
           .eq('id', foundAppointment.id);
       }
 
+      setCurrentCustomerId(customer.id);
       setPhone('');
       setCustomerName('');
       setFoundAppointment(null);
@@ -301,6 +308,11 @@ export default function CheckInPage() {
       if (shop) {
         loadRecentCheckins();
       }
+      
+      // Show rating modal after successful check-in
+      setTimeout(() => {
+        setShowRatingModal(true);
+      }, 1500);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     } finally {
@@ -360,6 +372,72 @@ export default function CheckInPage() {
       );
     }
     return stars;
+  };
+
+  // Handle rating submission
+  const handleSubmitRating = async () => {
+    if (!shop || !currentCustomerId || rating === 0) {
+      setMessage({ type: 'error', text: 'Please select a rating (1-5 stars).' });
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      // Check if customer has already rated in last 24 hours
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentRating } = await supabase
+        .from('customer_ratings')
+        .select('*')
+        .eq('customer_id', currentCustomerId)
+        .eq('shop_id', shop.id)
+        .gte('created_at', oneDayAgo)
+        .maybeSingle();
+
+      if (recentRating) {
+        setMessage({
+          type: 'success',
+          text: 'You have already submitted a rating today. Thank you for your feedback!'
+        });
+        setShowRatingModal(false);
+        setSubmittingRating(false);
+        return;
+      }
+
+      const deviceType = getDeviceType();
+      
+      const { error } = await supabase
+        .from('customer_ratings')
+        .insert({
+          shop_id: shop.id,
+          customer_id: currentCustomerId,
+          rating: rating,
+          comment: ratingComment.trim() || null,
+          device_type: deviceType,
+        });
+
+      if (error) throw error;
+
+      setMessage({
+        type: 'success',
+        text: '⭐ Thanks for your feedback!'
+      });
+      setShowRatingModal(false);
+      setRating(0);
+      setRatingComment('');
+      setCurrentCustomerId(null);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  // Open feedback modal for a specific customer
+  const handleOpenFeedback = (customerId: string) => {
+    setCurrentCustomerId(customerId);
+    setShowRatingModal(true);
+    setRating(0);
+    setRatingComment('');
   };
 
   const formatTime = (time: string) => {
@@ -507,6 +585,48 @@ export default function CheckInPage() {
         </form>
       </div>
 
+      {/* General Feedback Button - Always Visible */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Customer Feedback</h2>
+            <p className="text-sm text-gray-500">Share your experience with us</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!phone.trim()) {
+                setMessage({
+                  type: 'error',
+                  text: 'Please enter a phone number first to leave feedback.'
+                });
+                return;
+              }
+              const cleanPhone = phone.replace(/\s/g, '');
+              const { data: customer } = await supabase
+                .from('customers')
+                .select('id')
+                .eq('shop_id', shopId!)
+                .eq('phone', cleanPhone)
+                .maybeSingle();
+              
+              if (customer) {
+                handleOpenFeedback(customer.id);
+              } else {
+                setMessage({
+                  type: 'error',
+                  text: 'Please check in first to leave feedback, or enter your phone number.'
+                });
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+            title="Leave Feedback"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Leave Feedback
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Recent Check-Ins (Today)</h2>
         {recentCheckins.length === 0 ? (
@@ -549,14 +669,24 @@ export default function CheckInPage() {
                         <p className="text-green-600 font-semibold mt-1">⭐ REWARD READY!</p>
                       )}
                     </div>
-                    {isRewardReady && (
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleRedeemReward(customer.id)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        onClick={() => handleOpenFeedback(customer.id)}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        title="Leave Feedback"
                       >
-                        Redeem Reward
+                        <MessageSquare className="w-4 h-4" />
+                        <span className="hidden sm:inline">Feedback</span>
                       </button>
-                    )}
+                      {isRewardReady && (
+                        <button
+                          onClick={() => handleRedeemReward(customer.id)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        >
+                          Redeem Reward
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -564,6 +694,80 @@ export default function CheckInPage() {
           </div>
         )}
       </div>
+
+      {/* Rating Modal */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Rate Your Experience</h2>
+              <button
+                onClick={() => {
+                  setShowRatingModal(false);
+                  setRating(0);
+                  setRatingComment('');
+                  setCurrentCustomerId(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-4">How would you rate your experience?</p>
+
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  className="focus:outline-none"
+                >
+                  <Star
+                    className={`w-10 h-10 ${
+                      star <= rating
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'text-gray-300'
+                    } transition-colors`}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Comment Box */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Comment (Optional, max 200 characters)
+              </label>
+              <textarea
+                value={ratingComment}
+                onChange={(e) => {
+                  if (e.target.value.length <= 200) {
+                    setRatingComment(e.target.value);
+                  }
+                }}
+                placeholder="Tell us about your experience..."
+                rows={3}
+                maxLength={200}
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-1 text-right">
+                {ratingComment.length}/200
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              onClick={handleSubmitRating}
+              disabled={submittingRating || rating === 0}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submittingRating ? 'Submitting...' : 'Submit Rating'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
