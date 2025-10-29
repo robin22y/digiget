@@ -151,14 +151,6 @@ export default function DashboardHome() {
         <h2 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link
-            to={`/dashboard/${shopId}/checkin`}
-            className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-          >
-            <div className="font-bold text-lg">Check In Customer</div>
-            <div className="text-sm text-blue-100">Add points and track visits</div>
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">✓</div>
-          </Link>
-          <Link
             to={`/dashboard/${shopId}/customers`}
             className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-xl text-white hover:from-teal-700 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >

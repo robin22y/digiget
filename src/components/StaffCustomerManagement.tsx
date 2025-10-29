@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, CheckCircle } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Customer {
@@ -86,54 +86,6 @@ export default function StaffCustomerManagement({ employeeId, shopId }: StaffCus
     } catch (err) {
       console.error('Error creating customer:', err);
       alert('Failed to create customer');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addPoints = async () => {
-    if (!selectedCustomer || !shop) return;
-
-    setLoading(true);
-    try {
-      const pointsToAdd = shop.points_type === 'per_visit' ? 1 : 0;
-      const newPoints = selectedCustomer.current_points + pointsToAdd;
-
-      const { error: customerError } = await supabase
-        .from('customers')
-        .update({
-          current_points: newPoints,
-          lifetime_points: selectedCustomer.total_visits + pointsToAdd,
-          total_visits: selectedCustomer.total_visits + 1,
-          last_visit_at: new Date().toISOString(),
-        })
-        .eq('id', selectedCustomer.id);
-
-      if (customerError) throw customerError;
-
-      const { error: transactionError } = await supabase
-        .from('loyalty_transactions')
-        .insert({
-          shop_id: shopId,
-          customer_id: selectedCustomer.id,
-          transaction_type: 'point_added',
-          points_change: pointsToAdd,
-          balance_after: newPoints,
-          added_by_employee_id: employeeId,
-        });
-
-      if (transactionError) throw transactionError;
-
-      setSelectedCustomer({
-        ...selectedCustomer,
-        current_points: newPoints,
-        total_visits: selectedCustomer.total_visits + 1,
-      });
-
-      alert('Points added successfully!');
-    } catch (err) {
-      console.error('Error adding points:', err);
-      alert('Failed to add points');
     } finally {
       setLoading(false);
     }
@@ -283,15 +235,6 @@ export default function StaffCustomerManagement({ employeeId, shopId }: StaffCus
           </div>
 
           <div className="space-y-3">
-            <button
-              onClick={addPoints}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-4 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-300"
-            >
-              <CheckCircle className="w-5 h-5" />
-              Add Point (Check In)
-            </button>
-
             {selectedCustomer.current_points >= shop.points_needed && (
               <button
                 onClick={redeemReward}

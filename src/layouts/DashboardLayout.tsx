@@ -93,7 +93,6 @@ export default function DashboardLayout() {
 
   const navItems = [
     { to: `/dashboard/${shopId}`, icon: Home, label: 'Home', end: true },
-    { to: `/dashboard/${shopId}/checkin`, icon: CheckCircle, label: 'Check In' },
     { to: `/dashboard/${shopId}/qr-code`, icon: QrCode, label: 'QR Code' },
     { to: `/dashboard/${shopId}/customers`, icon: Users, label: 'Customers' },
     ...(shop.plan_type === 'pro' ? [
