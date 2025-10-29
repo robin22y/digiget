@@ -381,6 +381,94 @@ export default function SignupPage() {
             </div>
           </div>
 
+          {/* Comparison Table */}
+          <div className="mt-8 bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Plan Comparison</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-300">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Feature</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-900">Basic</th>
+                    <th className="text-center py-3 px-4 font-semibold text-blue-600">Pro</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Price</td>
+                    <td className="py-3 px-4 text-center font-semibold text-green-600">FREE</td>
+                    <td className="py-3 px-4 text-center font-semibold text-blue-600">£9.99/month</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Customer Loyalty Program</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Digital Diary</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Customer Balance Checker</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Customer Check-ins per Month</td>
+                    <td className="py-3 px-4 text-center text-gray-700">50</td>
+                    <td className="py-3 px-4 text-center text-green-600">Unlimited</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Staff Members</td>
+                    <td className="py-3 px-4 text-center text-gray-700">1</td>
+                    <td className="py-3 px-4 text-center text-green-600">Unlimited</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Flash Offers (Deals)</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Staff Clock In/Out</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Geofencing & Location Tracking</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Task Management</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Clock Requests (Fix Time Entries)</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Remote Workers & Approvals</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Incident Reports</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-gray-700">Payroll Reports</td>
+                    <td className="py-3 px-4 text-center text-red-600">✗</td>
+                    <td className="py-3 px-4 text-center text-green-600">✓</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div className="text-center mt-6">
             <button
               onClick={() => setStep('category')}
