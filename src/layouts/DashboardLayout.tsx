@@ -175,28 +175,28 @@ export default function DashboardLayout() {
         </div>
       </aside>
 
-      <div className="flex-1 md:ml-64">
-        <main className="bg-gray-50">
-          <div className="p-4">
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-x-hidden">
+        <main className="bg-gray-50 flex-1 overflow-x-hidden">
+          <div className="p-4 pb-20 md:pb-4 max-w-full overflow-x-hidden">
             <Outlet context={{ shop }} />
           </div>
         </main>
 
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-          <div className="flex justify-around">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
+          <div className="flex justify-around max-w-full overflow-x-hidden">
             {navItems.slice(0, 5).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center py-2 px-3 text-xs ${
+                  `flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 ${
                     isActive ? 'text-blue-600' : 'text-gray-600'
                   }`
                 }
               >
-                <item.icon className="w-6 h-6 mb-1" />
-                {item.label}
+                <item.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" />
+                <span className="truncate w-full text-center text-[10px] sm:text-xs">{item.label}</span>
               </NavLink>
             ))}
           </div>

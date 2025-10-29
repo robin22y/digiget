@@ -331,7 +331,7 @@ export default function CheckInPage() {
   const isAuthenticated = !!outletContext?.shop;
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
       {/* Back button - always visible on mobile, also visible on desktop when not in dashboard layout */}
       <button
         onClick={() => {
