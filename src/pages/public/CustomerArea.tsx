@@ -58,6 +58,10 @@ export default function CustomerArea() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
   const [showCookieBanner, setShowCookieBanner] = useState(false);
+  const [activeDealTab, setActiveDealTab] = useState<'shop' | 'nearby'>('shop');
+  const [nearbyDeals, setNearbyDeals] = useState<FlashOffer[]>([]);
+  const [welcomeMessage, setWelcomeMessage] = useState<string>('');
+  const [isRepeatCustomer, setIsRepeatCustomer] = useState(false);
 
   // Load shop on mount and check for saved customer session
   useEffect(() => {
@@ -68,7 +72,6 @@ export default function CustomerArea() {
     }
     
     loadShop();
-    loadOffers();
     checkCookieConsent();
     checkSavedSession();
   }, [shopId]);
@@ -89,10 +92,21 @@ export default function CustomerArea() {
           .maybeSingle();
 
         if (!error && customerData) {
+          setIsRepeatCustomer(true);
+          const greeting = customerData.name 
+            ? `Welcome back ${customerData.name}! 👋`
+            : 'Welcome back! 👋';
+          setWelcomeMessage(greeting);
+          
           setCustomer(customerData);
           setName(customerData.name || '');
           setEmail(customerData.email || '');
           setAddress(customerData.address || '');
+          
+          // Load offers and nearby deals for saved session
+          loadOffers();
+          loadNearbyDeals();
+          
           setLoading(false);
           return;
         }
@@ -174,6 +188,11 @@ export default function CustomerArea() {
 
       if (error) throw error;
       setOffers(data || []);
+      
+      // If customer is loaded and has location, load nearby deals
+      if (customer && shop?.latitude && shop?.longitude) {
+        loadNearbyDeals();
+      }
     } catch (error) {
       console.error('Error loading offers:', error);
     }
@@ -188,6 +207,60 @@ export default function CustomerArea() {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPhone(formatPhone(e.target.value));
+  };
+
+  const loadNearbyDeals = async () => {
+    if (!shopId || !shop) return;
+    
+    try {
+      const now = new Date().toISOString();
+      // Look for flash_offers that might be marked as featured/nearby
+      // For now, we'll check all shops' active offers and filter by proximity
+      // You can add a 'is_featured' or 'is_nearby' column to flash_offers table later
+      
+      // Get shop location
+      if (shop.latitude && shop.longitude) {
+        // For nearby deals, we'll need to implement location-based search
+        // For now, fetch all active flash_offers from other shops
+        const { data: allDeals, error } = await supabase
+          .from('flash_offers')
+          .select('*, shops!inner(id, shop_name, latitude, longitude)')
+          .eq('active', true)
+          .neq('shop_id', shopId)
+          .lte('starts_at', now)
+          .or(`ends_at.is.null,ends_at.gte.${now}`)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) {
+          // If relationship doesn't work, try without shops join
+          console.warn('Could not load nearby deals:', error);
+          setNearbyDeals([]);
+          return;
+        }
+
+        // Filter by proximity (within ~10km radius) if location data available
+        const nearby = (allDeals || []).filter((deal: any) => {
+          const dealShop = deal.shops;
+          if (!dealShop || !dealShop.latitude || !dealShop.longitude) return false;
+          
+          // Simple distance check (rough calculation)
+          const latDiff = Math.abs(shop.latitude! - dealShop.latitude);
+          const lngDiff = Math.abs(shop.longitude! - dealShop.longitude);
+          
+          // Rough 10km radius check (approximately 0.09 degrees at UK latitude)
+          return latDiff < 0.09 && lngDiff < 0.09;
+        });
+
+        setNearbyDeals(nearby);
+      } else {
+        // If shop has no location, don't show nearby deals
+        setNearbyDeals([]);
+      }
+    } catch (error) {
+      console.error('Error loading nearby deals:', error);
+      setNearbyDeals([]);
+    }
   };
 
   const handleLookupCustomer = async (e: React.FormEvent) => {
@@ -210,13 +283,26 @@ export default function CustomerArea() {
       if (error) throw error;
 
       if (customerData) {
+        // Repeat customer
+        setIsRepeatCustomer(true);
+        const greeting = customerData.name 
+          ? `Welcome back ${customerData.name}! 👋`
+          : 'Welcome back! 👋';
+        setWelcomeMessage(greeting);
+        
         setCustomer(customerData);
         setName(customerData.name || '');
         setEmail(customerData.email || '');
         setAddress(customerData.address || '');
         saveSession(customerData);
+        
+        // Load offers and nearby deals for repeat customers
+        loadOffers();
+        loadNearbyDeals();
       } else {
-        // New customer - allow them to add details
+        // New customer
+        setIsRepeatCustomer(false);
+        setWelcomeMessage('');
         setCustomer(null);
       }
     } catch (error: any) {
@@ -730,7 +816,23 @@ export default function CustomerArea() {
               {shop.owner_address && (
                 <p className="text-sm text-gray-500 mb-2">{shop.owner_address}</p>
               )}
-              <p className="text-gray-600">Welcome! Enter your phone number to get started.</p>
+              {welcomeMessage && customer ? (
+                <div>
+                  <p className="text-gray-700 text-lg font-semibold mb-2">{welcomeMessage}</p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                    <p className="text-sm text-gray-700 mb-1">
+                      You have <span className="font-bold text-blue-600 text-lg">{customer.current_points}</span> accumulated point{customer.current_points !== 1 ? 's' : ''}
+                    </p>
+                    {customer.current_points >= shop.points_needed && (
+                      <p className="text-sm text-yellow-700 font-semibold">
+                        🎁 Reward available! You can redeem below
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600">Welcome! Enter your phone number to get started.</p>
+              )}
             </div>
 
             {/* Message */}
@@ -771,6 +873,19 @@ export default function CustomerArea() {
               >
                 {loading ? 'Checking...' : 'Continue'}
               </button>
+              
+              {/* Show redeem option for repeat customers */}
+              {customer && customer.current_points >= shop.points_needed && (
+                <button
+                  type="button"
+                  onClick={handleRedeem}
+                  disabled={redeeming}
+                  className="w-full bg-purple-600 text-white py-3 rounded-xl hover:bg-purple-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+                >
+                  <Gift className="w-5 h-5" />
+                  {redeeming ? 'Redeeming...' : 'Redeem Reward Now'}
+                </button>
+              )}
             </form>
 
             {/* Optional Details - Always visible for new customers */}
@@ -880,9 +995,21 @@ export default function CustomerArea() {
               {shop.owner_address && (
                 <p className="text-sm text-gray-500 mb-2">{shop.owner_address}</p>
               )}
-              <p className="text-gray-600">
-                {customer.name ? `Hi ${customer.name}! 👋` : 'Hello 👋'}
+              <p className="text-gray-600 text-lg font-semibold">
+                {welcomeMessage || (customer.name ? `Hi ${customer.name}! 👋` : 'Hello 👋')}
               </p>
+              {isRepeatCustomer && customer && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500">
+                    You have <span className="font-bold text-blue-600">{customer.current_points}</span> accumulated point{customer.current_points !== 1 ? 's' : ''}
+                  </p>
+                  {canRedeem && (
+                    <p className="text-sm text-yellow-600 font-semibold mt-1">
+                      🎁 Reward available! Click Redeem below
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <button
               onClick={handleLogout}
@@ -1048,29 +1175,102 @@ export default function CustomerArea() {
           </button>
         </div>
 
-        {/* Offers Section */}
-        {offers.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Current Offers</h2>
-            <div className="space-y-3">
-              {offers.map((offer) => (
-                <div
-                  key={offer.id}
-                  className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50"
+        {/* Offers/Deals Section with Tabs */}
+        {(offers.length > 0 || nearbyDeals.length > 0) && (
+          <div className="bg-white rounded-xl shadow-sm mb-4">
+            {/* Tab Navigation */}
+            <div className="border-b border-gray-200">
+              <nav className="flex -mb-px">
+                <button
+                  onClick={() => setActiveDealTab('shop')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeDealTab === 'shop'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <Zap className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">{offer.offer_text}</h3>
-                      {offer.ends_at && (
-                        <p className="text-sm text-gray-600">
-                          Expires: {new Date(offer.ends_at).toLocaleDateString()}
-                        </p>
-                      )}
+                  Shop Deals ({offers.length})
+                </button>
+                {nearbyDeals.length > 0 && (
+                  <button
+                    onClick={() => setActiveDealTab('nearby')}
+                    className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeDealTab === 'nearby'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Nearby Deals ({nearbyDeals.length})
+                  </button>
+                )}
+              </nav>
+            </div>
+
+            {/* Tab Content */}
+            <div className="p-6">
+              {activeDealTab === 'shop' ? (
+                <>
+                  {offers.length > 0 ? (
+                    <div className="space-y-3">
+                      {offers.map((offer) => (
+                        <div
+                          key={offer.id}
+                          className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50"
+                        >
+                          <div className="flex items-start gap-3">
+                            <Zap className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 mb-1">{offer.offer_text}</h3>
+                              {offer.ends_at && (
+                                <p className="text-sm text-gray-600">
+                                  Expires: {new Date(offer.ends_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                </div>
-              ))}
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No shop deals available at the moment.</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {nearbyDeals.length > 0 ? (
+                    <div className="space-y-3">
+                      {nearbyDeals.map((deal: any) => {
+                        const dealShop = deal.shops || deal;
+                        return (
+                          <div
+                            key={deal.id}
+                            className="border-2 border-green-200 rounded-lg p-4 bg-green-50"
+                          >
+                            <div className="flex items-start gap-3">
+                              <MapPin className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-semibold text-gray-900">{deal.offer_text}</h3>
+                                  {dealShop.shop_name && (
+                                    <span className="text-xs text-gray-500">@ {dealShop.shop_name}</span>
+                                  )}
+                                </div>
+                                {deal.ends_at && (
+                                  <p className="text-sm text-gray-600">
+                                    Expires: {new Date(deal.ends_at).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No nearby deals available at the moment.</p>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
