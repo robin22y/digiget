@@ -125,8 +125,15 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
     setLoading(true);
     setClockInMessage('');
     try {
-      // Get current location
-      let location = await getCurrentPosition();
+      // Get current location (optional - don't block clock-in if it fails)
+      let location: { latitude: number; longitude: number } | null = null;
+      try {
+        location = await getCurrentPosition();
+      } catch (locationError) {
+        console.warn('Could not get location:', locationError);
+        // Continue without location - allow clock-in to proceed
+      }
+      
       let distance = 0;
       let areaName = '';
       let isRemoteClockIn = false;
@@ -141,8 +148,13 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
 
       // Always get area name if location is available (for display)
       if (location) {
-        areaName = await getAreaName(location.latitude, location.longitude);
-        setClockInLocationName(areaName);
+        try {
+          areaName = await getAreaName(location.latitude, location.longitude);
+          setClockInLocationName(areaName);
+        } catch (areaError) {
+          console.warn('Could not get area name:', areaError);
+          setClockInLocationName(null);
+        }
       } else {
         setClockInLocationName(null);
       }
@@ -300,8 +312,14 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
 
     setLoading(true);
     try {
-      // Get location for clock out
-      let location = await getCurrentPosition();
+      // Get location for clock out (optional - don't block clock-out if it fails)
+      let location: { latitude: number; longitude: number } | null = null;
+      try {
+        location = await getCurrentPosition();
+      } catch (locationError) {
+        console.warn('Could not get location for clock-out:', locationError);
+        // Continue without location - allow clock-out to proceed
+      }
 
       const clockOutTime = new Date();
       const clockInTime = new Date(currentEntry!.clock_in_time);
