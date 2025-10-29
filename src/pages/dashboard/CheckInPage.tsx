@@ -175,6 +175,36 @@ export default function CheckInPage() {
         .eq('phone', cleanPhone)
         .maybeSingle();
 
+      // Check 30-minute cooldown for same phone number
+      if (customer) {
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        
+        const { data: recentTransaction } = await supabase
+          .from('loyalty_transactions')
+          .select('created_at')
+          .eq('shop_id', shopId)
+          .eq('customer_id', customer.id)
+          .eq('transaction_type', 'point_added')
+          .gte('created_at', thirtyMinutesAgo)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentTransaction) {
+          const lastCheckInTime = new Date(recentTransaction.created_at);
+          const now = new Date();
+          const minutesSince = Math.ceil((now.getTime() - lastCheckInTime.getTime()) / (1000 * 60));
+          const remainingMinutes = 30 - minutesSince;
+
+          setMessage({
+            type: 'error',
+            text: `Please wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} before adding points again. Same phone number can only earn points once every 30 minutes.`
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       const updateData: any = {};
       if (customerName.trim()) {
         updateData.name = customerName.trim();
