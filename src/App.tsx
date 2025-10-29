@@ -25,6 +25,7 @@ import SettingsPage from './pages/dashboard/SettingsPage';
 import TabletInterface from './pages/tablet/TabletInterface';
 import TabletInterfaceByName from './pages/tablet/TabletInterfaceByName';
 import CustomerBalance from './pages/public/CustomerBalance';
+import CustomerArea from './pages/public/CustomerArea';
 import StaffPortal from './pages/staff/StaffPortal';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedSuperAdminRoute from './components/ProtectedSuperAdminRoute';
@@ -49,6 +50,7 @@ function App() {
           <Route path="/create-super-admin" element={<CreateSuperAdmin />} />
 
           <Route path="/:shopId/balance" element={<CustomerBalance />} />
+          <Route path="/rewards" element={<CustomerArea />} />
 
           <Route path="/tablet/:shopId" element={<TabletInterface />} />
           
