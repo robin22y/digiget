@@ -48,7 +48,9 @@ export default function SuperAdminLayout() {
   };
 
   return (
-    <div className="flex bg-white">
+    <>
+      <style>{scrollbarHideStyle}</style>
+      <div className="flex bg-white">
       <aside className="hidden md:flex md:flex-shrink-0 md:fixed md:left-0 md:top-0 md:bottom-0">
         <div className="flex flex-col w-64 bg-white border-r border-gray-200">
           <div className="flex items-center h-14 px-4 border-b border-gray-200">
@@ -206,6 +208,7 @@ export default function SuperAdminLayout() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
