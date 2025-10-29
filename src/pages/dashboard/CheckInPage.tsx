@@ -81,16 +81,56 @@ export default function CheckInPage() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const { data } = await supabase
+      // Select specific columns to avoid schema cache issues
+      const { data, error } = await supabase
         .from('loyalty_transactions')
-        .select('*, customers(*)')
+        .select(`
+          *,
+          customers(
+            id,
+            phone,
+            name,
+            current_points,
+            lifetime_points,
+            tier,
+            classification
+          )
+        `)
         .eq('shop_id', shopId)
         .eq('transaction_type', 'point_added')
         .gte('created_at', today.toISOString())
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (data) {
+      if (error) {
+        // If tier column doesn't exist, try without it
+        if (error.message.includes('tier')) {
+          const { data: fallbackData } = await supabase
+            .from('loyalty_transactions')
+            .select(`
+              *,
+              customers(
+                id,
+                phone,
+                name,
+                current_points,
+                lifetime_points,
+                classification
+              )
+            `)
+            .eq('shop_id', shopId)
+            .eq('transaction_type', 'point_added')
+            .gte('created_at', today.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(10);
+          
+          if (fallbackData) {
+            setRecentCheckins(fallbackData);
+          }
+        } else {
+          console.error('Error loading recent check-ins:', error);
+        }
+      } else if (data) {
         setRecentCheckins(data);
       }
     } catch (error) {
