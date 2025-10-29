@@ -291,9 +291,13 @@ export default function CheckInPage() {
           const minutesSince = Math.ceil((now.getTime() - lastCheckInTime.getTime()) / (1000 * 60));
           const remainingMinutes = 30 - minutesSince;
 
+          const greeting = customer.name 
+            ? `Hi ${customer.name}! Thank you for your visit. ` 
+            : '';
+          
           setMessage({
             type: 'error',
-            text: `Please wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} before adding points again. Same phone number can only earn points once every 30 minutes.`
+            text: `${greeting}Please wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} before adding points again. Same phone number can only earn points once every 30 minutes.`
           });
           setLoading(false);
           return;
