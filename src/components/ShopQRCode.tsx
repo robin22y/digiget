@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { QRCodeSVG } from 'react-qr-code';
-import { Download, Copy, RefreshCw, CheckCircle } from 'lucide-react';
+import { QRCode } from 'react-qr-code';
+import { Download, Copy, RefreshCw, CheckCircle, FileImage, FileText, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface ShopQRCodeProps {
@@ -8,10 +8,17 @@ interface ShopQRCodeProps {
   shopName: string;
 }
 
+interface Shop {
+  branded_qr_url?: string | null;
+  branded_qr_pdf?: string | null;
+}
+
 export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   const [copied, setCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [qrUrl, setQrUrl] = useState<string>('');
+  const [shop, setShop] = useState<Shop | null>(null);
+  const [generatingBranded, setGeneratingBranded] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
   const defaultCheckInUrl = `${window.location.origin}/dashboard/${shopId}/checkin`;
@@ -19,43 +26,83 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   // Load or generate QR URL
   useEffect(() => {
     const loadQRUrl = async () => {
-      try {
-        const { data: shop } = await supabase
-          .from('shops')
-          .select('qr_url')
-          .eq('id', shopId)
-          .single();
+      if (!shopId) {
+        setQrUrl(defaultCheckInUrl);
+        return;
+      }
 
-        if (shop?.qr_url) {
-          setQrUrl(shop.qr_url);
-        } else {
+      try {
+        // Try to fetch existing QR URL and branded QR URLs
+        const { data: shopData, error: fetchError } = await supabase
+          .from('shops')
+          .select('qr_url, qr_code_active, branded_qr_url, branded_qr_pdf')
+          .eq('id', shopId)
+          .maybeSingle();
+
+        if (fetchError) {
+          console.warn('Could not fetch shop QR URL (may be missing columns):', fetchError);
+          // Continue with default URL even if fetch fails
+          setQrUrl(defaultCheckInUrl);
+          return;
+        }
+
+        if (shopData) {
+          setShop(shopData);
+          if (shopData.qr_url) {
+            setQrUrl(shopData.qr_url);
+          } else {
           // Generate and save if not exists (for existing shops without QR codes)
           const newQrUrl = defaultCheckInUrl;
-          const { error: updateError } = await supabase
-            .from('shops')
-            .update({ 
-              qr_url: newQrUrl,
-              qr_code_active: true 
-            })
-            .eq('id', shopId);
           
-          if (!updateError) {
-            setQrUrl(newQrUrl);
-          } else {
-            console.error('Error generating QR URL:', updateError);
-            setQrUrl(defaultCheckInUrl); // Use default even if save fails
+          // Try to update, but don't fail if columns don't exist
+          try {
+            const { error: updateError } = await supabase
+              .from('shops')
+              .update({ 
+                qr_url: newQrUrl,
+                qr_code_active: true 
+              })
+              .eq('id', shopId);
+            
+            if (updateError) {
+              // If update fails (e.g., columns don't exist), log but continue
+              console.warn('Could not save QR URL to database (columns may not exist):', updateError);
+            }
+          } catch (updateErr) {
+            console.warn('Error updating QR URL:', updateErr);
+          }
+          
+          // Always set the URL locally even if DB update fails
+          setQrUrl(newQrUrl);
           }
         }
       } catch (error) {
         console.error('Error loading QR URL:', error);
+        // Always fallback to default URL
         setQrUrl(defaultCheckInUrl);
       }
     };
 
-    if (shopId) {
-      loadQRUrl();
-    }
+    loadQRUrl();
   }, [shopId, defaultCheckInUrl]);
+
+  const handleGenerateBranded = async () => {
+    if (!confirm('Generate branded QR poster? This will create a print-ready A5 poster with DigiGet branding.')) {
+      return;
+    }
+
+    setGeneratingBranded(true);
+    try {
+      // Call a backend API or trigger server-side generation
+      // For now, we'll show instructions since this requires Node.js
+      alert('Branded QR generation requires running the Node.js script:\n\nnode scripts/generateBrandedQR.js ' + shopId + '\n\nOr integrate with your backend API to trigger generation.');
+      setGeneratingBranded(false);
+    } catch (error: any) {
+      console.error('Error generating branded QR:', error);
+      alert('Failed to generate branded QR: ' + error.message);
+      setGeneratingBranded(false);
+    }
+  };
 
   const handleCopyLink = () => {
     if (!qrUrl) return;
@@ -73,26 +120,39 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
     try {
       // Regenerate QR URL (ensures it uses the current domain)
       const newQrUrl = defaultCheckInUrl;
-      const { error } = await supabase
-        .from('shops')
-        .update({ 
-          qr_url: newQrUrl, 
-          qr_code_active: true,
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', shopId);
       
-      if (error) throw error;
+      // Try to update database, but don't fail if it doesn't work
+      try {
+        const { error } = await supabase
+          .from('shops')
+          .update({ 
+            qr_url: newQrUrl, 
+            qr_code_active: true,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', shopId);
+        
+        if (error) {
+          console.warn('Could not update QR URL in database:', error);
+          // Continue anyway - the QR code will still work
+        }
+      } catch (updateErr) {
+        console.warn('Error updating QR URL:', updateErr);
+      }
       
+      // Always update local state
       setQrUrl(newQrUrl);
+      
       setTimeout(() => {
         setRegenerating(false);
         alert('QR Code regenerated successfully! You can now reprint or download it.');
       }, 500);
     } catch (error: any) {
       console.error('Error regenerating QR:', error);
-      alert(`Failed to regenerate QR code: ${error.message}`);
       setRegenerating(false);
+      // Even on error, update the URL locally
+      setQrUrl(defaultCheckInUrl);
+      alert('QR Code refreshed (may not be saved to database). You can still use it.');
     }
   };
 
@@ -161,7 +221,7 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
         <div className="flex-shrink-0">
           <div className="bg-white p-6 rounded-lg border-2 border-gray-200 flex justify-center" ref={qrRef}>
             {qrUrl ? (
-              <QRCodeSVG
+              <QRCode
                 value={qrUrl}
                 size={200}
                 level="H"
@@ -273,6 +333,59 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
             >
               Print
             </button>
+          </div>
+
+          {/* Branded QR Section */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-lg p-4 mt-4">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-indigo-900 mb-1 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Branded QR Poster
+                </h3>
+                <p className="text-xs text-indigo-700">
+                  Professional A5 print-ready poster with DigiGet branding
+                </p>
+              </div>
+              {!shop?.branded_qr_url && (
+                <button
+                  onClick={handleGenerateBranded}
+                  disabled={generatingBranded}
+                  className="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {generatingBranded ? 'Generating...' : 'Generate'}
+                </button>
+              )}
+            </div>
+            
+            {shop?.branded_qr_url ? (
+              <div className="flex gap-2">
+                <a
+                  href={shop.branded_qr_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors text-sm font-medium"
+                >
+                  <FileImage className="w-4 h-4" />
+                  Download PNG
+                </a>
+                {shop.branded_qr_pdf && (
+                  <a
+                    href={shop.branded_qr_pdf}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors text-sm font-medium"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Download PDF
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-indigo-600">
+                Click "Generate" to create a branded poster with your shop name and DigiGet logo.
+              </p>
+            )}
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

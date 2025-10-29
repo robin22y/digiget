@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { MapPin, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { formatLocation, getGoogleMapsLink } from '../../utils/geolocation';
+import { formatLocation, getGoogleMapsLink, getAreaName } from '../../utils/geolocation';
 
 interface ClockInRequest {
   id: string;
@@ -20,6 +20,7 @@ interface ClockInRequest {
     last_name: string | null;
     role: string;
   };
+  locationName?: string;
 }
 
 export default function ClockInRequestsPage() {
@@ -34,16 +35,68 @@ export default function ClockInRequestsPage() {
 
   const loadRequests = async () => {
     try {
-      const { data, error } = await supabase
+      // First, fetch all clock requests
+      const { data: requestsData, error: requestsError } = await supabase
         .from('clock_in_requests')
-        .select('*, employees(first_name, last_name, role)')
+        .select('*')
         .eq('shop_id', shopId)
         .order('requested_at', { ascending: false });
 
-      if (error) throw error;
-      setRequests(data || []);
-    } catch (error) {
+      if (requestsError) {
+        console.error('Error loading requests:', requestsError);
+        alert(`Error loading clock requests: ${requestsError.message}`);
+        setRequests([]);
+        return;
+      }
+
+      if (!requestsData || requestsData.length === 0) {
+        setRequests([]);
+        return;
+      }
+
+      // Get all unique employee IDs
+      const employeeIds = [...new Set(requestsData.map(req => req.employee_id))];
+
+      // Fetch employee data for all employees
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, role')
+        .in('id', employeeIds);
+
+      if (employeesError) {
+        console.error('Error loading employees:', employeesError);
+        // Continue with unknown employees rather than failing
+      }
+
+      // Create a map of employee data for quick lookup
+      const employeesMap = new Map(
+        (employeesData || []).map(emp => [emp.id, emp])
+      );
+
+      // Get location names for all requests
+      const requestsWithLocationNames = await Promise.all(
+        requestsData.map(async (req) => {
+          let locationName = '';
+          if (req.request_latitude && req.request_longitude) {
+            locationName = await getAreaName(req.request_latitude, req.request_longitude);
+          }
+          return {
+            ...req,
+            employees: employeesMap.get(req.employee_id) || {
+              first_name: 'Unknown',
+              last_name: null,
+              role: 'Unknown'
+            },
+            locationName
+          };
+        })
+      );
+
+      setRequests(requestsWithLocationNames);
+    } catch (error: any) {
       console.error('Error loading requests:', error);
+      alert(`Unexpected error: ${error.message || 'Unknown error'}`);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -82,11 +135,12 @@ export default function ClockInRequestsPage() {
     }
   };
 
-  const handleReject = async (requestId: string) => {
+  const handleReject = async (requestId: string, employeeId: string) => {
     const reason = prompt('Enter rejection reason (optional):');
 
     try {
-      const { error } = await supabase
+      // Update request status
+      const { error: requestError } = await supabase
         .from('clock_in_requests')
         .update({
           status: 'rejected',
@@ -96,10 +150,40 @@ export default function ClockInRequestsPage() {
         })
         .eq('id', requestId);
 
-      if (error) throw error;
+      if (requestError) throw requestError;
+
+      // Find active clock entry for this employee and auto clock them out
+      const { data: activeEntry } = await supabase
+        .from('clock_entries')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .eq('shop_id', shopId)
+        .is('clock_out_time', null)
+        .order('clock_in_time', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeEntry) {
+        const clockOutTime = new Date();
+        const clockInTime = new Date(activeEntry.clock_in_time);
+        const hoursWorked = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+
+        const { error: clockOutError } = await supabase
+          .from('clock_entries')
+          .update({
+            clock_out_time: clockOutTime.toISOString(),
+            hours_worked: parseFloat(hoursWorked.toFixed(2))
+          })
+          .eq('id', activeEntry.id);
+
+        if (clockOutError) {
+          console.error('Error clocking out employee:', clockOutError);
+          // Continue even if clock-out fails
+        }
+      }
 
       loadRequests();
-      alert('Clock-in request rejected.');
+      alert('Clock-in request rejected and employee has been automatically clocked out.');
     } catch (error: any) {
       console.error('Error rejecting request:', error);
       alert(error.message || 'Failed to reject request');
@@ -124,7 +208,7 @@ export default function ClockInRequestsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Clock-In Requests</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Fix Time Entries</h1>
         {pendingCount > 0 && (
           <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
             {pendingCount} pending
@@ -237,7 +321,7 @@ export default function ClockInRequestsPage() {
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline"
                         >
-                          {formatLocation(request.request_latitude, request.request_longitude)}
+                          {request.locationName || formatLocation(request.request_latitude, request.request_longitude)}
                         </a>
                       </span>
                     </div>
@@ -282,7 +366,7 @@ export default function ClockInRequestsPage() {
                       Approve
                     </button>
                     <button
-                      onClick={() => handleReject(request.id)}
+                      onClick={() => handleReject(request.id, request.employee_id)}
                       className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center gap-2"
                     >
                       <XCircle className="w-4 h-4" />

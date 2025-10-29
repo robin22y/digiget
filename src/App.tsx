@@ -23,6 +23,7 @@ import StaffRequestsPage from './pages/dashboard/StaffRequestsPage';
 import FlashOffersPage from './pages/dashboard/FlashOffersPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import TabletInterface from './pages/tablet/TabletInterface';
+import TabletInterfaceByName from './pages/tablet/TabletInterfaceByName';
 import CustomerBalance from './pages/public/CustomerBalance';
 import StaffPortal from './pages/staff/StaffPortal';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -49,8 +50,13 @@ function App() {
           <Route path="/:shopId/balance" element={<CustomerBalance />} />
 
           <Route path="/tablet/:shopId" element={<TabletInterface />} />
+          
+          <Route path="/xtra/:staffIdentifier" element={<TabletInterfaceByName />} />
 
           <Route path="/:shopName/:staffName" element={<StaffPortal />} />
+
+          {/* Public check-in page - accessible without authentication */}
+          <Route path="/dashboard/:shopId/checkin" element={<CheckInPage />} />
 
           <Route
             path="/dashboard/:shopId"
@@ -61,7 +67,6 @@ function App() {
             }
           >
             <Route index element={<DashboardHome />} />
-            <Route path="checkin" element={<CheckInPage />} />
             <Route path="qr-code" element={<QRCodePage />} />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="customers/:customerId" element={<CustomerDetail />} />

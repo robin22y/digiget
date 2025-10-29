@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Star, Calendar, Clock, User, Crown } from 'lucide-react';
+import { Star, Calendar, Clock, User, Crown, ArrowLeft } from 'lucide-react';
 
 interface Shop {
   id: string;
@@ -19,7 +19,11 @@ interface Appointment {
 
 export default function CheckInPage() {
   const { shopId } = useParams();
-  const { shop } = useOutletContext<{ shop: Shop }>();
+  const navigate = useNavigate();
+  // Try to get shop from outlet context (for authenticated users), otherwise load directly
+  // useOutletContext will return undefined if not in a context, so we use optional chaining
+  const outletContext = useOutletContext<{ shop?: Shop }>() || {};
+  const [shop, setShop] = useState<Shop | null>(outletContext?.shop || null);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -29,9 +33,33 @@ export default function CheckInPage() {
   const [classification, setClassification] = useState<'VIP' | 'Regular' | 'New' | ''>('');
   const [showAdditionalFields, setShowAdditionalFields] = useState(false);
 
+  // Load shop data if not provided from outlet context
   useEffect(() => {
-    loadRecentCheckins();
-  }, [shopId]);
+    if (!shop && shopId) {
+      const loadShop = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('shops')
+            .select('id, points_needed, reward_description')
+            .eq('id', shopId)
+            .single();
+
+          if (!error && data) {
+            setShop(data);
+          }
+        } catch (error) {
+          console.error('Error loading shop:', error);
+        }
+      };
+      loadShop();
+    }
+  }, [shopId, shop]);
+
+  useEffect(() => {
+    if (shopId && shop) {
+      loadRecentCheckins();
+    }
+  }, [shopId, shop]);
 
   const loadRecentCheckins = async () => {
     try {
@@ -104,6 +132,10 @@ export default function CheckInPage() {
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!shop) {
+      setMessage({ type: 'error', text: 'Shop information not loaded. Please try again.' });
+      return;
+    }
     setLoading(true);
     setMessage(null);
 
@@ -218,7 +250,9 @@ export default function CheckInPage() {
       setClassification('');
       setFoundAppointment(null);
       setShowAdditionalFields(false);
-      loadRecentCheckins();
+      if (shop) {
+        loadRecentCheckins();
+      }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     } finally {
@@ -227,6 +261,7 @@ export default function CheckInPage() {
   };
 
   const handleRedeemReward = async (customerId: string) => {
+    if (!shop) return;
     try {
       const { data: customer } = await supabase
         .from('customers')
@@ -266,6 +301,7 @@ export default function CheckInPage() {
   };
 
   const renderStars = (points: number) => {
+    if (!shop) return null;
     const stars = [];
     for (let i = 0; i < shop.points_needed; i++) {
       stars.push(
@@ -283,8 +319,45 @@ export default function CheckInPage() {
     return `${hours}:${minutes}`;
   };
 
+  if (!shop) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Determine if user is authenticated (has shop in context)
+  const isAuthenticated = !!outletContext?.shop;
+
   return (
     <div>
+      {/* Back button - always visible on mobile, also visible on desktop when not in dashboard layout */}
+      <button
+        onClick={() => {
+          if (isAuthenticated && shopId) {
+            navigate(`/dashboard/${shopId}`);
+          } else {
+            window.history.back();
+          }
+        }}
+        className="md:hidden flex items-center text-gray-600 hover:text-gray-900 mb-4 p-2 -ml-2 transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5 mr-2" />
+        <span className="text-sm font-medium">{isAuthenticated ? 'Back to Home' : 'Back'}</span>
+      </button>
+
+      {/* Desktop back button - only shown when not in dashboard layout */}
+      {!isAuthenticated && (
+        <button
+          onClick={() => window.history.back()}
+          className="hidden md:flex items-center text-gray-600 hover:text-gray-900 mb-4 p-2 -ml-2 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          <span className="text-sm font-medium">Back</span>
+        </button>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Check In Customer</h1>
 

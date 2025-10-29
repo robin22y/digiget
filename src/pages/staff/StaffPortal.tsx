@@ -8,7 +8,7 @@ import StaffWorkHistory from '../../components/StaffWorkHistory';
 import StaffIncidentReport from '../../components/StaffIncidentReport';
 import StaffLocationCheckins from '../../components/StaffLocationCheckins';
 import StaffRequests from '../../components/StaffRequests';
-import { getCurrentPosition, formatLocation, calculateDistance } from '../../utils/geolocation';
+import { getCurrentPosition, formatLocation, calculateDistance, getAreaName } from '../../utils/geolocation';
 
 interface Employee {
   id: string;
@@ -50,6 +50,7 @@ export default function StaffPortal() {
   const [autoLogoutChecked, setAutoLogoutChecked] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [distanceFromShop, setDistanceFromShop] = useState<number | null>(null);
+  const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
 
   useEffect(() => {
     loadShopAndEmployee();
@@ -61,6 +62,10 @@ export default function StaffPortal() {
       if (location) {
         setCurrentLocation(location);
 
+        // Get location name
+        const areaName = await getAreaName(location.latitude, location.longitude);
+        setCurrentLocationName(areaName);
+
         if (shop?.latitude && shop?.longitude) {
           const distance = calculateDistance(
             location.latitude,
@@ -70,6 +75,8 @@ export default function StaffPortal() {
           );
           setDistanceFromShop(distance);
         }
+      } else {
+        setCurrentLocationName(null);
       }
     };
 
@@ -401,7 +408,9 @@ export default function StaffPortal() {
                     <MapPin className="w-4 h-4 text-blue-700" />
                     <div>
                       <p className="text-xs text-blue-700 font-medium">Your Location</p>
-                      <p className="text-xs text-blue-900">{formatLocation(currentLocation.latitude, currentLocation.longitude)}</p>
+                      <p className="text-xs text-blue-900">
+                        {currentLocationName || formatLocation(currentLocation.latitude, currentLocation.longitude)}
+                      </p>
                       {distanceFromShop !== null && shop.latitude && shop.longitude && (
                         <p className="text-xs text-blue-600">
                           {distanceFromShop < 1000

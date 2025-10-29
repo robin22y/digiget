@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Clock, CheckCircle, AlertCircle, Star } from 'lucide-react';
+import { Clock, AlertCircle } from 'lucide-react';
+import { getCurrentPosition, calculateDistance, getAreaName } from '../../utils/geolocation';
 
 interface ClockEntry {
   id: string;
@@ -10,33 +11,44 @@ interface ClockEntry {
   tasks_assigned: any;
 }
 
-interface Task {
-  id: string;
-  task_name: string;
-  task_description: string | null;
-  completed: boolean;
+
+interface TabletInterfaceProps {
+  shopId?: string; // Optional prop to override URL param
 }
 
-export default function TabletInterface() {
-  const { shopId } = useParams();
-  const [view, setView] = useState<'idle' | 'pin' | 'changepin' | 'workspace'>('idle');
+export default function TabletInterface({ shopId: propShopId }: TabletInterfaceProps = {}) {
+  const { shopId: paramShopId } = useParams<{ shopId?: string }>();
+  const shopId = propShopId || paramShopId;
+  
+  if (!shopId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white rounded-lg shadow p-8 max-w-md">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Error</h2>
+          <p className="text-red-600">Shop ID is required</p>
+        </div>
+      </div>
+    );
+  }
+  const [view, setView] = useState<'idle' | 'pin' | 'changepin' | 'ready' | 'workspace'>('idle');
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentEmployee, setCurrentEmployee] = useState<any>(null);
   const [currentEntry, setCurrentEntry] = useState<ClockEntry | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [shop, setShop] = useState<any>(null);
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [checkInMessage, setCheckInMessage] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [clockInMessage, setClockInMessage] = useState('');
+  const [clockInLocationName, setClockInLocationName] = useState<string | null>(null);
 
   useEffect(() => {
     loadShop();
   }, [shopId]);
 
+
   const loadShop = async () => {
+    if (!shopId) return;
     const { data } = await supabase
       .from('shops')
       .select('shop_name, points_needed, reward_description')
@@ -84,10 +96,18 @@ export default function TabletInterface() {
 
       if (activeEntry) {
         setCurrentEntry(activeEntry);
-        loadTasks(activeEntry);
+        // Load location name if coordinates exist
+        if (activeEntry.clock_in_latitude && activeEntry.clock_in_longitude) {
+          const locationName = await getAreaName(
+            activeEntry.clock_in_latitude,
+            activeEntry.clock_in_longitude
+          );
+          setClockInLocationName(locationName);
+        }
         setView('workspace');
       } else {
-        await clockIn(employee.id);
+        // Show ready view with Clock In button instead of auto-clocking in
+        setView('ready');
       }
 
       setPin('');
@@ -99,26 +119,100 @@ export default function TabletInterface() {
   };
 
   const clockIn = async (employeeId: string) => {
+    setLoading(true);
+    setClockInMessage('');
     try {
-      const { data: allTasks } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('shop_id', shopId)
-        .eq('active', true);
+      // Get current location
+      let location = await getCurrentPosition();
+      let distance = 0;
+      let areaName = '';
+      let isRemoteClockIn = false;
+      let hasPreApproval = false;
 
-      const assignedTasks = allTasks?.filter(
-        (task) =>
-          task.assigned_to === 'all' ||
-          (task.assigned_to === 'specific' && task.assigned_employee_ids?.includes(employeeId))
-      ) || [];
+      // Get shop location
+      const { data: shopData } = await supabase
+        .from('shops')
+        .select('latitude, longitude')
+        .eq('id', shopId)
+        .single();
 
+      // Always get area name if location is available (for display)
+      if (location) {
+        areaName = await getAreaName(location.latitude, location.longitude);
+        setClockInLocationName(areaName);
+      } else {
+        setClockInLocationName(null);
+      }
+
+      // Check if location is more than 100m from shop
+      if (location && shopData?.latitude && shopData?.longitude) {
+        distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          shopData.latitude,
+          shopData.longitude
+        );
+
+        isRemoteClockIn = distance > 100;
+
+        // Check for pre-approval if remote clock-in
+        if (isRemoteClockIn) {
+          const today = new Date();
+          const currentDay = today.getDay();
+          const todayDate = today.toISOString().split('T')[0];
+
+          const { data: preApprovals } = await supabase
+            .from('remote_clock_in_approvals')
+            .select('*')
+            .eq('employee_id', employeeId)
+            .eq('shop_id', shopId)
+            .eq('is_active', true)
+            .contains('days_of_week', [currentDay])
+            .lte('start_date', todayDate)
+            .gte('end_date', todayDate);
+
+          hasPreApproval = !!(preApprovals && preApprovals.length > 0);
+
+          // Only create request and show message if NOT pre-approved
+          if (!hasPreApproval) {
+            // Create clock-in request
+            const { error: requestError } = await supabase
+              .from('clock_in_requests')
+              .insert({
+                shop_id: shopId,
+                employee_id: employeeId,
+                requested_at: new Date().toISOString(),
+                request_latitude: location.latitude,
+                request_longitude: location.longitude,
+                distance_from_shop: distance,
+                status: 'pending'
+              });
+
+            if (requestError) {
+              console.error('Error creating clock-in request:', requestError);
+            }
+
+            const distanceText = distance < 1000
+              ? `${Math.round(distance)}m`
+              : `${(distance / 1000).toFixed(2)}km`;
+            
+            setClockInMessage(
+              `You are in ${areaName} (${distanceText} from shop). Approval request sent to store manager. Please contact store if approval is delayed.`
+            );
+          }
+        }
+      }
+
+      // Create clock entry (always create it, but mark location if remote)
       const { data: entry, error } = await supabase
         .from('clock_entries')
         .insert({
-          shop_id: shopId!,
+          shop_id: shopId,
           employee_id: employeeId,
           clock_in_time: new Date().toISOString(),
-          tasks_assigned: assignedTasks.map((t: any) => ({ id: t.id, name: t.task_name, completed: false }))
+          clock_in_latitude: location?.latitude || null,
+          clock_in_longitude: location?.longitude || null,
+          tasks_assigned: []
         })
         .select()
         .single();
@@ -126,110 +220,15 @@ export default function TabletInterface() {
       if (error) throw error;
 
       setCurrentEntry(entry);
-      loadTasks(entry);
       setView('workspace');
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadTasks = (entry: ClockEntry) => {
-    if (entry.tasks_assigned) {
-      setTasks(entry.tasks_assigned);
-    }
-  };
 
-  const toggleTask = async (taskId: string) => {
-    const updatedTasks = tasks.map((t) =>
-      t.id === taskId ? { ...t, completed: !t.completed } : t
-    );
-    setTasks(updatedTasks);
-
-    await supabase
-      .from('clock_entries')
-      .update({ tasks_assigned: updatedTasks })
-      .eq('id', currentEntry!.id);
-  };
-
-  const handleCustomerCheckIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCheckInMessage('');
-
-    try {
-      const cleanPhone = customerPhone.replace(/\s/g, '');
-
-      let { data: customer } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('shop_id', shopId)
-        .eq('phone', cleanPhone)
-        .maybeSingle();
-
-      if (!customer) {
-        const { data: newCustomer, error } = await supabase
-          .from('customers')
-          .insert({
-            shop_id: shopId!,
-            phone: cleanPhone,
-            current_points: 1,
-            lifetime_points: 1,
-            total_visits: 1
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        customer = newCustomer;
-
-        await supabase
-          .from('loyalty_transactions')
-          .insert({
-            shop_id: shopId!,
-            customer_id: customer.id,
-            transaction_type: 'point_added',
-            points_change: 1,
-            balance_after: 1,
-            added_by_employee_id: currentEmployee.id
-          });
-
-        setCheckInMessage(`New customer! 1/${shop.points_needed} visits`);
-      } else {
-        const newPoints = customer.current_points + 1;
-
-        if (newPoints >= shop.points_needed) {
-          setCheckInMessage(`🎉 REWARD READY! ${shop.reward_description}`);
-        } else {
-          setCheckInMessage(`Point added! ${newPoints}/${shop.points_needed} visits`);
-        }
-
-        await supabase
-          .from('customers')
-          .update({
-            current_points: newPoints,
-            lifetime_points: customer.lifetime_points + 1,
-            total_visits: customer.total_visits + 1,
-            last_visit_at: new Date().toISOString()
-          })
-          .eq('id', customer.id);
-
-        await supabase
-          .from('loyalty_transactions')
-          .insert({
-            shop_id: shopId!,
-            customer_id: customer.id,
-            transaction_type: 'point_added',
-            points_change: 1,
-            balance_after: newPoints,
-            added_by_employee_id: currentEmployee.id
-          });
-      }
-
-      setCustomerPhone('');
-      setTimeout(() => setCheckInMessage(''), 5000);
-    } catch (err: any) {
-      setCheckInMessage(`Error: ${err.message}`);
-    }
-  };
 
   const handleChangePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,7 +269,14 @@ export default function TabletInterface() {
 
       if (activeEntry) {
         setCurrentEntry(activeEntry);
-        loadTasks(activeEntry);
+        // Load location name if coordinates exist
+        if (activeEntry.clock_in_latitude && activeEntry.clock_in_longitude) {
+          const locationName = await getAreaName(
+            activeEntry.clock_in_latitude,
+            activeEntry.clock_in_longitude
+          );
+          setClockInLocationName(locationName);
+        }
         setView('workspace');
       } else {
         await clockIn(currentEmployee.id);
@@ -286,16 +292,13 @@ export default function TabletInterface() {
   };
 
   const handleClockOut = async () => {
-    const incompleteTasks = tasks.filter((t) => !t.completed);
-
-    if (incompleteTasks.length > 0) {
-      alert('You must complete all tasks before clocking out:\n' + incompleteTasks.map(t => `- ${t.task_name}`).join('\n'));
-      return;
-    }
-
     if (!confirm('Clock out now?')) return;
 
+    setLoading(true);
     try {
+      // Get location for clock out
+      let location = await getCurrentPosition();
+
       const clockOutTime = new Date();
       const clockInTime = new Date(currentEntry!.clock_in_time);
       const hoursWorked = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
@@ -304,27 +307,24 @@ export default function TabletInterface() {
         .from('clock_entries')
         .update({
           clock_out_time: clockOutTime.toISOString(),
-          hours_worked: parseFloat(hoursWorked.toFixed(2)),
-          tasks_complete: true,
-          tasks_completed_at: clockOutTime.toISOString()
+          clock_out_latitude: location?.latitude || null,
+          clock_out_longitude: location?.longitude || null,
+          hours_worked: parseFloat(hoursWorked.toFixed(2))
         })
         .eq('id', currentEntry!.id);
 
       setView('idle');
       setCurrentEmployee(null);
       setCurrentEntry(null);
-      setTasks([]);
+      setClockInMessage('');
+      setClockInLocationName(null);
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 5) return numbers;
-    if (numbers.length <= 8) return `${numbers.slice(0, 5)} ${numbers.slice(5)}`;
-    return `${numbers.slice(0, 5)} ${numbers.slice(5, 8)} ${numbers.slice(8, 11)}`;
-  };
 
   const getElapsedTime = () => {
     if (!currentEntry) return '0h 0m';
@@ -405,6 +405,62 @@ export default function TabletInterface() {
     );
   }
 
+  if (view === 'ready') {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Welcome, {currentEmployee?.first_name}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">Ready to clock in</p>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto p-4 space-y-6 mt-8">
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">Clock In</h3>
+            <p className="text-gray-600 mb-6">
+              Click the button below to clock in. Your location will be recorded.
+            </p>
+            
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-red-800">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <button
+                onClick={() => currentEmployee && clockIn(currentEmployee.id)}
+                disabled={loading || !currentEmployee}
+                className="w-full bg-green-600 text-white py-6 rounded-lg hover:bg-green-700 transition-colors font-semibold text-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Clocking In...' : 'Clock In'}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setView('idle');
+                  setCurrentEmployee(null);
+                  setError('');
+                }}
+                className="w-full bg-gray-200 text-gray-700 py-4 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (view === 'changepin') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
@@ -468,9 +524,6 @@ export default function TabletInterface() {
   }
 
   if (view === 'workspace') {
-    const completedTasks = tasks.filter((t) => t.completed).length;
-    const allTasksComplete = tasks.length === 0 || completedTasks === tasks.length;
-
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
         <div className="bg-white border-b border-gray-200 p-4">
@@ -480,82 +533,39 @@ export default function TabletInterface() {
             </h2>
             <div className="flex items-center text-gray-600 mt-1">
               <Clock className="w-4 h-4 mr-1" />
-              <span>Clocked in: {new Date(currentEntry!.clock_in_time).toLocaleTimeString()} ({getElapsedTime()})</span>
+              <span>
+                Clocked in: {new Date(currentEntry!.clock_in_time).toLocaleTimeString()} ({getElapsedTime()})
+                {clockInLocationName && (
+                  <span className="ml-2 text-gray-500">• {clockInLocationName}</span>
+                )}
+              </span>
             </div>
           </div>
         </div>
 
         <div className="max-w-4xl mx-auto p-4 space-y-6">
-          {tasks.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Today's Tasks</h3>
-                <span className="text-sm text-gray-600">
-                  {completedTasks}/{tasks.length} complete
-                </span>
+          {clockInMessage && (
+            <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4">
+              <div className="flex items-start">
+                <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 mr-2 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-orange-800">{clockInMessage}</p>
+                </div>
               </div>
-              <div className="space-y-3">
-                {tasks.map((task) => (
-                  <button
-                    key={task.id}
-                    onClick={() => toggleTask(task.id)}
-                    className="w-full flex items-start p-3 border-2 border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-                  >
-                    <div className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center mr-3 ${
-                      task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'
-                    }`}>
-                      {task.completed && <CheckCircle className="w-4 h-4 text-white" />}
-                    </div>
-                    <span className={task.completed ? 'text-gray-500 line-through' : 'text-gray-900'}>
-                      {task.task_name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {!allTasksComplete && (
-                <p className="mt-4 text-sm text-gray-500">
-                  Complete all tasks to enable clock out
-                </p>
-              )}
             </div>
           )}
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Check-In</h3>
-
-            {checkInMessage && (
-              <div className={`mb-4 p-3 rounded-lg ${
-                checkInMessage.includes('Error') ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'
-              }`}>
-                {checkInMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleCustomerCheckIn}>
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(formatPhone(e.target.value))}
-                placeholder="07XXX XXX XXX"
-                className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
-              />
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Staff Actions</h3>
+            <div className="space-y-4">
               <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                onClick={handleClockOut}
+                disabled={loading}
+                className="w-full bg-red-600 text-white py-4 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Point
+                {loading ? 'Processing...' : 'Clock Out'}
               </button>
-            </form>
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={handleClockOut}
-              disabled={!allTasksComplete}
-              className="flex-1 bg-red-600 text-white py-4 rounded-lg hover:bg-red-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {allTasksComplete ? 'Clock Out' : 'Complete Tasks First'}
-            </button>
+            </div>
           </div>
         </div>
       </div>

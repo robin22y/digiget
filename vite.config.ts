@@ -8,6 +8,11 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   publicDir: 'public',
+  server: {
+    host: true, // Allow external connections
+    port: 5173,
+    strictPort: false, // Try next available port if 5173 is taken
+  },
   build: {
     outDir: 'dist',
     // Ensure _redirects file is included in build

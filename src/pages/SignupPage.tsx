@@ -67,14 +67,21 @@ export default function SignupPage() {
       if (signUpError) {
         console.error('Signup error:', signUpError);
         // Handle "user already registered" error gracefully
-        if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
+        const errorMessage = signUpError.message.toLowerCase();
+        if (errorMessage.includes('already registered') || 
+            errorMessage.includes('already exists') || 
+            errorMessage.includes('user already registered') ||
+            signUpError.status === 422) {
           setError('An account with this email already exists. Please log in instead.');
           setTimeout(() => {
             navigate('/login');
-          }, 2000);
+          }, 3000);
+          setLoading(false);
           return;
         }
-        throw signUpError;
+        setError(signUpError.message || 'Failed to create account. Please try again.');
+        setLoading(false);
+        return;
       }
       
       // Check if signup was successful
@@ -110,29 +117,85 @@ export default function SignupPage() {
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 90);
 
-      const { data: shop, error: shopError } = await supabase
+      // Create shop data
+      const shopData: any = {
+        user_id: userId,
+        shop_name: signupData.shopName!,
+        owner_name: signupData.ownerName!,
+        owner_email: signupData.email!,
+        business_category: signupData.businessCategory!,
+        plan_type: signupData.planType!,
+        subscription_status: 'trial',
+        trial_ends_at: trialEndsAt.toISOString(),
+        loyalty_enabled: true,
+        points_type: 'per_visit',
+        points_needed: signupData.loyaltyVisits!,
+        reward_type: 'free_product',
+        reward_description: signupData.rewardDescription!,
+        diary_enabled: ['hair_salon', 'beauty_salon', 'health_wellness'].includes(signupData.businessCategory!),
+      };
+
+      // Try inserting with QR code column first, fallback without it if column doesn't exist
+      let { data: shop, error: shopError } = await supabase
         .from('shops')
         .insert({
-          user_id: userId,
-          shop_name: signupData.shopName!,
-          owner_name: signupData.ownerName!,
-          owner_email: signupData.email!,
-          business_category: signupData.businessCategory!,
-          plan_type: signupData.planType!,
-          subscription_status: 'trial',
-          trial_ends_at: trialEndsAt.toISOString(),
-          loyalty_enabled: true,
-          points_type: 'per_visit',
-          points_needed: signupData.loyaltyVisits!,
-          reward_type: 'free_product',
-          reward_description: signupData.rewardDescription!,
-          diary_enabled: ['hair_salon', 'beauty_salon', 'health_wellness'].includes(signupData.businessCategory!),
+          ...shopData,
           qr_code_active: true
         })
         .select()
         .single();
 
-      if (shopError) throw shopError;
+      // If error is about missing column, retry without it
+      if (shopError && shopError.message && shopError.message.includes('column') && shopError.message.includes('schema cache')) {
+        console.warn('QR code columns not found, creating shop without them. Please run add_qr_code_columns.sql migration.');
+        
+        // Retry without qr_code_active
+        const retryResult = await supabase
+          .from('shops')
+          .insert(shopData)
+          .select()
+          .single();
+        
+        shop = retryResult.data;
+        shopError = retryResult.error;
+      }
+
+      if (shopError) {
+        console.error('Shop creation error:', shopError);
+        
+        // Check if error is about missing columns
+        if (shopError.message && shopError.message.includes('column') && shopError.message.includes('schema cache')) {
+          setError('Database schema is missing required columns. Please run the migration SQL script (add_qr_code_columns.sql) in Supabase. Contact support for assistance.');
+          setLoading(false);
+          return;
+        }
+        
+        // If shop creation fails, try to get existing shop for this user
+        const { data: existingShop } = await supabase
+          .from('shops')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        if (existingShop) {
+          // User already has a shop, redirect to dashboard
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+            navigate(`/dashboard/${existingShop.id}`);
+            return;
+          }
+        }
+        
+        setError(`Failed to create shop: ${shopError.message || 'Unknown error'}. Please contact support.`);
+        setLoading(false);
+        return;
+      }
+
+      if (!shop) {
+        setError('Shop was not created. Please try again or contact support.');
+        setLoading(false);
+        return;
+      }
 
       // Generate and save QR URL after shop is created (so we have the ID)
       const qrUrl = `${window.location.origin}/dashboard/${shop.id}/checkin`;
@@ -154,8 +217,9 @@ export default function SignupPage() {
       }
     } catch (err: any) {
       console.error('Signup error:', err);
-      setError(err.message || 'An error occurred during signup. Please try again.');
-    } finally {
+      // Set generic error for unexpected errors (only if we haven't already set one via early returns)
+      const currentError = error || err.message || 'An unexpected error occurred during signup. Please try again or contact support.';
+      setError(currentError);
       setLoading(false);
     }
   };

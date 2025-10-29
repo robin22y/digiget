@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Clock, TrendingUp, Award, Users, QrCode } from 'lucide-react';
+import { Clock, TrendingUp, Award, Users, QrCode, UserCheck, Wrench, ClipboardList, DollarSign } from 'lucide-react';
 import DashboardNotifications from '../../components/DashboardNotifications';
 
 interface Shop {
@@ -160,10 +160,14 @@ export default function DashboardHome() {
           </Link>
           <Link
             to={`/dashboard/${shopId}/customers`}
-            className="group px-6 py-5 bg-gray-50 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-300"
+            className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-xl text-white hover:from-teal-700 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
-            <div className="font-bold text-lg text-gray-900">View All Customers</div>
-            <div className="text-sm text-gray-600">See all your customers</div>
+            <div className="font-bold text-lg flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              View All Customers
+            </div>
+            <div className="text-sm text-teal-100">See all your customers</div>
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">👥</div>
           </Link>
           <Link
             to={`/dashboard/${shopId}/qr-code`}
@@ -179,18 +183,48 @@ export default function DashboardHome() {
           {shop.plan_type === 'pro' && (
             <>
               <Link
-                to={`/dashboard/${shopId}/staff/payroll`}
-                className="group px-6 py-5 bg-gray-50 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-300"
+                to={`/dashboard/${shopId}/staff`}
+                className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
               >
-                <div className="font-bold text-lg text-gray-900">View Payroll Report</div>
-                <div className="text-sm text-gray-600">Track staff hours and pay</div>
+                <div className="font-bold text-lg flex items-center gap-2">
+                  <UserCheck className="w-5 h-5" />
+                  Manage Your Staff
+                </div>
+                <div className="text-sm text-purple-100">Add or edit staff details</div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">👥</div>
+              </Link>
+              <Link
+                to={`/dashboard/${shopId}/clock-requests`}
+                className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-orange-600 to-red-600 rounded-xl text-white hover:from-orange-700 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              >
+                <div className="font-bold text-lg flex items-center gap-2">
+                  <Wrench className="w-5 h-5" />
+                  Fix Time Entries
+                </div>
+                <div className="text-sm text-orange-100">Review and fix clock-in requests</div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">⏰</div>
+              </Link>
+              <Link
+                to={`/dashboard/${shopId}/staff/payroll`}
+                className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl text-white hover:from-emerald-700 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              >
+                <div className="font-bold text-lg flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  View Payroll Report
+                </div>
+                <div className="text-sm text-emerald-100">Track staff hours and pay</div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">💰</div>
               </Link>
               <Link
                 to={`/dashboard/${shopId}/tasks`}
-                className="group px-6 py-5 bg-gray-50 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-300"
+                className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-amber-600 to-yellow-600 rounded-xl text-white hover:from-amber-700 hover:to-yellow-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
               >
-                <div className="font-bold text-lg text-gray-900">View Today's Tasks</div>
-                <div className="text-sm text-gray-600">See assigned tasks</div>
+                <div className="font-bold text-lg flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5" />
+                  View Today's Tasks
+                </div>
+                <div className="text-sm text-amber-100">See assigned tasks</div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">✓</div>
               </Link>
             </>
           )}

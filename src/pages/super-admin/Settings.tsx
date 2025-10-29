@@ -8,6 +8,17 @@ export default function SuperAdminSettings() {
     default_basic_price: 5.99,
     default_pro_price: 9.99,
     email_automation_enabled: true,
+    email_service_type: 'smtp', // 'smtp' or 'api'
+    email_smtp_host: '',
+    email_smtp_port: 587,
+    email_smtp_username: '',
+    email_smtp_password: '',
+    email_smtp_from_email: '',
+    email_smtp_from_name: 'DigiGet',
+    email_api_provider: 'sendgrid', // 'sendgrid', 'mailgun', 'resend', etc.
+    email_api_key: '',
+    email_api_from_email: '',
+    email_api_from_name: 'DigiGet',
   });
 
   const handleSaveSettings = async () => {
@@ -86,7 +97,7 @@ export default function SuperAdminSettings() {
         </div>
 
         {/* Email Automation */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <Mail className="w-5 h-5 text-purple-600 mr-2" />
@@ -102,9 +113,151 @@ export default function SuperAdminSettings() {
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 mb-4">
             Automatically send welcome emails, trial expiry reminders, and monthly reports.
           </p>
+
+          {settings.email_automation_enabled && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Service Type</label>
+                <select
+                  value={settings.email_service_type}
+                  onChange={(e) => setSettings({ ...settings, email_service_type: e.target.value as 'smtp' | 'api' })}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="smtp">SMTP</option>
+                  <option value="api">API (SendGrid, Mailgun, etc.)</option>
+                </select>
+              </div>
+
+              {settings.email_service_type === 'smtp' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Host</label>
+                      <input
+                        type="text"
+                        value={settings.email_smtp_host}
+                        onChange={(e) => setSettings({ ...settings, email_smtp_host: e.target.value })}
+                        placeholder="smtp.gmail.com"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Port</label>
+                      <input
+                        type="number"
+                        value={settings.email_smtp_port}
+                        onChange={(e) => setSettings({ ...settings, email_smtp_port: parseInt(e.target.value) || 587 })}
+                        placeholder="587"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Username</label>
+                      <input
+                        type="text"
+                        value={settings.email_smtp_username}
+                        onChange={(e) => setSettings({ ...settings, email_smtp_username: e.target.value })}
+                        placeholder="your-email@example.com"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Password</label>
+                      <input
+                        type="password"
+                        value={settings.email_smtp_password}
+                        onChange={(e) => setSettings({ ...settings, email_smtp_password: e.target.value })}
+                        placeholder="••••••••"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From Email</label>
+                      <input
+                        type="email"
+                        value={settings.email_smtp_from_email}
+                        onChange={(e) => setSettings({ ...settings, email_smtp_from_email: e.target.value })}
+                        placeholder="noreply@digiget.uk"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From Name</label>
+                      <input
+                        type="text"
+                        value={settings.email_smtp_from_name}
+                        onChange={(e) => setSettings({ ...settings, email_smtp_from_name: e.target.value })}
+                        placeholder="DigiGet"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">API Provider</label>
+                    <select
+                      value={settings.email_api_provider}
+                      onChange={(e) => setSettings({ ...settings, email_api_provider: e.target.value })}
+                      className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="sendgrid">SendGrid</option>
+                      <option value="mailgun">Mailgun</option>
+                      <option value="resend">Resend</option>
+                      <option value="postmark">Postmark</option>
+                      <option value="aws-ses">AWS SES</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <input
+                      type="password"
+                      value={settings.email_api_key}
+                      onChange={(e) => setSettings({ ...settings, email_api_key: e.target.value })}
+                      placeholder="Enter your API key"
+                      className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From Email</label>
+                      <input
+                        type="email"
+                        value={settings.email_api_from_email}
+                        onChange={(e) => setSettings({ ...settings, email_api_from_email: e.target.value })}
+                        placeholder="noreply@digiget.uk"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From Name</label>
+                      <input
+                        type="text"
+                        value={settings.email_api_from_name}
+                        onChange={(e) => setSettings({ ...settings, email_api_from_name: e.target.value })}
+                        placeholder="DigiGet"
+                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> These credentials are stored securely. Make sure your email service is properly configured before enabling automation.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Backup & Export */}

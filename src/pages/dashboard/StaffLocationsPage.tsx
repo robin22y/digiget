@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { MapPin, Clock, Navigation, User, CheckCircle } from 'lucide-react';
+import { getAreaName } from '../../utils/geolocation';
 
 interface LocationCheckin {
   id: string;
@@ -23,6 +24,7 @@ interface LocationCheckin {
     clock_in_time: string;
     clock_out_time: string | null;
   };
+  locationName?: string;
 }
 
 export default function StaffLocationsPage() {
@@ -65,7 +67,22 @@ export default function StaffLocationsPage() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setCheckins(data || []);
+
+      // Get location names for all checkins
+      const checkinsWithLocationNames = await Promise.all(
+        (data || []).map(async (checkin) => {
+          let locationName = '';
+          if (checkin.check_in_latitude && checkin.check_in_longitude) {
+            locationName = await getAreaName(checkin.check_in_latitude, checkin.check_in_longitude);
+          }
+          return {
+            ...checkin,
+            locationName
+          };
+        })
+      );
+
+      setCheckins(checkinsWithLocationNames);
     } catch (error) {
       console.error('Error loading location check-ins:', error);
     } finally {
@@ -101,7 +118,7 @@ export default function StaffLocationsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Staff Location Check-Ins</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Work Visits</h1>
       </div>
 
       {/* Filters */}
@@ -209,10 +226,10 @@ export default function StaffLocationsPage() {
                         {formatDuration(checkin.check_in_time, checkin.check_out_time)}
                       </div>
                       <div>
-                        <span className="font-medium">Coordinates:</span>
+                        <span className="font-medium">Location:</span>
                         <br />
                         <span className="text-xs">
-                          {checkin.check_in_latitude.toFixed(6)}, {checkin.check_in_longitude.toFixed(6)}
+                          {checkin.locationName || `${checkin.check_in_latitude.toFixed(6)}, ${checkin.check_in_longitude.toFixed(6)}`}
                         </span>
                       </div>
                     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { QRCodeSVG } from 'react-qr-code';
-import { Copy, Download, Power, PowerOff, QrCode, ExternalLink, X, CheckCircle } from 'lucide-react';
+import { QRCode } from 'react-qr-code';
+import { Copy, Download, Power, PowerOff, QrCode, ExternalLink, X, CheckCircle, FileImage, FileText, Sparkles } from 'lucide-react';
 
 interface Shop {
   id: string;
@@ -12,11 +12,14 @@ interface Shop {
   qr_url: string | null;
   qr_code_active: boolean;
   subscription_status: string;
+  branded_qr_url?: string | null;
+  branded_qr_pdf?: string | null;
 }
 
 export default function QRManagement() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [copiedShopId, setCopiedShopId] = useState<string | null>(null);
   const qrRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -27,12 +30,18 @@ export default function QRManagement() {
 
   const loadShops = async () => {
     try {
-      const { data, error } = await supabase
+      setError(null);
+      const { data, error: queryError } = await supabase
         .from('shops')
-        .select('id, shop_name, owner_name, owner_email, postcode, qr_url, qr_code_active, subscription_status')
+        .select('id, shop_name, owner_name, owner_email, postcode, qr_url, qr_code_active, subscription_status, branded_qr_url, branded_qr_pdf')
         .order('shop_name', { ascending: true });
 
-      if (error) throw error;
+      if (queryError) {
+        console.error('Error loading shops:', queryError);
+        setError(`Failed to load shops: ${queryError.message}`);
+        setShops([]);
+        return;
+      }
       
       // Ensure all shops have QR URLs
       const shopsWithQR = (data || []).map(shop => ({
@@ -41,8 +50,10 @@ export default function QRManagement() {
       }));
       
       setShops(shopsWithQR);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading shops:', error);
+      setError(`Unexpected error: ${error.message || 'Unknown error'}`);
+      setShops([]);
     } finally {
       setLoading(false);
     }
@@ -117,7 +128,19 @@ export default function QRManagement() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">QR Code Management</h1>
+        <button
+          onClick={loadShops}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+        >
+          Refresh
+        </button>
       </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <p className="text-sm text-gray-600 mb-4">
@@ -134,14 +157,15 @@ export default function QRManagement() {
                 <th className="text-left py-3 font-semibold text-gray-900">Status</th>
                 <th className="text-left py-3 font-semibold text-gray-900">QR Status</th>
                 <th className="text-left py-3 font-semibold text-gray-900">QR Code</th>
+                <th className="text-left py-3 font-semibold text-gray-900">Branded</th>
                 <th className="text-right py-3 font-semibold text-gray-900">Actions</th>
               </tr>
             </thead>
             <tbody>
               {shops.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500">
-                    No shops found
+                  <td colSpan={8} className="py-8 text-center text-gray-500">
+                    {error ? 'Error loading shops. Please try refreshing.' : 'No shops found'}
                   </td>
                 </tr>
               ) : (
@@ -181,13 +205,46 @@ export default function QRManagement() {
                           ref={el => qrRefs.current[shop.id] = el}
                           className="inline-block bg-white p-2 border border-gray-200 rounded"
                         >
-                          <QRCodeSVG
+                          <QRCode
                             value={checkInUrl}
                             size={60}
                             level="H"
                             includeMargin={false}
                           />
                         </div>
+                      </td>
+                      <td className="py-3">
+                        {shop.branded_qr_url ? (
+                          <div className="flex items-center gap-1">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ✓ Available
+                            </span>
+                            <a
+                              href={shop.branded_qr_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                              title="Download Branded PNG"
+                            >
+                              <FileImage className="w-3.5 h-3.5" />
+                            </a>
+                            {shop.branded_qr_pdf && (
+                              <a
+                                href={shop.branded_qr_pdf}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                title="Download Branded PDF"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            Not Generated
+                          </span>
+                        )}
                       </td>
                       <td className="py-3">
                         <div className="flex items-center justify-end gap-2">
@@ -266,7 +323,7 @@ export default function QRManagement() {
             </div>
 
             <div className="bg-white p-6 rounded-lg border-2 border-gray-200 mb-4 flex justify-center">
-              <QRCodeSVG
+              <QRCode
                 value={selectedShop.qr_url || `${window.location.origin}/dashboard/${selectedShop.id}/checkin`}
                 size={200}
                 level="H"

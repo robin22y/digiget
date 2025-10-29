@@ -91,25 +91,25 @@ export default function DashboardLayout() {
   }
 
   const navItems = [
-    { to: `/dashboard/${shopId}`, icon: Home, label: 'Dashboard', end: true },
+    { to: `/dashboard/${shopId}`, icon: Home, label: 'Home', end: true },
     { to: `/dashboard/${shopId}/checkin`, icon: CheckCircle, label: 'Check In' },
     { to: `/dashboard/${shopId}/qr-code`, icon: QrCode, label: 'QR Code' },
     { to: `/dashboard/${shopId}/customers`, icon: Users, label: 'Customers' },
     ...(shop.plan_type === 'pro' ? [
-      { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Staff' },
+      { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Manage Staff' },
       { to: `/dashboard/${shopId}/staff-requests`, icon: Package, label: 'Staff Requests' },
-      { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Staff Locations' },
+      { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Work Visits' },
       { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers' },
       { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals' },
       { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Tasks' },
-      { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Incidents' },
-      { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Clock Requests' },
+      { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem' },
+      { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries' },
     ] : []),
     ...(shop.diary_enabled ? [
       { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary' },
     ] : []),
-    { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Flash Offers' },
-    { to: `/dashboard/${shopId}/settings`, icon: Settings, label: 'Settings' },
+    { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Deals' },
+    { to: `/dashboard/${shopId}/settings`, icon: Settings, label: 'Shop Settings' },
   ];
 
   return (
@@ -159,7 +159,7 @@ export default function DashboardLayout() {
               className="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-gray-700 hover:bg-gray-50 border-t border-gray-200 mt-2"
             >
               <Tablet className="w-4 h-4 mr-2.5" />
-              Staff Tablet
+              Staff Access Link
             </a>
           </nav>
 
