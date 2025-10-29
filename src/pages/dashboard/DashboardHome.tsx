@@ -221,9 +221,9 @@ export default function DashboardHome() {
               >
                 <div className="font-bold text-lg flex items-center gap-2">
                   <ClipboardList className="w-5 h-5" />
-                  View Today's Tasks
+                  Staff Jobs
                 </div>
-                <div className="text-sm text-amber-100">See assigned tasks</div>
+                <div className="text-sm text-amber-100">View and manage staff jobs</div>
                 <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">✓</div>
               </Link>
             </>

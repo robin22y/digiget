@@ -101,7 +101,7 @@ export default function DashboardLayout() {
       { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Work Visits' },
       { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers' },
       { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals' },
-      { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Tasks' },
+      { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Staff Jobs' },
       { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem' },
       { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries' },
     ] : []),

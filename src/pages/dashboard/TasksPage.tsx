@@ -183,7 +183,7 @@ export default function TasksPage() {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-yellow-900 mb-2">Pro Feature</h2>
           <p className="text-yellow-800">
-            Task management is only available on the Pro plan.
+            Staff Jobs management is only available on the Pro plan.
           </p>
         </div>
       </div>
@@ -197,7 +197,7 @@ export default function TasksPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Daily Task List</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Staff Jobs</h1>
         <div className="flex gap-3">
           <button
             onClick={() => navigate(`/dashboard/${shopId}/tasks/history`)}
