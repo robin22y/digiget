@@ -12,7 +12,7 @@ export default function PricingSection() {
           {/* Basic Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 hover:shadow-md transition-shadow duration-200">
             <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">BASIC</h3>
-            <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">£5.99<span className="text-lg md:text-xl text-gray-600 font-normal">/month</span></div>
+            <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">FREE<span className="text-lg md:text-xl text-gray-600 font-normal">/month</span></div>
             <p className="text-sm md:text-base text-gray-600 mb-5 md:mb-6">Customer loyalty only</p>
 
             <ul className="space-y-2 md:space-y-3 mb-6 md:mb-8">
@@ -26,15 +26,39 @@ export default function PricingSection() {
               </li>
               <li className="flex items-start">
                 <span className="text-green-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Flash offers</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2 font-bold">✓</span>
                 <span className="text-sm md:text-base text-gray-700 leading-relaxed">Customer balance checker</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-600 mr-2 font-bold">✓</span>
                 <span className="text-sm md:text-base text-gray-700 leading-relaxed">Simple booking diary</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-600 mr-2 font-bold">✓</span>
+                <span className="text-sm md:text-base text-gray-700 leading-relaxed">1 staff member only</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-green-600 mr-2 font-bold">✓</span>
+                <span className="text-sm md:text-base text-gray-700 leading-relaxed">50 customer check-ins/month</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-red-600 mr-2 font-bold">✗</span>
+                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No flash offers</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-red-600 mr-2 font-bold">✗</span>
+                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No geofencing/location tracking</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-red-600 mr-2 font-bold">✗</span>
+                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No incident reports</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-red-600 mr-2 font-bold">✗</span>
+                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No clock requests</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-red-600 mr-2 font-bold">✗</span>
+                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No tasks</span>
               </li>
             </ul>
 

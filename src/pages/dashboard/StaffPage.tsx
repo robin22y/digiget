@@ -88,6 +88,10 @@ export default function StaffPage() {
   };
 
   const handleAddEmployee = () => {
+    if (checkStaffLimit()) {
+      alert('Basic plan allows only 1 staff member. Please upgrade to Pro plan to add more staff.');
+      return;
+    }
     setEditingEmployee(null);
     setShowModal(true);
   };
@@ -171,41 +175,38 @@ export default function StaffPage() {
     }
   };
 
-  if (shop.plan_type !== 'pro') {
-    return (
-      <div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-yellow-900 mb-2">Pro Feature</h2>
-          <p className="text-yellow-800 mb-4">
-            Staff management is only available on the Pro plan.
-          </p>
-          <Link
-            to={`/dashboard/${shopId}/settings`}
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-          >
-            Upgrade to Pro
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Check staff limit for basic plan
+  const checkStaffLimit = () => {
+    if (shop.plan_type === 'basic' && employees.length >= 1) {
+      return true;
+    }
+    return false;
+  };
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Staff Management</h1>
-        <button
-          onClick={handleAddEmployee}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold w-full sm:w-auto"
-        >
-          <UserPlus className="w-5 h-5 mr-2" />
-          Add Staff Member
-        </button>
-      </div>
+      return (
+        <div className="w-full max-w-full overflow-x-hidden">
+          {shop.plan_type === 'basic' && employees.length >= 1 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-yellow-800 text-sm">
+                <strong>Basic Plan Limit:</strong> You can have only 1 staff member. Upgrade to Pro for unlimited staff.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Staff Management</h1>
+            <button
+              onClick={handleAddEmployee}
+              disabled={checkStaffLimit()}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <UserPlus className="w-5 h-5 mr-2" />
+              Add Staff Member
+            </button>
+          </div>
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex items-center text-gray-600 mb-2">

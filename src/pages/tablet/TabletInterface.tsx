@@ -47,14 +47,17 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
   }, [shopId]);
 
 
+  const [shopPlanType, setShopPlanType] = useState<'basic' | 'pro' | null>(null);
+
   const loadShop = async () => {
     if (!shopId) return;
     const { data } = await supabase
       .from('shops')
-      .select('shop_name, points_needed, reward_description')
+      .select('shop_name, points_needed, reward_description, plan_type')
       .eq('id', shopId)
       .single();
     setShop(data);
+    setShopPlanType(data?.plan_type || null);
   };
 
   const handlePinSubmit = async (e: React.FormEvent) => {
@@ -144,8 +147,8 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
         setClockInLocationName(null);
       }
 
-      // Check if location is more than 100m from shop
-      if (location && shopData?.latitude && shopData?.longitude) {
+      // Check if location is more than 100m from shop (only for Pro plan - geofencing is Pro feature)
+      if (location && shopData?.latitude && shopData?.longitude && shopPlanType === 'pro') {
         distance = calculateDistance(
           location.latitude,
           location.longitude,

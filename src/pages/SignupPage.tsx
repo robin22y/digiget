@@ -294,7 +294,7 @@ export default function SignupPage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-gray-200">
               <h2 className="text-2xl font-bold mb-2">Basic</h2>
-              <div className="text-3xl font-bold text-blue-600 mb-4">£5.99<span className="text-lg text-gray-600">/month</span></div>
+              <div className="text-3xl font-bold text-green-600 mb-4">FREE<span className="text-lg text-gray-600">/month</span></div>
               <p className="text-gray-600 mb-6">For solo owners</p>
 
               <ul className="space-y-3 mb-8">
@@ -316,7 +316,15 @@ export default function SignupPage() {
                 </li>
                 <li className="flex items-start">
                   <span className="text-green-500 mr-2">✓</span>
-                  <span>Basic analytics</span>
+                  <span>1 staff member only</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-2">✓</span>
+                  <span>50 customer check-ins/month</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-red-500 mr-2">✗</span>
+                  <span className="text-gray-500">No flash offers, geofencing, incidents, clock requests, or tasks</span>
                 </li>
               </ul>
 

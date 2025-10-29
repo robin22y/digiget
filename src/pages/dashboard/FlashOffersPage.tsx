@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Plus, X, Zap, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
 
@@ -15,11 +15,16 @@ interface FlashOffer {
   created_at: string;
 }
 
+interface Shop {
+  plan_type: 'basic' | 'pro';
+}
+
 export default function FlashOffersPage() {
   const { shopId } = useParams();
   const [offers, setOffers] = useState<FlashOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [shop, setShop] = useState<Shop | null>(null);
 
   const [newOffer, setNewOffer] = useState({
     offer_text: '',
@@ -42,8 +47,23 @@ export default function FlashOffersPage() {
   };
 
   useEffect(() => {
+    loadShop();
     loadOffers();
   }, [shopId]);
+
+  const loadShop = async () => {
+    if (!shopId) return;
+    try {
+      const { data } = await supabase
+        .from('shops')
+        .select('plan_type')
+        .eq('id', shopId)
+        .single();
+      setShop(data);
+    } catch (error) {
+      console.error('Error loading shop:', error);
+    }
+  };
 
   const loadOffers = async () => {
     try {
@@ -128,8 +148,27 @@ export default function FlashOffersPage() {
   const activeOffers = offers.filter((o) => o.active);
   const inactiveOffers = offers.filter((o) => !o.active);
 
-  if (loading) {
+  if (loading || !shop) {
     return <div>Loading...</div>;
+  }
+
+  if (shop.plan_type === 'basic') {
+    return (
+      <div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-yellow-900 mb-2">Pro Feature</h2>
+          <p className="text-yellow-800 mb-4">
+            Flash offers (Deals) are only available on the Pro plan.
+          </p>
+          <Link
+            to={`/dashboard/${shopId}/settings`}
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+          >
+            Upgrade to Pro
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

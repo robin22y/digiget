@@ -5,7 +5,7 @@ import { Settings as SettingsIcon, DollarSign, Calendar, Mail, Database } from '
 export default function SuperAdminSettings() {
   const [settings, setSettings] = useState({
     default_trial_days: 90,
-    default_basic_price: 5.99,
+    default_basic_price: 0,
     default_pro_price: 9.99,
     email_automation_enabled: true,
     email_service_type: 'smtp', // 'smtp' or 'api'
@@ -79,9 +79,11 @@ export default function SuperAdminSettings() {
                 type="number"
                 step="0.01"
                 value={settings.default_basic_price}
-                onChange={(e) => setSettings({ ...settings, default_basic_price: parseFloat(e.target.value) || 5.99 })}
+                onChange={(e) => setSettings({ ...settings, default_basic_price: parseFloat(e.target.value) || 0 })}
                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                min="0"
               />
+              <p className="text-xs text-gray-500 mt-1">Basic plan is now FREE (set to 0)</p>
             </div>
             <div>
               <label className="block text-sm text-gray-600 mb-1">Pro Plan (£)</label>

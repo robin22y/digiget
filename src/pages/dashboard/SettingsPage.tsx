@@ -600,7 +600,7 @@ export default function SettingsPage() {
               {shop.plan_type === 'pro' && (
                 <div className="border border-gray-200 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Downgrade to Basic</h3>
-                  <p className="text-gray-600 mb-4">£5.99/month (save £4/month)</p>
+                  <p className="text-gray-600 mb-4">FREE/month (save £9.99/month)</p>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                     <p className="text-yellow-900 font-medium mb-2">You will lose access to:</p>
                     <ul className="space-y-1 text-sm text-yellow-800">

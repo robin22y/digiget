@@ -180,19 +180,32 @@ export default function DashboardHome() {
             <div className="text-sm text-indigo-100">View, print, or download your check-in QR</div>
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">📱</div>
           </Link>
-          <Link
-            to={`/dashboard/${shopId}/flash-offers`}
-            className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl text-white hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-          >
-            <div className="font-bold text-lg flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Deals
-            </div>
-            <div className="text-sm text-yellow-100">Create and manage flash offers</div>
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">⚡</div>
-          </Link>
+          {shop.plan_type === 'basic' && (
+            <Link
+              to={`/dashboard/${shopId}/staff`}
+              className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              <div className="font-bold text-lg flex items-center gap-2">
+                <UserCheck className="w-5 h-5" />
+                Manage Your Staff
+              </div>
+              <div className="text-sm text-purple-100">Add or edit staff (1 staff limit)</div>
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">👥</div>
+            </Link>
+          )}
           {shop.plan_type === 'pro' && (
             <>
+              <Link
+                to={`/dashboard/${shopId}/flash-offers`}
+                className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl text-white hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              >
+                <div className="font-bold text-lg flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Deals
+                </div>
+                <div className="text-sm text-yellow-100">Create and manage flash offers</div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">⚡</div>
+              </Link>
               <Link
                 to={`/dashboard/${shopId}/staff`}
                 className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"

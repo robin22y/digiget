@@ -109,7 +109,12 @@ export default function DashboardLayout() {
     ...(shop.diary_enabled ? [
       { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary' },
     ] : []),
-    { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Deals' },
+    ...(shop.plan_type === 'basic' ? [
+      { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Manage Staff' },
+    ] : []),
+    ...(shop.plan_type === 'pro' ? [
+      { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Deals' },
+    ] : []),
     { to: `/dashboard/${shopId}/settings`, icon: Settings, label: 'Shop Settings' },
   ];
 
