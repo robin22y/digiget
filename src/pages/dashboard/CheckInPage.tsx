@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Star, Calendar, Clock, User, ArrowLeft, MessageSquare, X } from 'lucide-react';
+import { Star, Calendar, Clock, User, ArrowLeft, MessageSquare, X, Gift, Zap } from 'lucide-react';
 import { getDeviceType } from '../../utils/customerAreaHelpers';
 
 interface Shop {
@@ -38,6 +38,9 @@ export default function CheckInPage() {
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [currentCustomerId, setCurrentCustomerId] = useState<string | null>(null);
+  const [offers, setOffers] = useState<any[]>([]);
+  const [currentCustomer, setCurrentCustomer] = useState<any | null>(null);
+  const [showOffers, setShowOffers] = useState(false);
 
   // Load shop data if not provided from outlet context
   useEffect(() => {
@@ -89,6 +92,72 @@ export default function CheckInPage() {
     }
   };
 
+  const loadOffers = async (customerClassification?: string | null) => {
+    if (!shopId) return;
+    
+    try {
+      const now = new Date().toISOString();
+      
+      // Start with all active offers
+      let query = supabase
+        .from('flash_offers')
+        .select('*')
+        .eq('shop_id', shopId)
+        .eq('active', true)
+        .lte('starts_at', now);
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+
+      // Filter offers based on customer classification
+      const filteredOffers = (data || []).filter((offer) => {
+        // Check if offer has ended
+        if (offer.ends_at && new Date(offer.ends_at) < new Date()) {
+          return false;
+        }
+
+        // If no target_classifications, show to everyone
+        if (!offer.target_classifications || offer.target_classifications.length === 0) {
+          return true;
+        }
+
+        // If customer has no classification, only show offers with no target
+        if (!customerClassification) {
+          return false;
+        }
+
+        // Show if customer classification is in target list
+        return offer.target_classifications.includes(customerClassification);
+      });
+
+      setOffers(filteredOffers);
+    } catch (error) {
+      console.error('Error loading offers:', error);
+    }
+  };
+
+  // Load offers when phone number is entered and customer is found
+  const loadCustomerOffers = async (phone: string) => {
+    if (!shopId) return;
+    
+    const cleanPhone = phone.replace(/\s/g, '');
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id, classification')
+      .eq('shop_id', shopId)
+      .eq('phone', cleanPhone)
+      .maybeSingle();
+
+    if (customer) {
+      setCurrentCustomer(customer);
+      await loadOffers(customer.classification);
+    } else {
+      // For new customers, load offers with no classification filter
+      await loadOffers(null);
+    }
+  };
+
   const formatPhone = (value: string) => {
     const numbers = value.replace(/\D/g, '');
     if (numbers.length <= 5) return numbers;
@@ -106,6 +175,8 @@ export default function CheckInPage() {
     // Check for appointment when phone number is entered
     const cleanPhone = formatted.replace(/\s/g, '');
     if (cleanPhone.length >= 10) {
+      // Load offers for this customer
+      loadCustomerOffers(formatted);
       const today = new Date();
       const todayDate = today.toISOString().split('T')[0];
 
@@ -603,6 +674,41 @@ export default function CheckInPage() {
             )}
           </button>
 
+          {/* Offers for You Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!phone.trim()) {
+                setMessage({
+                  type: 'error',
+                  text: 'Please enter a phone number first to view offers.'
+                });
+                return;
+              }
+              setShowOffers(!showOffers);
+              if (!showOffers && offers.length === 0) {
+                const cleanPhone = phone.replace(/\s/g, '');
+                loadCustomerOffers(cleanPhone);
+              }
+            }}
+            className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+          >
+            <div className="flex items-center gap-3">
+              <Gift className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="font-medium text-gray-900">Offers for You</p>
+                <p className="text-xs text-gray-500">
+                  {offers.length > 0 ? `${offers.length} personalized deal${offers.length !== 1 ? 's' : ''}` : 'View personalized deals'}
+                </p>
+              </div>
+            </div>
+            {showOffers ? (
+              <span className="text-blue-600 font-bold">−</span>
+            ) : (
+              <span className="text-gray-400 font-bold">+</span>
+            )}
+          </button>
+
           {/* Feedback Button */}
           <button
             onClick={async () => {
@@ -642,6 +748,86 @@ export default function CheckInPage() {
             <span className="text-blue-600">→</span>
           </button>
         </div>
+
+        {/* Offers Section */}
+        {showOffers && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            {offers.length === 0 ? (
+              <div className="text-center py-6">
+                <Gift className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">No offers available for you right now</p>
+                {currentCustomer?.classification && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    As a {currentCustomer.classification} customer
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {offers.map((offer) => (
+                  <div
+                    key={offer.id}
+                    className="border-2 border-blue-200 rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                          <Zap className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 mb-1">{offer.offer_text}</h3>
+                        {offer.offer_type && offer.offer_value && (
+                          <p className="text-sm text-blue-700 font-medium mb-1">
+                            {offer.offer_type === 'percentage' && `${offer.offer_value}% OFF`}
+                            {offer.offer_type === 'fixed_amount' && `£${offer.offer_value} OFF`}
+                            {offer.offer_type === 'free_item' && `Free: ${offer.offer_value}`}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(offer.starts_at).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short'
+                            })}
+                          </span>
+                          {offer.ends_at && (
+                            <span>
+                              Ends: {new Date(offer.ends_at).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          )}
+                        </div>
+                        {offer.target_classifications && offer.target_classifications.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {offer.target_classifications.map((classification: string) => (
+                              <span
+                                key={classification}
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                  classification === 'VIP'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : classification === 'Regular'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-green-100 text-green-700'
+                                }`}
+                              >
+                                {classification}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
