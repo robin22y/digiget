@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Plus, Edit, Trash2, CheckCircle, TrendingUp, BarChart3, Camera, History, Calendar, Repeat, Clock } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, BarChart3, Camera, History, Calendar, Repeat, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Shop {
@@ -195,29 +195,30 @@ export default function TasksPage() {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Staff Jobs</h1>
-        <div className="flex gap-3">
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Staff Jobs</h1>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => navigate(`/dashboard/${shopId}/tasks/history`)}
-            className="flex items-center px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-semibold border border-slate-300"
+            className="flex items-center justify-center px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-semibold border border-slate-300 text-sm sm:text-base"
           >
-            <History className="w-5 h-5 mr-2" />
+            <History className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             View History
           </button>
           <button
             onClick={() => setShowFulfillment(!showFulfillment)}
-            className="flex items-center px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-semibold"
+            className="flex items-center justify-center px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-semibold text-sm sm:text-base"
           >
-            <BarChart3 className="w-5 h-5 mr-2" />
-            {showFulfillment ? 'Hide' : 'Show'} Analytics
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            <span className="hidden sm:inline">{showFulfillment ? 'Hide' : 'Show'} Analytics</span>
+            <span className="sm:hidden">{showFulfillment ? 'Hide' : 'Analytics'}</span>
           </button>
           <button
             onClick={handleAddTask}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+            className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base"
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             Add New Task
           </button>
         </div>
@@ -269,9 +270,9 @@ export default function TasksPage() {
           </div>
         ) : (
           tasks.map((task) => (
-            <div key={task.id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
+            <div key={task.id} className="bg-white rounded-lg shadow p-4 sm:p-6">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold text-gray-900">{task.task_name}</h3>
                     {task.require_image && (
@@ -326,18 +327,20 @@ export default function TasksPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex gap-2 w-full md:w-auto">
                   <button
                     onClick={() => handleEditTask(task)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors font-medium text-sm"
                   >
-                    <Edit className="w-5 h-5" />
+                    <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="sm:hidden">Edit</span>
                   </button>
                   <button
                     onClick={() => handleDeleteTask(task.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-medium text-sm"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="sm:hidden">Delete</span>
                   </button>
                 </div>
               </div>

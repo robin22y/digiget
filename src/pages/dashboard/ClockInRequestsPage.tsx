@@ -206,8 +206,8 @@ export default function ClockInRequestsPage() {
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">Fix Time Entries</h1>
         {pendingCount > 0 && (
           <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
@@ -223,10 +223,10 @@ export default function ClockInRequestsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow mb-6 p-4">
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`flex-1 sm:flex-none px-4 py-3 text-sm sm:text-base rounded-lg transition-colors font-medium ${
               filter === 'pending'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -236,7 +236,7 @@ export default function ClockInRequestsPage() {
           </button>
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`flex-1 sm:flex-none px-4 py-3 text-sm sm:text-base rounded-lg transition-colors font-medium ${
               filter === 'all'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -264,8 +264,8 @@ export default function ClockInRequestsPage() {
                   : 'border-l-4 border-red-500'
               }`}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
                     {request.status === 'pending' && <Clock className="w-5 h-5 text-orange-600" />}
                     {request.status === 'approved' && <CheckCircle className="w-5 h-5 text-green-600" />}
@@ -350,7 +350,7 @@ export default function ClockInRequestsPage() {
                 </div>
 
                 {request.status === 'pending' && (
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     <button
                       onClick={() =>
                         handleApprove(
@@ -360,16 +360,16 @@ export default function ClockInRequestsPage() {
                           request.request_longitude
                         )
                       }
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center gap-2"
+                      className="flex-1 sm:flex-none px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base flex items-center justify-center gap-2"
                     >
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       Approve
                     </button>
                     <button
                       onClick={() => handleReject(request.id, request.employee_id)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center gap-2"
+                      className="flex-1 sm:flex-none px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm sm:text-base flex items-center justify-center gap-2"
                     >
-                      <XCircle className="w-4 h-4" />
+                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       Reject
                     </button>
                   </div>

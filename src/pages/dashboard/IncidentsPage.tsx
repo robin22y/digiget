@@ -224,9 +224,9 @@ export default function IncidentsPage() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Incidents</h1>
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Report a Problem</h1>
         {unresolvedCount > 0 && (
           <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
             {unresolvedCount} unresolved
@@ -241,10 +241,10 @@ export default function IncidentsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow mb-6 p-4">
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`flex-1 sm:flex-none px-4 py-3 text-sm sm:text-base rounded-lg transition-colors font-medium ${
               filter === 'all'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -254,7 +254,7 @@ export default function IncidentsPage() {
           </button>
           <button
             onClick={() => setFilter('unresolved')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`flex-1 sm:flex-none px-4 py-3 text-sm sm:text-base rounded-lg transition-colors font-medium ${
               filter === 'unresolved'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -264,7 +264,7 @@ export default function IncidentsPage() {
           </button>
           <button
             onClick={() => setFilter('resolved')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`flex-1 sm:flex-none px-4 py-3 text-sm sm:text-base rounded-lg transition-colors font-medium ${
               filter === 'resolved'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

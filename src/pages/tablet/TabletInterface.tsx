@@ -279,7 +279,8 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
         }
         setView('workspace');
       } else {
-        await clockIn(currentEmployee.id);
+        // Show ready view instead of auto-clocking in
+        setView('ready');
       }
 
       setNewPin('');
@@ -531,14 +532,27 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
             <h2 className="text-2xl font-bold text-gray-900">
               Welcome, {currentEmployee.first_name}
             </h2>
-            <div className="flex items-center text-gray-600 mt-1">
-              <Clock className="w-4 h-4 mr-1" />
-              <span>
-                Clocked in: {new Date(currentEntry!.clock_in_time).toLocaleTimeString()} ({getElapsedTime()})
-                {clockInLocationName && (
-                  <span className="ml-2 text-gray-500">• {clockInLocationName}</span>
-                )}
-              </span>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 text-gray-700">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                  <span className="font-semibold">Clocked in:</span>
+                  <span>{new Date(currentEntry!.clock_in_time).toLocaleTimeString()}</span>
+                  <span className="text-blue-600 font-medium">• {getElapsedTime()} in shift</span>
+                </div>
+              </div>
+              {clockInLocationName && (
+                <div className="flex items-center gap-2 text-gray-700">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <div>
+                    <span className="font-semibold">Location:</span>
+                    <span className="ml-2">{clockInLocationName}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -555,13 +569,13 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
             </div>
           )}
 
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Staff Actions</h3>
+          <div className="bg-white rounded-lg shadow p-6 sm:p-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6 text-center">Staff Actions</h3>
             <div className="space-y-4">
               <button
                 onClick={handleClockOut}
                 disabled={loading}
-                className="w-full bg-red-600 text-white py-4 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-red-600 text-white py-5 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 {loading ? 'Processing...' : 'Clock Out'}
               </button>

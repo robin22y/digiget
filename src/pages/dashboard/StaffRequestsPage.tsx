@@ -146,8 +146,8 @@ export default function StaffRequestsPage() {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Staff Requests</h1>
           {pendingCount > 0 && (
@@ -156,12 +156,12 @@ export default function StaffRequestsPage() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 sm:flex-none px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
           >
             <option value="all">All Requests</option>
             <option value="pending">Pending</option>
@@ -193,8 +193,8 @@ export default function StaffRequestsPage() {
                   request.status === 'pending' ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <TypeIcon className="w-5 h-5 text-blue-600" />
                       <h3 className="font-semibold text-gray-900">{request.title}</h3>
@@ -215,7 +215,7 @@ export default function StaffRequestsPage() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600 mb-2">
                       <span>
                         <strong>Staff:</strong> {request.employees.first_name}{' '}
                         {request.employees.last_name}
@@ -244,7 +244,7 @@ export default function StaffRequestsPage() {
                   {request.status === 'pending' && (
                     <button
                       onClick={() => setSelectedRequest(request)}
-                      className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm"
+                      className="w-full md:w-auto px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
                     >
                       Respond
                     </button>
