@@ -473,18 +473,19 @@ export default function CustomerArea() {
         return;
       }
 
-      // Check 24-hour cooldown (unless relaxation granted)
-      const { data: lastRedemption } = await supabase
+      // Check 24-hour cooldown - one redemption per 24 hours
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentRedemptions } = await supabase
         .from('redemptions')
         .select('redeemed_at')
         .eq('customer_id', customer.id)
         .eq('shop_id', shop.id)
+        .gte('redeemed_at', twentyFourHoursAgo)
         .order('redeemed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
 
-      if (lastRedemption) {
-        // Check for relaxation granted in last hour
+      if (recentRedemptions && recentRedemptions.length > 0) {
+        // Check for relaxation granted in last hour that allows early redemption
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
         const { data: relaxation } = await supabase
           .from('relaxations')
@@ -496,11 +497,12 @@ export default function CustomerArea() {
           .maybeSingle();
 
         if (!relaxation) {
+          const lastRedemption = recentRedemptions[0];
           const cooldownRemaining = getCooldownRemaining(lastRedemption.redeemed_at, 24 * 60);
           if (cooldownRemaining > 0) {
             setMessage({
-              type: 'info',
-              text: `You can redeem again after ${formatCooldown(cooldownRemaining)}.`
+              type: 'error',
+              text: `Only one redemption allowed per 24 hours. You can redeem again after ${formatCooldown(cooldownRemaining)}.`
             });
             setRedeeming(false);
             return;

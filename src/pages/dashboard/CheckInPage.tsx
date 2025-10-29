@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Star, Calendar, Clock, User, Crown, ArrowLeft } from 'lucide-react';
+import { Star, Calendar, Clock, User, ArrowLeft } from 'lucide-react';
 
 interface Shop {
   id: string;
@@ -31,7 +31,6 @@ export default function CheckInPage() {
   const [recentCheckins, setRecentCheckins] = useState<any[]>([]);
   const [foundAppointment, setFoundAppointment] = useState<Appointment | null>(null);
   const [customerName, setCustomerName] = useState('');
-  const [classification, setClassification] = useState<'VIP' | 'Regular' | 'New' | ''>('');
   const [showAdditionalFields, setShowAdditionalFields] = useState(false);
 
   // Load shop data if not provided from outlet context
@@ -96,7 +95,6 @@ export default function CheckInPage() {
     setPhone(formatted);
     setFoundAppointment(null);
     setCustomerName('');
-    setClassification('');
     setShowAdditionalFields(false);
 
     // Check for appointment when phone number is entered
@@ -209,9 +207,6 @@ export default function CheckInPage() {
       if (customerName.trim()) {
         updateData.name = customerName.trim();
       }
-      if (classification) {
-        updateData.classification = classification;
-      }
 
       if (!customer) {
         // New customer
@@ -221,7 +216,6 @@ export default function CheckInPage() {
             shop_id: shopId!,
             phone: cleanPhone,
             name: customerName.trim() || null,
-            classification: classification || 'New',
             current_points: 1,
             lifetime_points: 1,
             total_visits: 1,
@@ -247,7 +241,7 @@ export default function CheckInPage() {
           text: `New customer! 1/${shop.points_needed} visits`,
         });
       } else {
-        // Existing customer - update name/classification if provided
+        // Existing customer - update name if provided
         if (Object.keys(updateData).length > 0) {
           await supabase.from('customers').update(updateData).eq('id', customer.id);
         }
@@ -302,7 +296,6 @@ export default function CheckInPage() {
 
       setPhone('');
       setCustomerName('');
-      setClassification('');
       setFoundAppointment(null);
       setShowAdditionalFields(false);
       if (shop) {
@@ -501,47 +494,6 @@ export default function CheckInPage() {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Classify Customer (Optional)
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setClassification('VIP')}
-                    className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
-                      classification === 'VIP'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-purple-300'
-                    }`}
-                  >
-                    <Crown className="w-4 h-4" />
-                    VIP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setClassification('Regular')}
-                    className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      classification === 'Regular'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
-                    }`}
-                  >
-                    Regular
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setClassification('New')}
-                    className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                      classification === 'New'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-green-300'
-                    }`}
-                  >
-                    New
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
