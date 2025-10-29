@@ -541,39 +541,7 @@ export default function CheckInPage() {
             />
           </div>
 
-          {/* Optional Fields */}
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={() => setShowAdditionalFields(!showAdditionalFields)}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              {showAdditionalFields ? '−' : '+'} Add Optional Details
-            </button>
-          </div>
 
-          {showAdditionalFields && (
-            <div className="space-y-4 mb-4 p-4 bg-gray-50 rounded-xl">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Enter customer name"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-                {foundAppointment?.customer_name && !customerName && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    Found in appointment: {foundAppointment.customer_name}
-                  </p>
-                )}
-              </div>
-
-            </div>
-          )}
 
           <button
             type="submit"
@@ -583,15 +551,59 @@ export default function CheckInPage() {
             {loading ? 'Adding Point...' : '✨ Add Point'}
           </button>
         </form>
+
+        {/* Profile Section - Shown when "Your Profile" is clicked */}
+        {showAdditionalFields && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Profile</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+                {foundAppointment?.customer_name && !customerName && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Found in appointment: {foundAppointment.customer_name}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* General Feedback Button - Always Visible */}
+      {/* Customer Actions Menu */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Customer Feedback</h2>
-            <p className="text-sm text-gray-500">Share your experience with us</p>
-          </div>
+        <h2 className="text-base font-semibold text-gray-900 mb-4">Customer Actions</h2>
+        <div className="space-y-3">
+          {/* Your Profile Button */}
+          <button
+            type="button"
+            onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+            className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+          >
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="font-medium text-gray-900">Your Profile</p>
+                <p className="text-xs text-gray-500">Add or update your details</p>
+              </div>
+            </div>
+            {showAdditionalFields ? (
+              <span className="text-blue-600 font-bold">−</span>
+            ) : (
+              <span className="text-gray-400 font-bold">+</span>
+            )}
+          </button>
+
+          {/* Feedback Button */}
           <button
             onClick={async () => {
               if (!phone.trim()) {
@@ -618,11 +630,16 @@ export default function CheckInPage() {
                 });
               }
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
-            title="Leave Feedback"
+            className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
           >
-            <MessageSquare className="w-4 h-4" />
-            Leave Feedback
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="font-medium text-gray-900">Leave Feedback</p>
+                <p className="text-xs text-gray-500">Share your experience with us</p>
+              </div>
+            </div>
+            <span className="text-blue-600">→</span>
           </button>
         </div>
       </div>
