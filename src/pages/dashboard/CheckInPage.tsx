@@ -565,16 +565,28 @@ export default function CheckInPage() {
       }
 
       // Update customer profile
-      const { error } = await supabase
-        .from('customers')
-        .update({
-          name: customerName.trim() || null,
-          email: customerEmail.trim() || null,
-          address: customerAddress.trim() || null,
-        })
-        .eq('id', existingCustomer.id);
+      const updateData: { name: string | null; email: string | null; address: string | null } = {
+        name: customerName.trim() || null,
+        email: customerEmail.trim() || null,
+        address: customerAddress.trim() || null,
+      };
 
-      if (error) throw error;
+      const { data: updatedCustomer, error } = await supabase
+        .from('customers')
+        .update(updateData)
+        .eq('id', existingCustomer.id)
+        .eq('shop_id', shopId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Profile update error:', error);
+        throw error;
+      }
+
+      if (!updatedCustomer) {
+        throw new Error('Failed to retrieve updated customer data');
+      }
 
       setMessage({
         type: 'success',

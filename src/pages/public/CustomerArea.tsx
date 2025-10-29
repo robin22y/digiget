@@ -621,29 +621,48 @@ export default function CustomerArea() {
 
   // Save profile updates
   const handleUpdateProfile = async () => {
-    if (!shopId || !customer) return;
+    if (!shopId || !customer) {
+      setMessage({ type: 'error', text: 'Customer session not found. Please try refreshing the page.' });
+      return;
+    }
 
     setLoading(true);
+    setMessage(null);
+    
     try {
+      const updateData: { name: string | null; email: string | null; address: string | null } = {
+        name: name.trim() || null,
+        email: email.trim() || null,
+        address: address.trim() || null,
+      };
+
       const { data: customerData, error } = await supabase
         .from('customers')
-        .update({
-          name: name.trim() || null,
-          email: email.trim() || null,
-          address: address.trim() || null,
-        })
+        .update(updateData)
         .eq('id', customer.id)
+        .eq('shop_id', shopId)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+
+      if (!customerData) {
+        throw new Error('Failed to retrieve updated customer data');
+      }
       
       setCustomer(customerData);
       saveSession(customerData);
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       setEditingProfile(false);
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      console.error('Profile update error:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Failed to update profile. Please try again.' 
+      });
     } finally {
       setLoading(false);
     }
