@@ -33,6 +33,7 @@ import SuperAdminDashboard from './pages/super-admin/Dashboard';
 import ManageShops from './pages/super-admin/ManageShops';
 import ShopDetail from './pages/super-admin/ShopDetail';
 import QRManagement from './pages/super-admin/QRManagement';
+import AllDeals from './pages/super-admin/AllDeals';
 import Reports from './pages/super-admin/Reports';
 import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
@@ -98,6 +99,7 @@ function App() {
             <Route path="shops" element={<ManageShops />} />
             <Route path="shops/:id" element={<ShopDetail />} />
             <Route path="qr-management" element={<QRManagement />} />
+            <Route path="all-deals" element={<AllDeals />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notices" element={<Notices />} />
             <Route path="settings" element={<SuperAdminSettings />} />
