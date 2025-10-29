@@ -60,17 +60,16 @@ export default function ManageShops() {
           .select('id, shop_name, owner_name, owner_email, subscription_status, created_at, updated_at')
           .order('created_at', { ascending: false });
           
-          if (!fallbackError) {
-            // Add null for missing columns
-            const shopsWithDefaults = (fallbackData || []).map(shop => ({
-              ...shop,
-              postcode: null,
-              business_category: null,
-              updated_at: shop.updated_at || shop.created_at
-            }));
-            setShops(shopsWithDefaults);
-            return;
-          }
+        if (!fallbackError) {
+          // Add null for missing columns
+          const shopsWithDefaults = (fallbackData || []).map(shop => ({
+            ...shop,
+            postcode: null,
+            business_category: null,
+            updated_at: shop.updated_at || shop.created_at
+          }));
+          setShops(shopsWithDefaults);
+          return;
         }
         throw error;
       }
