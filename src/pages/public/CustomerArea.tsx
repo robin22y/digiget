@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { getDistance, getDeviceType, getCooldownRemaining, formatCooldown } from '../../utils/customerAreaHelpers';
 import { getCurrentPosition, getAreaName } from '../../utils/geolocation';
-import { Star, MapPin, Gift, AlertCircle, X, CheckCircle, Cookie, Zap } from 'lucide-react';
+import { Star, MapPin, Gift, AlertCircle, X, CheckCircle, Cookie, Zap, LogOut, Edit2, Save } from 'lucide-react';
 
 interface Shop {
   id: string;
@@ -48,13 +48,17 @@ export default function CustomerArea() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [showAdditionalFields, setShowAdditionalFields] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
   const [showCookieBanner, setShowCookieBanner] = useState(false);
 
-  // Load shop on mount
+  // Load shop on mount and check for saved customer session
   useEffect(() => {
     if (!shopId) {
       setMessage({ type: 'error', text: 'Invalid shop link. Please scan the QR code again.' });
@@ -65,7 +69,61 @@ export default function CustomerArea() {
     loadShop();
     loadOffers();
     checkCookieConsent();
+    checkSavedSession();
   }, [shopId]);
+
+  // Check for saved customer session in localStorage
+  const checkSavedSession = async () => {
+    if (!shopId) return;
+    
+    const savedSession = localStorage.getItem(`customer_session_${shopId}`);
+    if (savedSession) {
+      try {
+        const sessionData = JSON.parse(savedSession);
+        const { data: customerData, error } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('shop_id', shopId)
+          .eq('id', sessionData.customerId)
+          .maybeSingle();
+
+        if (!error && customerData) {
+          setCustomer(customerData);
+          setName(customerData.name || '');
+          setEmail(customerData.email || '');
+          setAddress(customerData.address || '');
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error loading saved session:', error);
+      }
+    }
+    setLoading(false);
+  };
+
+  // Save customer session to localStorage
+  const saveSession = (customerData: Customer) => {
+    if (!shopId) return;
+    localStorage.setItem(`customer_session_${shopId}`, JSON.stringify({
+      customerId: customerData.id,
+      phone: customerData.phone,
+      timestamp: Date.now()
+    }));
+  };
+
+  // Logout - clear session
+  const handleLogout = () => {
+    if (!shopId) return;
+    localStorage.removeItem(`customer_session_${shopId}`);
+    setCustomer(null);
+    setPhone('');
+    setName('');
+    setEmail('');
+    setAddress('');
+    setEditingProfile(false);
+    setMessage({ type: 'info', text: 'Logged out successfully.' });
+  };
 
   // Check if cookies consent is stored
   const checkCookieConsent = () => {
@@ -155,10 +213,10 @@ export default function CustomerArea() {
         setName(customerData.name || '');
         setEmail(customerData.email || '');
         setAddress(customerData.address || '');
+        saveSession(customerData);
       } else {
         // New customer - allow them to add details
         setCustomer(null);
-        setShowAdditionalFields(true);
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
@@ -225,8 +283,9 @@ export default function CustomerArea() {
       }
 
       setCustomer(customerData);
+      saveSession(customerData);
       setMessage({ type: 'success', text: 'Profile saved successfully!' });
-      setShowAdditionalFields(false);
+      setEditingProfile(false);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     } finally {
@@ -383,6 +442,11 @@ export default function CustomerArea() {
             text: `Point earned! You have ${newPoints} points. ${pointsNeeded} more to go! 🎉`
           });
         }
+        
+        // Show rating modal after successful check-in
+        setTimeout(() => {
+          setShowRatingModal(true);
+        }, 1500);
       } else {
         setMessage({
           type: 'info',
@@ -483,10 +547,102 @@ export default function CustomerArea() {
         type: 'success',
         text: `🎁 Reward redeemed! ${shop.reward_description} Show this to staff to claim.`
       });
+      
+      // Show rating modal after successful redemption
+      setTimeout(() => {
+        setShowRatingModal(true);
+      }, 1500);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     } finally {
       setRedeeming(false);
+    }
+  };
+
+  // Handle rating submission
+  const handleSubmitRating = async () => {
+    if (!shop || !customer || rating === 0) {
+      setMessage({ type: 'error', text: 'Please select a rating (1-5 stars).' });
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      // Check if customer has already rated in last 24 hours
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentRating } = await supabase
+        .from('customer_ratings')
+        .select('*')
+        .eq('customer_id', customer.id)
+        .eq('shop_id', shop.id)
+        .gte('created_at', oneDayAgo)
+        .maybeSingle();
+
+      if (recentRating) {
+        setMessage({
+          type: 'info',
+          text: 'You have already submitted a rating today. Thank you for your feedback!'
+        });
+        setShowRatingModal(false);
+        setSubmittingRating(false);
+        return;
+      }
+
+      const deviceType = getDeviceType();
+      
+      const { error } = await supabase
+        .from('customer_ratings')
+        .insert({
+          shop_id: shop.id,
+          customer_id: customer.id,
+          rating: rating,
+          comment: ratingComment.trim() || null,
+          device_type: deviceType,
+        });
+
+      if (error) throw error;
+
+      setMessage({
+        type: 'success',
+        text: '⭐ Thanks for your feedback!'
+      });
+      setShowRatingModal(false);
+      setRating(0);
+      setRatingComment('');
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  // Save profile updates
+  const handleUpdateProfile = async () => {
+    if (!shopId || !customer) return;
+
+    setLoading(true);
+    try {
+      const { data: customerData, error } = await supabase
+        .from('customers')
+        .update({
+          name: name.trim() || null,
+          email: email.trim() || null,
+          address: address.trim() || null,
+        })
+        .eq('id', customer.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setCustomer(customerData);
+      saveSession(customerData);
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setEditingProfile(false);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -592,65 +748,53 @@ export default function CustomerArea() {
               </button>
             </form>
 
-            {/* Additional Fields Toggle */}
-            {!showAdditionalFields && (
-              <button
-                type="button"
-                onClick={() => setShowAdditionalFields(true)}
-                className="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium text-center w-full"
-              >
-                + Add Optional Details
-              </button>
-            )}
-
-            {/* Additional Fields */}
-            {showAdditionalFields && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-xl space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your.email@example.com"
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Address (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Your address"
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  />
-                </div>
-                <button
-                  onClick={handleSaveCustomer}
-                  disabled={loading}
-                  className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition-colors font-semibold disabled:opacity-50"
-                >
-                  Save Profile
-                </button>
+            {/* Optional Details - Always visible for new customers */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-xl space-y-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Optional Details</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
               </div>
-            )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your.email@example.com"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Your address"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <button
+                onClick={handleSaveCustomer}
+                disabled={loading}
+                className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition-colors font-semibold disabled:opacity-50"
+              >
+                Save Profile
+              </button>
+            </div>
           </div>
         </div>
 
@@ -696,17 +840,110 @@ export default function CustomerArea() {
       )}
 
       <div className="max-w-2xl mx-auto p-4">
-        {/* Shop Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-4 text-center">
-          {shop.logo_url && (
-            <img
-              src={shop.logo_url}
-              alt={shop.shop_name}
-              className="h-16 w-16 mx-auto mb-3 rounded-full object-cover"
-            />
-          )}
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{shop.shop_name}</h1>
-          <p className="text-gray-600">Hi {customer.name || 'there'}! 👋</p>
+        {/* Shop Header with Logout */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1 text-center">
+              {shop.logo_url && (
+                <img
+                  src={shop.logo_url}
+                  alt={shop.shop_name}
+                  className="h-16 w-16 mx-auto mb-3 rounded-full object-cover"
+                />
+              )}
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">{shop.shop_name}</h1>
+              <p className="text-gray-600">Hi {customer.name || 'there'}! 👋</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+
+          {/* Profile Details */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Profile</h3>
+              {!editingProfile && (
+                <button
+                  onClick={() => setEditingProfile(true)}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </button>
+              )}
+            </div>
+            
+            {editingProfile ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email (Optional)</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your.email@example.com"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Address (Optional)</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Your address"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={loading}
+                    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingProfile(false);
+                      setName(customer.name || '');
+                      setEmail(customer.email || '');
+                      setAddress(customer.address || '');
+                    }}
+                    className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 text-sm text-gray-600">
+                {customer.name && <p>Name: {customer.name}</p>}
+                {customer.email && <p>Email: {customer.email}</p>}
+                {customer.address && <p>Address: {customer.address}</p>}
+                {!customer.name && !customer.email && !customer.address && (
+                  <p className="text-gray-400 italic">No profile details added yet. Click Edit to add them.</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Message */}
@@ -824,18 +1061,83 @@ export default function CustomerArea() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-6 px-4 mt-8">
-        <div className="max-w-4xl mx-auto text-center text-sm text-gray-600 space-y-2">
-          <div className="flex flex-wrap justify-center gap-4">
-            <a href="/privacy-policy" className="hover:text-blue-600">Privacy Policy</a>
-            <span>•</span>
-            <a href="/gdpr" className="hover:text-blue-600">GDPR Compliance</a>
+        {/* Footer */}
+        <footer className="bg-white border-t border-gray-200 py-6 px-4 mt-8">
+          <div className="max-w-4xl mx-auto text-center text-sm text-gray-600 space-y-2">
+            <div className="flex flex-wrap justify-center gap-4">
+              <a href="/privacy-policy" className="hover:text-blue-600">Privacy Policy</a>
+              <span>•</span>
+              <a href="/gdpr" className="hover:text-blue-600">GDPR Compliance</a>
+            </div>
+            <p className="text-xs">© {new Date().getFullYear()} {shop.shop_name}. All rights reserved.</p>
           </div>
-          <p className="text-xs">© {new Date().getFullYear()} {shop.shop_name}. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
-  );
-}
+        </footer>
+
+        {/* Rating Modal */}
+        {showRatingModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Rate Your Experience</h2>
+                <button
+                  onClick={() => {
+                    setShowRatingModal(false);
+                    setRating(0);
+                    setRatingComment('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-gray-600 mb-4">How would you rate your experience?</p>
+
+              {/* Star Rating */}
+              <div className="flex justify-center gap-2 mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className="focus:outline-none"
+                  >
+                    <Star
+                      className={`w-10 h-10 ${
+                        star <= rating
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-gray-300'
+                      } transition-colors`}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              {/* Comment Box */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Comment (Optional)
+                </label>
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Tell us about your experience..."
+                  rows={3}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                onClick={handleSubmitRating}
+                disabled={submittingRating || rating === 0}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingRating ? 'Submitting...' : 'Submit Rating'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
