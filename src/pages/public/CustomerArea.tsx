@@ -861,7 +861,9 @@ export default function CustomerArea() {
               {shop.owner_address && (
                 <p className="text-sm text-gray-500 mb-2">{shop.owner_address}</p>
               )}
-              <p className="text-gray-600">Hi {customer.name || 'there'}! 👋</p>
+              <p className="text-gray-600">
+                {customer.name ? `Hi ${customer.name}! 👋` : 'Hello 👋'}
+              </p>
             </div>
             <button
               onClick={handleLogout}
