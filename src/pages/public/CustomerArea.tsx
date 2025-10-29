@@ -13,6 +13,7 @@ interface Shop {
   reward_description: string;
   latitude?: number;
   longitude?: number;
+  owner_address?: string;
 }
 
 interface Customer {
@@ -143,7 +144,7 @@ export default function CustomerArea() {
     try {
       const { data, error } = await supabase
         .from('shops')
-        .select('id, shop_name, logo_url, points_needed, reward_description, latitude, longitude')
+        .select('id, shop_name, logo_url, points_needed, reward_description, latitude, longitude, owner_address')
         .eq('id', shopId)
         .single();
 
@@ -439,7 +440,7 @@ export default function CustomerArea() {
         } else {
           setMessage({
             type: 'success',
-            text: `Point earned! You have ${newPoints} points. ${pointsNeeded} more to go! 🎉`
+            text: `You have ${newPoints} points 🎉 Collect ${pointsNeeded} more for your ${shop.reward_description}!`
           });
         }
         
@@ -705,6 +706,9 @@ export default function CustomerArea() {
                 />
               )}
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{shop.shop_name}</h1>
+              {shop.owner_address && (
+                <p className="text-sm text-gray-500 mb-2">{shop.owner_address}</p>
+              )}
               <p className="text-gray-600">Welcome! Enter your phone number to get started.</p>
             </div>
 
@@ -852,6 +856,9 @@ export default function CustomerArea() {
                 />
               )}
               <h1 className="text-2xl font-bold text-gray-900 mb-1">{shop.shop_name}</h1>
+              {shop.owner_address && (
+                <p className="text-sm text-gray-500 mb-2">{shop.owner_address}</p>
+              )}
               <p className="text-gray-600">Hi {customer.name || 'there'}! 👋</p>
             </div>
             <button
@@ -989,7 +996,7 @@ export default function CustomerArea() {
             </p>
             {pointsNeeded > 0 ? (
               <p className="text-blue-100">
-                {pointsNeeded} more point{pointsNeeded !== 1 ? 's' : ''} needed for your reward!
+                Collect {pointsNeeded} more for your {shop.reward_description}!
               </p>
             ) : (
               <p className="text-yellow-300 font-semibold">🎁 Reward Ready!</p>

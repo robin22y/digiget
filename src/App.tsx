@@ -58,6 +58,10 @@ function App() {
 
           <Route path="/:shopName/:staffName" element={<StaffPortal />} />
 
+          {/* Short check-in routes */}
+          <Route path="/c/:shopId" element={<CheckInPage />} />
+          <Route path="/checkin/:shopId" element={<CheckInPage />} />
+          
           {/* Public check-in page - accessible without authentication */}
           <Route path="/dashboard/:shopId/checkin" element={<CheckInPage />} />
 

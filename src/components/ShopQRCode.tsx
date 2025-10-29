@@ -21,7 +21,8 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   const [generatingBranded, setGeneratingBranded] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  const defaultCheckInUrl = `${window.location.origin}/dashboard/${shopId}/checkin`;
+  // Use shorter URL for QR codes: /c/:shopId
+  const defaultCheckInUrl = `${window.location.origin}/c/${shopId}`;
 
   // Load or generate QR URL
   useEffect(() => {

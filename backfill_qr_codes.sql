@@ -8,11 +8,12 @@
 -- Note: The component will automatically correct the domain when accessed,
 -- but setting it here ensures the URL structure is correct
 -- Replace 'https://digiget.uk' with your actual production domain if different
+-- Update to use shorter URL format: /c/:shopId
 UPDATE shops
-SET qr_url = 'https://digiget.uk/dashboard/' || id::text || '/checkin',
+SET qr_url = 'https://digiget.uk/c/' || id::text,
     qr_code_active = COALESCE(qr_code_active, true),
     updated_at = NOW()
-WHERE qr_url IS NULL OR qr_url = '';
+WHERE qr_url IS NULL OR qr_url = '' OR qr_url LIKE '%/dashboard/%/checkin';
 
 -- Verify the update
 SELECT 
