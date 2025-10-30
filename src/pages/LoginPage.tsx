@@ -106,16 +106,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-md w-full animate-fade-in">
         {/* Logo/Icon */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-apple-blue to-apple-indigo rounded-ios flex items-center justify-center shadow-apple">
               <span className="text-3xl">🔐</span>
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
             Welcome Back
           </h1>
           <p className="text-gray-600 text-lg">Sign in to your DigiGet account</p>
@@ -138,7 +138,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+              className="input-ios"
             />
           </div>
 
@@ -152,14 +152,14 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+              className="input-ios"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+            className="w-full btn-ios btn-ios-primary"
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
@@ -169,7 +169,7 @@ export default function LoginPage() {
           <p className="text-gray-600 mb-3">
             Don't have an account?
           </p>
-          <Link to="/signup" className="inline-block px-6 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:from-blue-100 hover:to-indigo-100 font-bold rounded-xl transition-all duration-300 border-2 border-blue-200 hover:border-blue-300">
+          <Link to="/signup" className="inline-block px-6 py-3 bg-gradient-to-r from-apple-blue/10 to-apple-indigo/10 text-apple-blue hover:from-apple-blue/20 hover:to-apple-indigo/20 font-bold rounded-ios transition-all duration-300 border-2 border-apple-blue/30 hover:border-apple-blue/50">
             Start Free Trial
           </Link>
         </div>

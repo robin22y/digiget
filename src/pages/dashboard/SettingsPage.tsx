@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Save, CheckCircle } from 'lucide-react';
 
@@ -24,7 +24,6 @@ interface Shop {
 
 export default function SettingsPage() {
   const { shopId } = useParams();
-  const { shop: contextShop } = useOutletContext<{ shop: any }>();
   const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'features' | 'subscription'>('business');
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,9 +42,11 @@ export default function SettingsPage() {
   const [rewardDescription, setRewardDescription] = useState('');
 
   const [diaryEnabled, setDiaryEnabled] = useState(false);
-  const [autoLogoutHours, setAutoLogoutHours] = useState(13);
+  const [autoLogoutHours, setAutoLogoutHours] = useState(12);
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
+  const [openTime, setOpenTime] = useState('');
+  const [closeTime, setCloseTime] = useState('');
 
   // Tier criteria settings
   const [tierAutoUpgradeEnabled, setTierAutoUpgradeEnabled] = useState(false);
@@ -55,6 +56,56 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadShop();
+    
+    // Set up real-time subscription for shop settings
+    const channel = supabase
+      .channel(`shop_settings_${shopId}`)
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'shops', 
+          filter: `id=eq.${shopId}` 
+        }, 
+        (payload) => {
+          // Update local state when shop is updated from another device
+          const updatedShop = payload.new as any;
+          setShop(updatedShop);
+          
+          // Update all form fields to reflect changes
+          setShopName(updatedShop.shop_name);
+          setOwnerName(updatedShop.owner_name);
+          setBusinessCategory(updatedShop.business_category);
+          
+          setLoyaltyEnabled(updatedShop.loyalty_enabled);
+          setPointsType(updatedShop.points_type);
+          setPointsNeeded(updatedShop.points_needed);
+          setRewardType(updatedShop.reward_type);
+          setRewardValue(updatedShop.reward_value?.toString() || '');
+          setRewardDescription(updatedShop.reward_description);
+          
+          setDiaryEnabled(updatedShop.diary_enabled);
+          setAutoLogoutHours(updatedShop.auto_logout_hours || 12);
+          setLatitude(updatedShop.latitude?.toString() || '');
+          setLongitude(updatedShop.longitude?.toString() || '');
+          setOpenTime(updatedShop.open_time || '');
+          setCloseTime(updatedShop.close_time || '');
+          
+          setTierAutoUpgradeEnabled(updatedShop.tier_auto_upgrade_enabled || false);
+          setTierVipThreshold(updatedShop.tier_vip_threshold?.toString() || '');
+          setTierSuperStarThreshold(updatedShop.tier_super_star_threshold?.toString() || '');
+          setTierRoyalThreshold(updatedShop.tier_royal_threshold?.toString() || '');
+          
+          // Show notification that settings were updated
+          setMessage({ type: 'success', text: 'Settings updated from another device' });
+          setTimeout(() => setMessage(null), 3000);
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [shopId]);
 
   const loadShop = async () => {
@@ -80,9 +131,11 @@ export default function SettingsPage() {
       setRewardDescription(data.reward_description);
 
       setDiaryEnabled(data.diary_enabled);
-      setAutoLogoutHours(data.auto_logout_hours || 13);
+      setAutoLogoutHours(data.auto_logout_hours || 12);
       setLatitude(data.latitude?.toString() || '');
       setLongitude(data.longitude?.toString() || '');
+      setOpenTime(data.open_time || '');
+      setCloseTime(data.close_time || '');
 
       // Load tier criteria
       setTierAutoUpgradeEnabled(data.tier_auto_upgrade_enabled || false);
@@ -165,6 +218,8 @@ export default function SettingsPage() {
           auto_logout_hours: autoLogoutHours,
           latitude: latitude ? parseFloat(latitude) : null,
           longitude: longitude ? parseFloat(longitude) : null,
+          open_time: openTime || null,
+          close_time: closeTime || null,
         })
         .eq('id', shopId);
 
@@ -174,6 +229,47 @@ export default function SettingsPage() {
       setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDowngradeToBasic = async () => {
+    if (!shopId) return;
+    if (!confirm('Are you sure you want to downgrade to Basic? You will lose Pro features.')) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase
+        .from('shops')
+        .update({ plan_type: 'basic' })
+        .eq('id', shopId);
+      if (error) throw error;
+      setMessage({ type: 'success', text: 'Plan downgraded to Basic successfully.' });
+      setShop((prev) => prev ? { ...prev, plan_type: 'basic' } as any : prev);
+      setTimeout(() => setMessage(null), 3000);
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Failed to downgrade plan.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpgradeToPro = async () => {
+    if (!shopId) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase
+        .from('shops')
+        .update({ plan_type: 'pro' })
+        .eq('id', shopId);
+      if (error) throw error;
+      setMessage({ type: 'success', text: 'Plan upgraded to Pro successfully.' });
+      setShop((prev) => prev ? { ...prev, plan_type: 'pro' } as any : prev);
+      setTimeout(() => setMessage(null), 3000);
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Failed to upgrade plan.' });
     } finally {
       setSaving(false);
     }
@@ -530,8 +626,8 @@ export default function SettingsPage() {
                   <p className="text-yellow-800 text-sm mb-3">
                     Get access to staff management, task checklists, payroll tracking, and incident reports.
                   </p>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold">
-                    Upgrade to Pro - £9.99/month
+                  <button onClick={handleUpgradeToPro} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold disabled:opacity-50">
+                    {saving ? 'Processing…' : 'Upgrade to Pro - £9.99/month'}
                   </button>
                 </div>
               )}
@@ -562,12 +658,33 @@ export default function SettingsPage() {
                       min="1"
                       max="24"
                       value={autoLogoutHours}
-                      onChange={(e) => setAutoLogoutHours(parseInt(e.target.value) || 13)}
+                      onChange={(e) => setAutoLogoutHours(parseInt(e.target.value) || 12)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <p className="text-sm text-gray-500 mt-1">
-                      Staff will be automatically clocked out after this duration. Default: 13 hours
+                      Staff will be automatically clocked out after this duration. Default: 12 hours
                     </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Opening Time</label>
+                      <input
+                        type="time"
+                        value={openTime}
+                        onChange={(e) => setOpenTime(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Closing Time</label>
+                      <input
+                        type="time"
+                        value={closeTime}
+                        onChange={(e) => setCloseTime(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -701,8 +818,8 @@ export default function SettingsPage() {
                       <li>• Incident reports</li>
                     </ul>
                   </div>
-                  <button className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-                    Downgrade to Basic
+                  <button onClick={handleDowngradeToBasic} disabled={saving} className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50">
+                    {saving ? 'Processing…' : 'Downgrade to Basic'}
                   </button>
                 </div>
               )}

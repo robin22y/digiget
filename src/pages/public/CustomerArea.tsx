@@ -612,35 +612,14 @@ export default function CustomerArea() {
     setMessage(null);
 
     try {
-      // New: Check daily max points limit (2/day by default per phone)
-      const now = new Date();
-      const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const { count, error: countError } = await supabase
-        .from('loyalty_transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('shop_id', shop.id)
-        .eq('customer_id', customer.id)
-        .eq('transaction_type', 'point_added')
-        .gte('created_at', dayAgo.toISOString());
-      if (countError) {
-        setMessage({ type: 'error', text: 'Unable to check daily limit. Try again later.' });
-        setCheckingIn(false);
-        return;
-      }
-      if (count && count >= 2) {
+      // Get current location (enforced)
+      const location = await getCurrentPosition();
+
+      if (!location || !shop.latitude || !shop.longitude) {
         setMessage({
           type: 'error',
-          text: 'You can only earn 2 points per day at this shop. Please try again tomorrow.'
+          text: 'Location is required to check in. Please enable location services and try again.'
         });
-        setCheckingIn(false);
-        return;
-      }
-      // Get current location
-      const location = await getCurrentPosition();
-      
-      if (!location || !shop.latitude || !shop.longitude) {
-        // Allow check-in without location, but mark as pending
-        await processCheckIn(null, 'pending', null);
         setCheckingIn(false);
         return;
       }
@@ -652,23 +631,21 @@ export default function CustomerArea() {
         shop.latitude,
         shop.longitude
       );
-      
       // Convert to kilometers
       const distanceKm = distance / 1000;
-      
-      // Check geofencing: customer must be within 10km to claim points
-      if (distanceKm > 10) {
-        const locationName = await getAreaName(location.latitude, location.longitude);
-        setMessage({
-          type: 'error',
-          text: `You are ${distanceKm.toFixed(1)} km away from the shop (in ${locationName}). You must be within 10 km to claim points.`
-        });
-        setCheckingIn(false);
-        return;
-      }
 
-      // Get location name
+      // Get location name (area/road) for shop visibility
       const locationName = await getAreaName(location.latitude, location.longitude);
+
+      // Optionally, store last access location for the customer (best-effort, ignore errors)
+      try {
+        await supabase
+          .from('customers')
+          .update({
+            last_visit_at: new Date().toISOString(),
+          })
+          .eq('id', customer.id);
+      } catch (_) {}
 
       // Check 30-minute cooldown (unless relaxation granted)
       const { data: lastCheckIn } = await supabase
@@ -705,10 +682,9 @@ export default function CustomerArea() {
         }
       }
 
-      // Determine status based on distance (within 200m = approved, otherwise pending)
-      // But since we already checked 10km limit, approved if within 10km
+      // Determine status
       const status = distance <= 200 ? 'approved' : 'pending';
-      
+
       await processCheckIn(location, status, locationName, distance);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
@@ -1406,6 +1382,13 @@ export default function CustomerArea() {
             <li className="text-gray-400 text-center py-4">No check-ins found</li>
           </ul>
         </div>
+
+        {/* Show current detected location banner to the customer when available */}
+        {customer && locationName && (
+          <div className="w-full text-center text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg py-2 px-3">
+            You appear to be in <b>{locationName}</b>
+          </div>
+        )}
 
         <div className="h-16" />
       </div>

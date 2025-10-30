@@ -226,16 +226,16 @@ export default function SignupPage() {
 
   if (step === 'category') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-3xl w-full animate-fade-in">
           {/* Hero Section */}
           <div className="text-center mb-10">
             <div className="mb-4 flex justify-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-4xl">🚀</span>
-              </div>
+            <div className="w-20 h-20 bg-gradient-to-br from-apple-blue to-apple-indigo rounded-ios flex items-center justify-center shadow-apple-lg">
+              <span className="text-4xl">🚀</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            </div>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
               Welcome to DigiGet
             </h1>
             <p className="text-lg text-gray-600 mb-2">Transform your business with digital customer loyalty</p>
@@ -250,9 +250,9 @@ export default function SignupPage() {
                 <button
                   key={category.value}
                   onClick={() => handleCategorySelect(category.value)}
-                  className="group text-left px-6 py-4 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1"
+                  className="group text-left px-6 py-4 border-2 border-gray-200 rounded-ios hover:border-apple-blue hover:bg-gradient-to-r hover:from-apple-blue/5 hover:to-apple-indigo/5 transition-all duration-300 hover:shadow-apple hover-lift"
                 >
-                  <span className="text-base font-medium text-gray-800 group-hover:text-blue-600 transition-colors">
+                  <span className="text-base font-medium text-gray-800 group-hover:text-apple-blue transition-colors">
                     {category.label}
                   </span>
                 </button>
@@ -484,10 +484,10 @@ export default function SignupPage() {
 
   if (step === 'details') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 max-w-md w-full">
           <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
               Your Details
             </h1>
             <p className="text-gray-600">Let's set up your account</p>
@@ -510,7 +510,7 @@ export default function SignupPage() {
                 placeholder="John Doe"
                 value={signupData.ownerName || ''}
                 onChange={(e) => setSignupData({ ...signupData, ownerName: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                className="input-ios"
               />
             </div>
 
@@ -524,7 +524,7 @@ export default function SignupPage() {
                 placeholder="My Awesome Shop"
                 value={signupData.shopName || ''}
                 onChange={(e) => setSignupData({ ...signupData, shopName: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                className="input-ios"
               />
             </div>
 
@@ -538,7 +538,7 @@ export default function SignupPage() {
                 placeholder="you@example.com"
                 value={signupData.email || ''}
                 onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                className="input-ios"
               />
             </div>
 
@@ -553,7 +553,7 @@ export default function SignupPage() {
                 placeholder="••••••••"
                 value={signupData.password || ''}
                 onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                className="input-ios"
               />
               <p className="text-xs text-gray-500 mt-2">Minimum 8 characters</p>
             </div>
@@ -562,13 +562,13 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+                className="w-full btn-ios btn-ios-primary"
               >
                 {loading ? 'Creating Account...' : 'Create Account & Start Free Trial'}
               </button>
             </div>
 
-            <div className="text-center text-sm text-gray-600 bg-blue-50 py-3 rounded-xl border-2 border-blue-100">
+            <div className="text-center text-sm text-gray-600 bg-apple-blue/5 py-3 rounded-ios border-2 border-apple-blue/20">
               ⭐ 90 days free • No card required
             </div>
           </form>

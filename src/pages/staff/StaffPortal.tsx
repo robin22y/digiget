@@ -17,6 +17,7 @@ interface Employee {
   last_name: string;
   role: string;
   photo_url: string | null;
+  is_field_staff?: boolean; // Added for field staff check
 }
 
 interface Shop {
@@ -26,6 +27,8 @@ interface Shop {
   auto_logout_hours: number;
   latitude: number | null;
   longitude: number | null;
+  open_time?: string | null; // 'HH:MM'
+  close_time?: string | null; // 'HH:MM'
 }
 
 interface ClockEntry {
@@ -55,6 +58,14 @@ export default function StaffPortal() {
   useEffect(() => {
     loadShopAndEmployee();
   }, [shopName, staffName]);
+
+  // Periodically check for auto clock-out
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkCurrentClockEntry();
+    }, 5 * 60 * 1000); // every 5 minutes
+    return () => clearInterval(interval);
+  }, [employee?.id, shop?.id]);
 
   useEffect(() => {
     const updateLocation = async () => {
@@ -96,14 +107,14 @@ export default function StaffPortal() {
       // Try exact match first, then partial match
       let { data: shops, error: shopError } = await supabase
         .from('shops')
-        .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude')
+        .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
         .ilike('shop_name', normalizedShopName || '');
 
       // If no exact match, try partial match
       if ((!shops || shops.length === 0) && normalizedShopName) {
         const { data: partialShops, error: partialError } = await supabase
           .from('shops')
-          .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude')
+          .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
           .ilike('shop_name', `%${normalizedShopName}%`);
         
         if (!partialError && partialShops && partialShops.length > 0) {
@@ -181,7 +192,7 @@ export default function StaffPortal() {
       // Get full shop data including auto_logout_hours
       const { data: fullShopData } = await supabase
         .from('shops')
-        .select('auto_logout_hours, owner_name')
+        .select('auto_logout_hours, owner_name, open_time, close_time')
         .eq('id', shopData.id)
         .single();
 
@@ -190,6 +201,8 @@ export default function StaffPortal() {
         ...shopData,
         owner_name: fullShopData?.owner_name || shopData.owner_name,
         auto_logout_hours: fullShopData?.auto_logout_hours || 13,
+        open_time: fullShopData?.open_time || null,
+        close_time: fullShopData?.close_time || null,
       });
     } catch (err) {
       console.error('Error loading data:', err);
@@ -253,10 +266,15 @@ export default function StaffPortal() {
     if (data && shop && !autoLogoutChecked) {
       const clockInTime = new Date(data.clock_in_time);
       const now = new Date();
-      const hoursElapsed = (now.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+      const limitHours = shop.auto_logout_hours || 12; // default 12 hours
+      const limitByDuration = new Date(clockInTime.getTime() + (limitHours * 60 * 60 * 1000));
+      const closing = parseTodayTime(shop.close_time);
 
-      if (hoursElapsed >= shop.auto_logout_hours) {
-        await autoClockOut(data);
+      const cutoff = closing ? new Date(Math.min(limitByDuration.getTime(), closing.getTime())) : limitByDuration;
+      const hoursWorkedAtCutoff = (cutoff.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+
+      if (now >= cutoff) {
+        await autoClockOut(data, hoursWorkedAtCutoff);
         setCurrentClockEntry(null);
         setAutoLogoutChecked(true);
         return;
@@ -266,17 +284,24 @@ export default function StaffPortal() {
     setCurrentClockEntry(data);
   };
 
-  const autoClockOut = async (entry: ClockEntry) => {
+  const autoClockOut = async (entry: ClockEntry, hours?: number) => {
     try {
       const clockInTime = new Date(entry.clock_in_time);
-      const autoClockOutTime = new Date(clockInTime.getTime() + (shop!.auto_logout_hours * 60 * 60 * 1000));
-      const hoursWorked = shop!.auto_logout_hours;
+      let clockOutTime: Date;
+      let hrs = hours;
+      if (!hrs) {
+        const limitHours = shop!.auto_logout_hours || 12;
+        clockOutTime = new Date(clockInTime.getTime() + (limitHours * 60 * 60 * 1000));
+        hrs = limitHours;
+      } else {
+        clockOutTime = new Date(clockInTime.getTime() + (hrs * 60 * 60 * 1000));
+      }
 
       await supabase
         .from('clock_entries')
         .update({
-          clock_out_time: autoClockOutTime.toISOString(),
-          hours_worked: hoursWorked,
+          clock_out_time: clockOutTime.toISOString(),
+          hours_worked: hrs,
         })
         .eq('id', entry.id);
     } catch (err) {
@@ -672,9 +697,30 @@ function StaffClockView({
 }) {
   const [loading, setLoading] = useState(false);
 
+  function parseTodayTime(hhmm?: string | null): Date | null {
+    if (!hhmm) return null;
+    const [hh, mm] = hhmm.split(':');
+    if (hh === undefined || mm === undefined) return null;
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(hh), parseInt(mm), 0, 0);
+    return d;
+  }
+
   const handleClockIn = async () => {
+    if (!employee || !shop) return;
+
     setLoading(true);
     try {
+      // Check opening time restriction
+      const opening = parseTodayTime(shop.open_time);
+      const isField = (employee as any)?.role?.toLowerCase?.() === 'field' || (employee as any)?.is_field_staff === true;
+      const now = new Date();
+      if (opening && now < opening && !isField) {
+        alert('Clock-in is not allowed before opening time. Please try again at opening time or contact your manager.');
+        setLoading(false);
+        return;
+      }
+
       // Try to get location, but don't block clock-in if it fails
       let location: { latitude: number; longitude: number } | null = null;
       try {
@@ -884,6 +930,11 @@ function StaffClockView({
     }
   };
 
+  const isField = (employee as any)?.role?.toLowerCase?.() === 'field' || (employee as any)?.is_field_staff === true;
+  const opening = parseTodayTime(shop.open_time);
+  const now = new Date();
+  const beforeOpen = opening ? now < opening : false;
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
       <button
@@ -902,6 +953,11 @@ function StaffClockView({
             ? `You clocked in at ${new Date(currentClockEntry.clock_in_time).toLocaleTimeString()}`
             : 'Start your shift now'}
         </p>
+        {beforeOpen && !isField && (
+          <div className="mb-3 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-900 text-sm">
+            ⏰ Clock-in is disabled before opening time ({shop.open_time}). Please try again at opening or contact your manager.
+          </div>
+        )}
         <button
           onClick={currentClockEntry ? handleClockOut : handleClockIn}
           disabled={loading}

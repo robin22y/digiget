@@ -152,51 +152,51 @@ export default function DashboardHome() {
       <DashboardNotifications shopId={shopId || ''} />
 
       {/* Stats Grid with inline header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-3">
+      <div className="bg-white rounded-ios shadow-apple border border-ios-separator p-5 mb-4">
         {/* Shop name and badges at top of stats card */}
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-xl font-bold text-gray-900">{shop.shop_name}</h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-2xl font-bold text-ios-label">{shop.shop_name}</h1>
           <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              {shop.plan_type === 'pro' ? 'Pro' : 'Basic'}
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-apple-indigo to-apple-purple text-white shadow-apple">
+              {shop.plan_type === 'pro' ? '✨ Pro' : 'Basic'}
             </span>
             {shop.subscription_status === 'trial' && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-apple-green to-green-400 text-white shadow-apple">
                 ⏰ {daysUntilTrialEnd}d
               </span>
             )}
           </div>
         </div>
-        <h2 className="text-sm font-semibold text-gray-900 mb-3">Today's Stats</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <Users className="w-5 h-5 mr-2 text-blue-600" />
+        <h2 className="text-sm font-semibold text-ios-secondary mb-4">Today's Stats</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-gradient-to-br from-apple-blue to-blue-400 rounded-ios p-4 shadow-apple border border-apple-blue/20">
+            <div className="flex items-center text-white/90 text-sm mb-2">
+              <Users className="w-5 h-5 mr-2" />
               <span className="font-medium">Customers</span>
             </div>
-            <div className="text-3xl font-bold text-blue-700">{stats.todayCustomers}</div>
+            <div className="text-3xl font-bold text-white">{stats.todayCustomers}</div>
           </div>
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <Award className="w-5 h-5 mr-2 text-purple-600" />
+          <div className="bg-gradient-to-br from-apple-purple to-purple-400 rounded-ios p-4 shadow-apple border border-apple-purple/20">
+            <div className="flex items-center text-white/90 text-sm mb-2">
+              <Award className="w-5 h-5 mr-2" />
               <span className="font-medium">Rewards</span>
             </div>
-            <div className="text-3xl font-bold text-purple-700">{stats.todayRewards}</div>
+            <div className="text-3xl font-bold text-white">{stats.todayRewards}</div>
           </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
+          <div className="bg-gradient-to-br from-apple-green to-green-400 rounded-ios p-4 shadow-apple border border-apple-green/20">
+            <div className="flex items-center text-white/90 text-sm mb-2">
+              <TrendingUp className="w-5 h-5 mr-2" />
               <span className="font-medium">Points</span>
             </div>
-            <div className="text-3xl font-bold text-green-700">{stats.todayPoints}</div>
+            <div className="text-3xl font-bold text-white">{stats.todayPoints}</div>
           </div>
           {shop.plan_type === 'pro' && (
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
-              <div className="flex items-center text-gray-600 text-sm mb-2">
-                <Clock className="w-5 h-5 mr-2 text-orange-600" />
+            <div className="bg-gradient-to-br from-apple-orange to-orange-400 rounded-ios p-4 shadow-apple border border-apple-orange/20">
+              <div className="flex items-center text-white/90 text-sm mb-2">
+                <Clock className="w-5 h-5 mr-2" />
                 <span className="font-medium">Hours</span>
               </div>
-              <div className="text-3xl font-bold text-orange-700">{stats.staffHours.toFixed(1)}h</div>
+              <div className="text-3xl font-bold text-white">{stats.staffHours.toFixed(1)}h</div>
             </div>
           )}
         </div>
