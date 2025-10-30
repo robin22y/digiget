@@ -30,7 +30,6 @@ export default function CheckInPage() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [recentCheckins, setRecentCheckins] = useState<any[]>([]);
   const [foundAppointment, setFoundAppointment] = useState<Appointment | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -72,71 +71,9 @@ export default function CheckInPage() {
 
   useEffect(() => {
     if (shopId && shop) {
-      loadRecentCheckins();
+      loadOffers();
     }
   }, [shopId, shop]);
-
-  const loadRecentCheckins = async () => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Select specific columns to avoid schema cache issues
-      const { data, error } = await supabase
-        .from('loyalty_transactions')
-        .select(`
-          *,
-          customers(
-            id,
-            phone,
-            name,
-            current_points,
-            lifetime_points,
-            tier,
-            classification
-          )
-        `)
-        .eq('shop_id', shopId)
-        .eq('transaction_type', 'point_added')
-        .gte('created_at', today.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        // If tier column doesn't exist, try without it
-        if (error.message.includes('tier')) {
-          const { data: fallbackData } = await supabase
-            .from('loyalty_transactions')
-            .select(`
-              *,
-              customers(
-                id,
-                phone,
-                name,
-                current_points,
-                lifetime_points,
-                classification
-              )
-            `)
-            .eq('shop_id', shopId)
-            .eq('transaction_type', 'point_added')
-            .gte('created_at', today.toISOString())
-            .order('created_at', { ascending: false })
-            .limit(10);
-          
-          if (fallbackData) {
-            setRecentCheckins(fallbackData);
-          }
-        } else {
-          console.error('Error loading recent check-ins:', error);
-        }
-      } else if (data) {
-        setRecentCheckins(data);
-      }
-    } catch (error) {
-      console.error('Error loading recent check-ins:', error);
-    }
-  };
 
   const loadOffers = async (customerTier?: string | null) => {
     if (!shopId) return;
@@ -471,7 +408,7 @@ export default function CheckInPage() {
         setLoggedInCustomer(refreshedCustomer);
       }
       if (shop) {
-        loadRecentCheckins();
+        loadOffers();
       }
       
       // Show rating modal after successful check-in
@@ -525,24 +462,10 @@ export default function CheckInPage() {
         text: 'Reward redeemed! Customer starts fresh at 0 visits',
       });
 
-      loadRecentCheckins();
+      loadOffers();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     }
-  };
-
-  const renderStars = (points: number) => {
-    if (!shop) return null;
-    const stars = [];
-    for (let i = 0; i < shop.points_needed; i++) {
-      stars.push(
-        <Star
-          key={i}
-          className={`w-5 h-5 ${i < points ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-        />
-      );
-    }
-    return stars;
   };
 
   // Handle rating submission
@@ -1119,82 +1042,6 @@ export default function CheckInPage() {
                 ))}
               </div>
             )}
-          </div>
-        )}
-      </div>
-      )}
-
-      {/* Recent Check-Ins - Only show after phone number is submitted */}
-      {phoneSubmitted && (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Recent Check-Ins (Today)</h2>
-        {recentCheckins.length === 0 ? (
-          <p className="text-gray-500">No check-ins today yet</p>
-        ) : (
-          <div className="space-y-4">
-            {recentCheckins.map((checkin) => {
-              const customer = checkin.customers;
-              const isRewardReady = customer.current_points >= shop.points_needed;
-
-              return (
-                <div key={checkin.id} className="border-b border-gray-200 pb-4 last:border-0">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900">
-                          {customer.name || customer.phone}
-                        </p>
-                        {customer.tier && customer.tier !== 'New' && (
-                          <span
-                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                              customer.tier === 'VIP'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : customer.tier === 'Super Star'
-                                ? 'bg-orange-100 text-orange-700'
-                                : customer.tier === 'Royal'
-                                ? 'bg-purple-100 text-purple-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {customer.tier === 'VIP' && '🌟 '}
-                            {customer.tier === 'Super Star' && '🔥 '}
-                            {customer.tier === 'Royal' && '👑 '}
-                            {customer.tier}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center mt-1">
-                        {renderStars(customer.current_points)}
-                        <span className="ml-2 text-sm text-gray-600">
-                          {customer.current_points}/{shop.points_needed} visits
-                        </span>
-                      </div>
-                      {isRewardReady && (
-                        <p className="text-green-600 font-semibold mt-1">⭐ REWARD READY!</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleOpenFeedback(customer.id)}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
-                        title="Leave Feedback"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span className="hidden sm:inline">Feedback</span>
-                      </button>
-                      {isRewardReady && (
-                        <button
-                          onClick={() => handleRedeemReward(customer.id)}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                        >
-                          Redeem Reward
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
       </div>

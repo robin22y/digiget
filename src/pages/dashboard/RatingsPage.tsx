@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Star, MessageSquare } from 'lucide-react';
 import { maskPhone, maskCustomerId, maskEmail, maskName } from '../../utils/maskCustomerData';
+import { Switch } from '@headlessui/react'; // or use a custom toggle if you don't have this package
 
 interface Rating {
   id: string;
@@ -16,6 +17,7 @@ interface Rating {
     name: string | null;
     id: string;
   };
+  published: boolean;
 }
 
 export default function RatingsPage() {
@@ -23,6 +25,8 @@ export default function RatingsPage() {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadRatings();
@@ -141,7 +145,7 @@ export default function RatingsPage() {
                   key={rating.id}
                   className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex flex-row gap-5 items-center">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         {renderStars(rating.rating, 'md')}
@@ -184,6 +188,38 @@ export default function RatingsPage() {
                         </p>
                       </div>
                     </div>
+                    <div className="ml-auto flex flex-row items-center gap-2">
+                      <label className="text-xs font-medium text-gray-700">Published publicly</label>
+                      <input
+                        type="checkbox"
+                        checked={!!rating.published}
+                        onChange={async () => {
+                          setUpdating(rating.id);
+                          setUpdateMsg(null);
+                          // Optimistically update state
+                          setRatings((prevRatings) => prevRatings.map(r => r.id === rating.id ? { ...r, published: !rating.published } : r));
+                          const { error } = await supabase
+                            .from('customer_ratings')
+                            .update({ published: !rating.published })
+                            .eq('id', rating.id);
+                          if (error) {
+                            setUpdateMsg('Error updating status');
+                            // Revert optimistic state
+                            setRatings((prevRatings) => prevRatings.map(r => r.id === rating.id ? { ...r, published: rating.published } : r));
+                          } else {
+                            setUpdateMsg('Publish status updated!');
+                            // Reload from server after a short delay for smoothness
+                            setTimeout(() => {
+                              loadRatings();
+                            }, 500);
+                          }
+                          setUpdating(null);
+                        }}
+                        disabled={updating === rating.id}
+                        className="ml-1 rounded focus:ring-blue-400 border-gray-300"
+                      />
+                      {updating === rating.id && <span className="text-blue-500 text-xs ml-1">Saving...</span>}
+                    </div>
                   </div>
                   
                   {rating.comment && (
@@ -195,6 +231,9 @@ export default function RatingsPage() {
               );
             })}
           </div>
+          {updateMsg && (
+            <div className="mt-2 mb-4 p-2 rounded bg-blue-50 text-blue-700 text-sm border border-blue-200">{updateMsg}</div>
+          )}
         </div>
       )}
     </div>
