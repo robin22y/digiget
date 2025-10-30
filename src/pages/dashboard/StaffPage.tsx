@@ -37,6 +37,10 @@ export default function StaffPage() {
     if (shop.plan_type === 'pro') {
       loadEmployees();
       loadWeeklyStats();
+    } else {
+      // For basic plan, still load employees but limit functionality
+      loadEmployees();
+      setLoading(false);
     }
   }, [shopId, shop]);
 
