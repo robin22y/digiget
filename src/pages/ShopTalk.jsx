@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 // Use heroicons or lucide-react for icons
 import { PlusCircle, Edit, Trash2, X } from 'lucide-react';
 
-const isAdmin = () => {
-  // Implement logic if you have user session context. Hardcoded to false for now.
-  // Replace with your real admin check.
-  return window.sessionStorage.getItem('role') === 'superadmin';
-};
+function isAdmin(user) {
+  // DigiGet superadmin check: email ends with @digiget.uk, role=super, is_super_admin=true
+  if (!user) return false;
+  const email = user.email?.toLowerCase() || '';
+  return (
+    email.endsWith('@digiget.uk') ||
+    user.user_metadata?.role === 'super' ||
+    user.user_metadata?.is_super_admin === true
+  );
+}
 
 function formatDate(dateString) {
   const d = new Date(dateString);
@@ -18,6 +24,7 @@ function formatDate(dateString) {
 }
 
 export default function ShopTalk() {
+  const { user } = useAuth ? useAuth() : { user: null };
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -108,7 +115,7 @@ export default function ShopTalk() {
         <h1 className="text-3xl sm:text-4xl font-extrabold text-blue-700 text-center">ShopTalk by DigiGet</h1>
         <div className="text-base sm:text-lg text-blue-600 text-center font-medium mt-3 mb-2">Practical tips, stories, and ideas for local shops and small teams.</div>
         <hr className="border-blue-200 my-5 w-1/2 mx-auto" />
-        {isAdmin() && (
+        {isAdmin(user) && (
           <button
             className="flex items-center gap-2 text-white bg-blue-700 hover:bg-blue-900 px-4 py-2 rounded-lg font-semibold mb-6 shadow"
             onClick={() => { setShowForm(true); setEditing(null); setForm({ title:'', summary:'', content:'', image_url: '', author: '' }); }}
@@ -161,7 +168,7 @@ export default function ShopTalk() {
                       className="w-full bg-blue-50 text-blue-700 rounded-lg font-semibold py-2 mt-1 hover:bg-blue-100">
                       Read more
                     </button>
-                    {isAdmin() && (
+                    {isAdmin(user) && (
                       <div className="absolute right-3 top-3 flex gap-2">
                         <button title="Edit" className="p-1 text-blue-600 bg-blue-50 rounded hover:bg-blue-100" onClick={() => openEdit(post)}><Edit className="w-5 h-5" /></button>
                         <button title="Delete" className="p-1 text-red-600 bg-red-50 rounded hover:bg-red-100" onClick={() => handleDelete(post.id)}><Trash2 className="w-5 h-5" /></button>

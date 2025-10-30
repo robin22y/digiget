@@ -40,12 +40,18 @@ import Reports from './pages/super-admin/Reports';
 import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
 import TopRatedShops from './pages/super-admin/TopRatedShops';
+import ShopTalk from './pages/ShopTalk.jsx';
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/create-super-admin" element={<CreateSuperAdmin />} />
+
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -66,6 +72,8 @@ function App() {
           
           {/* Public check-in page - accessible without authentication */}
           <Route path="/dashboard/:shopId/checkin" element={<CheckInPage />} />
+
+          <Route path="/blog" element={<ShopTalk />} />
 
           <Route
             path="/dashboard/:shopId"
