@@ -289,15 +289,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div>
+    <div className="max-w-full overflow-x-hidden">
       <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Settings</h1>
 
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
+      <div className="bg-white rounded-lg shadow mb-6 max-w-full">
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <nav className="flex -mb-px min-w-max md:min-w-0">
             <button
               onClick={() => setActiveTab('business')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'business'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -307,7 +307,7 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={() => setActiveTab('loyalty')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'loyalty'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -317,7 +317,7 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={() => setActiveTab('features')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'features'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -327,7 +327,7 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={() => setActiveTab('subscription')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'subscription'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -338,7 +338,7 @@ export default function SettingsPage() {
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {message && (
             <div
               className={`mb-4 p-4 rounded-lg ${
@@ -737,11 +737,11 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'subscription' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Subscription</h2>
+            <div className="space-y-4 md:space-y-6">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Subscription</h2>
 
               <div className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Current Plan</p>
                     <p className="text-lg font-semibold text-gray-900">
@@ -774,39 +774,39 @@ export default function SettingsPage() {
               )}
 
               {shop.plan_type === 'basic' && (
-                <div className="border-2 border-blue-200 rounded-lg p-6">
+                <div className="border-2 border-blue-200 rounded-lg p-4 md:p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Upgrade to Pro</h3>
                   <p className="text-gray-600 mb-4">£9.99/month</p>
                   <ul className="space-y-2 mb-4">
                     <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                      <span className="text-sm">Staff clock in/out tracking</span>
+                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs md:text-sm">Staff clock in/out tracking</span>
                     </li>
                     <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                      <span className="text-sm">Task management with mandatory completion</span>
+                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs md:text-sm">Task management with mandatory completion</span>
                     </li>
                     <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                      <span className="text-sm">Payroll hours tracking and reports</span>
+                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs md:text-sm">Payroll hours tracking and reports</span>
                     </li>
                     <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                      <span className="text-sm">Incident reporting system</span>
+                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs md:text-sm">Incident reporting system</span>
                     </li>
                     <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                      <span className="text-sm">Staff performance analytics</span>
+                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs md:text-sm">Staff performance analytics</span>
                     </li>
                   </ul>
-                  <button className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-                    Upgrade to Pro
+                  <button onClick={handleUpgradeToPro} disabled={saving} className="w-full px-4 md:px-6 py-2.5 md:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base font-semibold disabled:opacity-50">
+                    {saving ? 'Processing…' : 'Upgrade to Pro'}
                   </button>
                 </div>
               )}
 
               {shop.plan_type === 'pro' && (
-                <div className="border border-gray-200 rounded-lg p-6">
+                <div className="border border-gray-200 rounded-lg p-4 md:p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Downgrade to Basic</h3>
                   <p className="text-gray-600 mb-4">FREE/month (save £9.99/month)</p>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
@@ -818,7 +818,7 @@ export default function SettingsPage() {
                       <li>• Incident reports</li>
                     </ul>
                   </div>
-                  <button onClick={handleDowngradeToBasic} disabled={saving} className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50">
+                  <button onClick={handleDowngradeToBasic} disabled={saving} className="w-full px-4 md:px-6 py-2.5 md:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm md:text-base font-medium disabled:opacity-50">
                     {saving ? 'Processing…' : 'Downgrade to Basic'}
                   </button>
                 </div>
