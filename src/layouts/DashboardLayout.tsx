@@ -9,6 +9,8 @@ interface Shop {
   shop_name: string;
   plan_type: 'basic' | 'pro';
   diary_enabled: boolean;
+  payment_status?: 'ok' | 'failed' | 'grace' | 'past_due' | 'cancelled' | null;
+  grace_until?: string | null;
 }
 
 export default function DashboardLayout() {
@@ -49,7 +51,7 @@ export default function DashboardLayout() {
     try {
       const { data, error } = await supabase
         .from('shops')
-        .select('id, shop_name, plan_type, diary_enabled')
+        .select('id, shop_name, plan_type, diary_enabled, payment_status, grace_until')
         .eq('id', shopId)
         .single();
 
@@ -65,6 +67,30 @@ export default function DashboardLayout() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const renderBillingBanner = () => {
+    if (!shop) return null;
+    if (shop.payment_status === 'grace' && shop.grace_until) {
+      const end = new Date(shop.grace_until).getTime();
+      const now = Date.now();
+      const ms = Math.max(0, end - now);
+      const hrs = Math.floor(ms / (1000 * 60 * 60));
+      const mins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+      return (
+        <div className="mb-3 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-900 text-sm">
+          Payment failed. Pro remains active for: <b>{hrs}h {mins}m</b>. Please update your payment to avoid downgrade.
+        </div>
+      );
+    }
+    if (shop.payment_status === 'past_due') {
+      return (
+        <div className="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-red-900 text-sm">
+          Your account has been downgraded to Basic due to non-payment. Pro features are disabled until payment is restored.
+        </div>
+      );
+    }
+    return null;
   };
 
   if (loading) {
@@ -184,6 +210,7 @@ export default function DashboardLayout() {
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-x-hidden">
         <main className="bg-gray-50 flex-1 overflow-x-hidden">
           <div className="p-4 pb-20 md:pb-4 max-w-full overflow-x-hidden">
+            {renderBillingBanner()}
             <Outlet context={{ shop }} />
           </div>
         </main>
