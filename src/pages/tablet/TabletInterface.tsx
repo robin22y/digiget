@@ -80,15 +80,12 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
       const employee = employees[0];
       setCurrentEmployee(employee);
 
-      const now = new Date();
-      const pinExpiry = employee.pin_expires_at ? new Date(employee.pin_expires_at) : null;
-      const isPinExpired = pinExpiry && now > pinExpiry;
-
-      if (employee.pin_change_required || isPinExpired) {
-        setPin('');
-        setView('changepin');
-        return;
-      }
+      // Skip PIN change requirement - allow direct access
+      // if (employee.pin_change_required || isPinExpired) {
+      //   setPin('');
+      //   setView('changepin');
+      //   return;
+      // }
 
       const { data: activeEntry } = await supabase
         .from('clock_entries')
