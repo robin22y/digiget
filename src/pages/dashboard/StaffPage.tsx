@@ -18,6 +18,7 @@ interface Employee {
   role: string;
   active: boolean;
   photo_url: string | null;
+  pin_expires_at?: string | null;
 }
 
 export default function StaffPage() {
@@ -48,7 +49,7 @@ export default function StaffPage() {
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, phone, email, hourly_rate, role, active, photo_url')
+        .select('id, first_name, last_name, phone, email, hourly_rate, role, active, photo_url, pin_expires_at')
         .eq('shop_id', shopId)
         .eq('active', true)
         .order('created_at', { ascending: true });
@@ -187,6 +188,15 @@ export default function StaffPage() {
     return false;
   };
 
+  const getDaysUntilPinExpiry = (pinExpiresAt: string | null | undefined): number | null => {
+    if (!pinExpiresAt) return null;
+    const now = new Date();
+    const expiry = new Date(pinExpiresAt);
+    const diffMs = expiry.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -267,6 +277,32 @@ export default function StaffPage() {
                       <p className="text-sm text-gray-700">
                         <span className="font-medium">Role:</span> {employee.role === 'manager' ? 'Manager' : 'Staff'}
                       </p>
+                      {(() => {
+                        const daysUntilExpiry = getDaysUntilPinExpiry(employee.pin_expires_at);
+                        if (daysUntilExpiry !== null) {
+                          if (daysUntilExpiry <= 0) {
+                            return (
+                              <p className="text-sm text-red-600 font-semibold flex items-center gap-1">
+                                <span>⚠️</span>
+                                <span>PIN expired - Please reissue</span>
+                              </p>
+                            );
+                          } else if (daysUntilExpiry <= 5) {
+                            return (
+                              <p className="text-sm text-orange-600 font-semibold">
+                                🔔 PIN expires in {daysUntilExpiry} {daysUntilExpiry === 1 ? 'day' : 'days'}
+                              </p>
+                            );
+                          } else {
+                            return (
+                              <p className="text-sm text-gray-600">
+                                🔐 PIN expires in {daysUntilExpiry} days
+                              </p>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                   <div className="flex space-x-2">

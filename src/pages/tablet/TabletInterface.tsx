@@ -80,12 +80,17 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
       const employee = employees[0];
       setCurrentEmployee(employee);
 
-      // Skip PIN change requirement - allow direct access
-      // if (employee.pin_change_required || isPinExpired) {
-      //   setPin('');
-      //   setView('changepin');
-      //   return;
-      // }
+      // Check for PIN expiry (30 days after last change)
+      const now = new Date();
+      const pinExpiry = employee.pin_expires_at ? new Date(employee.pin_expires_at) : null;
+      const isPinExpired = pinExpiry && now > pinExpiry;
+
+      // Only force PIN change if expired (not on first use)
+      if (isPinExpired) {
+        setPin('');
+        setView('changepin');
+        return;
+      }
 
       const { data: activeEntry } = await supabase
         .from('clock_entries')

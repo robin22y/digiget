@@ -27,10 +27,12 @@ export default function DashboardHome() {
   const [ratings, setRatings] = useState<any[]>([]);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'actions' | 'feedbacks'>('actions');
+  const [pinExpiryReminders, setPinExpiryReminders] = useState<any[]>([]);
 
   useEffect(() => {
     loadStats();
     loadRatings();
+    loadPinExpiryReminders();
   }, [shopId]);
 
   const loadStats = async () => {
@@ -115,6 +117,39 @@ export default function DashboardHome() {
     }
   };
 
+  const loadPinExpiryReminders = async () => {
+    if (shop.plan_type !== 'pro') return;
+    
+    try {
+      const { data: employees, error } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, pin_expires_at')
+        .eq('shop_id', shopId)
+        .eq('active', true);
+
+      if (error) throw error;
+
+      // Check for staff with PINs expiring in 5 days or less
+      const now = new Date();
+      const reminders = employees?.filter(emp => {
+        if (!emp.pin_expires_at) return false;
+        const expiry = new Date(emp.pin_expires_at);
+        const diffMs = expiry.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return diffDays <= 5;
+      }).map(emp => {
+        const expiry = new Date(emp.pin_expires_at);
+        const diffMs = expiry.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return { ...emp, daysRemaining: diffDays };
+      }) || [];
+
+      setPinExpiryReminders(reminders);
+    } catch (error) {
+      console.error('Error loading PIN expiry reminders:', error);
+    }
+  };
+
   const renderStars = (rating: number) => {
     return (
       <div className="flex items-center gap-1">
@@ -150,6 +185,33 @@ export default function DashboardHome() {
     <div>
       {/* Notifications Banner */}
       <DashboardNotifications shopId={shopId || ''} />
+
+      {/* PIN Expiry Reminders */}
+      {pinExpiryReminders.length > 0 && (
+        <div className="bg-gradient-to-r from-apple-orange/10 to-orange-50 border border-apple-orange/30 rounded-ios p-4 mb-4 shadow-apple">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <span className="text-2xl">🔔</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-apple-orange mb-2">Staff PIN Expiring Soon</h3>
+              <div className="space-y-1">
+                {pinExpiryReminders.map(emp => (
+                  <p key={emp.id} className="text-sm text-gray-700">
+                    {emp.first_name} {emp.last_name} - PIN expires in {emp.daysRemaining} {emp.daysRemaining === 1 ? 'day' : 'days'}
+                  </p>
+                ))}
+              </div>
+              <Link
+                to={`/dashboard/${shopId}/staff`}
+                className="text-sm text-apple-blue hover:text-apple-blue/80 font-medium mt-2 inline-block"
+              >
+                Manage Staff →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid with inline header */}
       <div className="bg-white rounded-ios shadow-apple border border-ios-separator p-5 mb-4">
