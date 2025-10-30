@@ -46,6 +46,10 @@ export default function CheckInPage() {
   const [showOffers, setShowOffers] = useState(false);
   const [phoneSubmitted, setPhoneSubmitted] = useState(false);
   const [loggedInCustomer, setLoggedInCustomer] = useState<any | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteRequiredText, setDeleteRequiredText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Load shop data if not provided from outlet context
   useEffect(() => {
@@ -74,6 +78,28 @@ export default function CheckInPage() {
       loadOffers();
     }
   }, [shopId, shop]);
+
+  useEffect(() => {
+    const cid = loggedInCustomer?.id || currentCustomerId;
+    if (!shopId || !cid) return;
+
+    const channel = supabase
+      .channel(`checkin_${shopId}_${cid}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_transactions', filter: `shop_id=eq.${shopId}` }, async (payload) => {
+        const changed = (payload.new as any)?.customer_id || (payload.old as any)?.customer_id;
+        if (changed === cid) {
+          const { data: updatedCustomer } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('id', cid)
+            .single();
+          if (updatedCustomer) setLoggedInCustomer(updatedCustomer);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [shopId, loggedInCustomer?.id, currentCustomerId]);
 
   const loadOffers = async (customerTier?: string | null) => {
     if (!shopId) return;
@@ -618,6 +644,58 @@ export default function CheckInPage() {
     return `${hours}:${minutes}`;
   };
 
+  // Helper to logout current customer session on this screen
+  const handleCustomerLogout = () => {
+    setPhone('');
+    setPhoneSubmitted(false);
+    setCurrentCustomerId(null);
+    setLoggedInCustomer(null);
+    setCurrentCustomer(null);
+    setMessage(null);
+  };
+
+  // Helper to open delete modal requesting exact match of phone or name
+  const openDeleteModal = () => {
+    const candidateName = (loggedInCustomer?.name || currentCustomer?.name || '').trim();
+    const candidatePhone = (loggedInCustomer?.phone || currentCustomer?.phone || phone || '').trim();
+    const options: string[] = [];
+    if (candidateName) options.push(candidateName);
+    if (candidatePhone) options.push(candidatePhone);
+    const required = options.length > 0 ? options[Math.floor(Math.random() * options.length)] : '';
+    setDeleteRequiredText(required);
+    setDeleteConfirmText('');
+    setShowDeleteModal(true);
+  };
+
+  // Delete all customer data for this shop and customer, then logout
+  const handleDeleteMyData = async () => {
+    try {
+      const customerId = loggedInCustomer?.id || currentCustomerId;
+      if (!customerId || !shopId) return;
+      if (!deleteConfirmText.trim() || deleteConfirmText.trim() !== deleteRequiredText) {
+        setMessage({ type: 'error', text: 'Confirmation text does not match. Please type it exactly.' });
+        return;
+      }
+      setDeleting(true);
+      setMessage(null);
+
+      await supabase.from('customer_visits').delete().eq('customer_id', customerId);
+      await supabase.from('loyalty_transactions').delete().eq('customer_id', customerId);
+      await supabase.from('redemptions').delete().eq('customer_id', customerId).eq('shop_id', shopId);
+      await supabase.from('customer_ratings').delete().eq('customer_id', customerId).eq('shop_id', shopId);
+      await supabase.from('customers').delete().eq('id', customerId).eq('shop_id', shopId);
+
+      // Clear UI state
+      setShowDeleteModal(false);
+      handleCustomerLogout();
+      setMessage({ type: 'success', text: 'Customer data deleted successfully.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Failed to delete data. Please try again.' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!shop) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -657,207 +735,205 @@ export default function CheckInPage() {
         </button>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
-        {/* DigiGet Logo and Shop Name Header */}
-        <div className="flex flex-col items-center mb-6 pb-4 border-b border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xl">
-              DigiGet
-            </div>
-          </div>
-          {shop?.shop_name && (
-            <h2 className="text-lg md:text-xl font-semibold text-gray-800 text-center">
-              {shop.shop_name}
-            </h2>
-          )}
-        </div>
+      {/* Phone entry and actions */}
+      {!phoneSubmitted ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Check In Customer</h1>
 
-        {/* Welcome Section - Show when customer is logged in */}
-        {loggedInCustomer && phoneSubmitted && (
-          <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex-1">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
-                  Hello {loggedInCustomer.name || 'Customer'}! 👋
-                </h2>
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-3xl font-bold text-blue-600">
-                    {loggedInCustomer.current_points}
-                  </span>
-                  <span className="text-gray-600">
-                    / {shop?.points_needed} points
-                  </span>
-                  {loggedInCustomer.current_points >= (shop?.points_needed || 0) && (
-                    <span className="px-3 py-1 bg-yellow-400 text-yellow-900 rounded-full text-sm font-bold">
-                      🎁 Reward Ready!
-                    </span>
+          {message && (
+            <div
+              className={`mb-4 p-4 rounded-xl border-l-4 ${
+                message.type === 'success'
+                  ? 'bg-green-50 text-green-700 border-green-500'
+                  : 'bg-red-50 text-red-700 border-red-500'
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
+
+          {/* Appointment Info */}
+          {foundAppointment && (
+            <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 mb-1">Appointment Found</h3>
+                  {foundAppointment.customer_name && (
+                    <p className="text-blue-800 flex items-center gap-2 mb-1">
+                      <User className="w-4 h-4" />
+                      <strong>Name:</strong> {foundAppointment.customer_name}
+                    </p>
+                  )}
+                  <p className="text-blue-800 flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4" />
+                    <strong>Time:</strong> {formatTime(foundAppointment.appointment_time)}
+                  </p>
+                  {foundAppointment.service_type && (
+                    <p className="text-blue-800 text-sm">
+                      <strong>Service:</strong> {foundAppointment.service_type}
+                    </p>
                   )}
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                {loggedInCustomer.current_points >= (shop?.points_needed || 0) && (
-                  <button
-                    onClick={() => {
-                      if (loggedInCustomer?.id) {
-                        handleRedeemReward(loggedInCustomer.id);
-                      }
-                    }}
-                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Gift className="w-5 h-5" />
-                    Redeem Reward
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowAdditionalFields(!showAdditionalFields)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <User className="w-5 h-5" />
-                  Update Profile
-                </button>
+            </div>
+          )}
+
+          <form onSubmit={handleCheckIn}>
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Enter customer phone number:
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={handlePhoneChange}
+                placeholder="07XXX XXX XXX"
+                required
+                className="w-full px-4 py-3.5 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+            </div>
+
+
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              {loading ? 'Adding Point...' : '✨ Add Point'}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Logged in as <span className="font-semibold">{loggedInCustomer?.name || currentCustomer?.name || 'Customer'}</span>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleCustomerLogout} className="px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200">Log out</button>
+            <button onClick={openDeleteModal} className="px-3 py-1.5 text-xs rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100">Delete My Data</button>
+          </div>
+        </div>
+      )}
+
+      {/* Attractive summary card for points and tier when logged in */}
+      {phoneSubmitted && (
+        <div className="rounded-2xl p-5 mb-4 bg-gradient-to-br from-blue-50 to-white border border-blue-100 shadow transition-transform duration-300 hover:-translate-y-0.5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-sm text-gray-600 mb-1">Points collected</div>
+              <div className="flex items-end gap-1 text-3xl font-extrabold text-blue-700">
+                {(loggedInCustomer?.current_points ?? currentCustomer?.current_points ?? 0)}
+                <span className="text-base font-normal text-gray-400">/
+                  {shop?.points_needed ?? 1}
+                </span>
+              </div>
+              <div className="w-full h-2.5 bg-blue-100 rounded-full my-2 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-600 to-sky-500 h-full rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${(((loggedInCustomer?.current_points ?? currentCustomer?.current_points ?? 0) / (shop?.points_needed || 1)) * 100).toFixed(2)}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-600">
+                {(shop?.points_needed || 1) - (loggedInCustomer?.current_points ?? currentCustomer?.current_points ?? 0)} more visit(s) to reward 🎁
               </div>
             </div>
+            {(loggedInCustomer?.tier || currentCustomer?.tier) && (
+              <span className={`px-3 py-1 text-xs font-semibold rounded-full h-fit animate-[fadeIn_600ms_ease] ${
+                (loggedInCustomer?.tier || currentCustomer?.tier) === 'VIP'
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : (loggedInCustomer?.tier || currentCustomer?.tier) === 'Super Star'
+                  ? 'bg-orange-100 text-orange-700'
+                  : (loggedInCustomer?.tier || currentCustomer?.tier) === 'Royal'
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}>
+                {(loggedInCustomer?.tier || currentCustomer?.tier) as string}
+              </span>
+            )}
           </div>
-        )}
-
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Check In Customer</h1>
-
-        {message && (
-          <div
-            className={`mb-4 p-4 rounded-xl border-l-4 ${
-              message.type === 'success'
-                ? 'bg-green-50 text-green-700 border-green-500'
-                : 'bg-red-50 text-red-700 border-red-500'
-            }`}
-          >
-            {message.text}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={handleCheckIn}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-xl font-semibold hover:brightness-110 shadow hover:shadow-md transition-all active:scale-[0.98]"
+            >
+              ✨ Add Point
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Appointment Info */}
-        {foundAppointment && (
-          <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
-            <div className="flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-blue-900 mb-1">Appointment Found</h3>
-                {foundAppointment.customer_name && (
-                  <p className="text-blue-800 flex items-center gap-2 mb-1">
-                    <User className="w-4 h-4" />
-                    <strong>Name:</strong> {foundAppointment.customer_name}
-                  </p>
-                )}
-                <p className="text-blue-800 flex items-center gap-2 mb-1">
-                  <Clock className="w-4 h-4" />
-                  <strong>Time:</strong> {formatTime(foundAppointment.appointment_time)}
+      {/* Profile Section - Shown when "Your Profile" is clicked */}
+      {showAdditionalFields && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Profile</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Name (Optional)
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Enter your name"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+              {foundAppointment?.customer_name && !customerName && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Found in appointment: {foundAppointment.customer_name}
                 </p>
-                {foundAppointment.service_type && (
-                  <p className="text-blue-800 text-sm">
-                    <strong>Service:</strong> {foundAppointment.service_type}
-                  </p>
-                )}
-              </div>
+              )}
             </div>
-          </div>
-        )}
 
-        <form onSubmit={handleCheckIn}>
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Enter customer phone number:
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={handlePhoneChange}
-              placeholder="07XXX XXX XXX"
-              required
-              className="w-full px-4 py-3.5 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            />
-          </div>
-
-
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
-          >
-            {loading ? 'Adding Point...' : '✨ Add Point'}
-          </button>
-        </form>
-
-        {/* Profile Section - Shown when "Your Profile" is clicked */}
-        {showAdditionalFields && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Profile</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-                {foundAppointment?.customer_name && !customerName && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    Found in appointment: {foundAppointment.customer_name}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email (Optional)
-                </label>
-                <input
-                  type="email"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={customerAddress}
-                  onChange={(e) => setCustomerAddress(e.target.value)}
-                  placeholder="Enter your address"
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleUpdateProfile}
-                disabled={updatingProfile || !phone.trim()}
-                className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {updatingProfile ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <User className="w-4 h-4" />
-                    Save Profile
-                  </>
-                )}
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email (Optional)
+              </label>
+              <input
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                placeholder="your.email@example.com"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Address (Optional)
+              </label>
+              <input
+                type="text"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                placeholder="Enter your address"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleUpdateProfile}
+              disabled={updatingProfile || !phone.trim()}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {updatingProfile ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <User className="w-4 h-4" />
+                  Save Profile
+                </>
+              )}
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Customer Actions Menu - Only show after phone number is submitted */}
       {phoneSubmitted && (
@@ -1069,23 +1145,22 @@ export default function CheckInPage() {
             <p className="text-gray-600 mb-4">How would you rate your experience?</p>
 
             {/* Star Rating */}
-            <div className="flex justify-center gap-2 mb-4">
+            <div className="flex justify-center gap-2 mb-2">
               {[1, 2, 3, 4, 5].map((star) => (
-                <button
+                <Star
                   key={star}
+                  className={`w-8 h-8 cursor-pointer ${
+                    rating >= star ? 'text-yellow-500' : 'text-gray-300'
+                  }`}
                   onClick={() => setRating(star)}
-                  className="focus:outline-none"
-                >
-                  <Star
-                    className={`w-10 h-10 ${
-                      star <= rating
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
-                    } transition-colors`}
-                  />
-                </button>
+                />
               ))}
             </div>
+            {rating > 0 && (
+              <div className="text-center text-xl mb-2 animate-[fadeIn_300ms_ease]">
+                {'⭐'.repeat(rating)}
+              </div>
+            )}
 
             {/* Comment Box */}
             <div className="mb-4">
@@ -1117,6 +1192,27 @@ export default function CheckInPage() {
             >
               {submittingRating ? 'Submitting...' : 'Submit Rating'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-[420px] p-5 shadow-xl">
+            <h3 className="text-lg font-bold text-red-700 mb-2">Delete Customer Data</h3>
+            <p className="text-sm text-gray-700 mb-3">This action is irreversible. The customer's profile, visits and rewards history for this shop will be permanently deleted.</p>
+            <p className="text-sm text-gray-700 mb-2">To confirm, type: <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{deleteRequiredText}</span></p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-4"
+              placeholder="Type here to confirm"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700">Cancel</button>
+              <button onClick={handleDeleteMyData} disabled={deleting} className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:opacity-50">{deleting ? 'Deleting…' : 'Yes, Delete'}</button>
+            </div>
           </div>
         </div>
       )}

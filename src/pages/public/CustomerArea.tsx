@@ -89,6 +89,8 @@ export default function CustomerArea() {
 
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
 
+  const phoneRegex = /^(?:\+44|0)\d{10}$/;
+
   // Enhanced mount/init: autologin by URL param or localStorage
   useEffect(() => {
     if (!shopId) return;
@@ -157,6 +159,56 @@ export default function CustomerArea() {
     };
     loadCustomerRating();
   }, [customer, shop]);
+
+  // Realtime: subscribe to changes for this customer
+  useEffect(() => {
+    if (!shop?.id || !customer?.id) return;
+
+    const channel = supabase
+      .channel(`customer_area_${shop.id}_${customer.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_transactions', filter: `shop_id=eq.${shop.id}` }, async (payload) => {
+        // If this event relates to this customer, refresh customer points
+        const changed = (payload.new as any)?.customer_id || (payload.old as any)?.customer_id;
+        if (changed === customer.id) {
+          const { data: updatedCustomer } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('id', customer.id)
+            .single();
+          if (updatedCustomer) setCustomer(updatedCustomer);
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_ratings', filter: `shop_id=eq.${shop.id}` }, async (payload) => {
+        const changed = (payload.new as any)?.customer_id || (payload.old as any)?.customer_id;
+        if (changed === customer.id) {
+          // Refresh latest rating snapshot
+          const { data } = await supabase
+            .from('customer_ratings')
+            .select('*')
+            .eq('shop_id', shop.id)
+            .eq('customer_id', customer.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          setLastRating(data || null);
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'customer_visits', filter: `shop_id=eq.${shop.id}` }, async (payload) => {
+        const changed = (payload.new as any)?.customer_id;
+        if (changed === customer.id) {
+          // A new visit was added; refresh customer
+          const { data: updatedCustomer } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('id', customer.id)
+            .single();
+          if (updatedCustomer) setCustomer(updatedCustomer);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [shop?.id, customer?.id]);
 
   useEffect(() => {
     if (customer && prevTier.current && customer.tier !== prevTier.current && ["VIP","Super Star","Royal"].includes(customer.tier)) {
@@ -422,11 +474,17 @@ export default function CustomerArea() {
     e.preventDefault();
     if (!shopId) return;
 
+    const raw = phone.replace(/\s/g, '');
+    if (!phoneRegex.test(raw)) {
+      setMessage({ type: 'error', text: 'Please enter a valid UK mobile number.' });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
     try {
-      const cleanPhone = phone.replace(/\s/g, '');
+      const cleanPhone = raw;
       
       const { data: customerData, error } = await supabase
         .from('customers')
@@ -478,9 +536,15 @@ export default function CustomerArea() {
       return;
     }
 
+    const raw = phone.replace(/\s/g, '');
+    if (!phoneRegex.test(raw)) {
+      setMessage({ type: 'error', text: 'Please enter a valid UK mobile number.' });
+      return;
+    }
+
     setLoading(true);
     try {
-      const cleanPhone = phone.replace(/\s/g, '');
+      const cleanPhone = raw;
 
       // Check if customer exists
       const { data: existingCustomer } = await supabase
@@ -866,40 +930,45 @@ export default function CustomerArea() {
 
       const deviceType = getDeviceType();
       const now = new Date();
-      let canEdit = true;
-      let lastEditAt: string | undefined = undefined;
       if (existingRating) {
-        // Check cooldown for edits
-        lastEditAt = existingRating.updated_at || existingRating.created_at;
+        // Enforce 24h cooldown (already present earlier)
+        const lastEditAt = existingRating.updated_at || existingRating.created_at;
         const msSinceLastEdit = now.getTime() - new Date(lastEditAt).getTime();
         if (msSinceLastEdit < 24 * 60 * 60 * 1000) {
-          canEdit = false;
           const mins = Math.ceil((24 * 60 * 60 * 1000 - msSinceLastEdit) / (1000 * 60));
-          setMessage({
-            type: 'info',
-            text: `You can update your feedback in ${mins} minutes. Only one review per 24 hours is allowed.`,
-          });
+          setMessage({ type: 'info', text: `You can update your feedback in ${mins} minutes. Only one update every 24 hours is allowed.` });
           setShowRatingModal(false);
           setSubmittingRating(false);
           return;
         }
-        // Update (can edit)
-        const { error } = await supabase
+        // Try to store as update_comment first
+        const { error: updErr } = await supabase
           .from('customer_ratings')
           .update({
             rating,
-            comment: ratingComment.trim() || null,
+            update_comment: ratingComment.trim() || null,
             device_type: deviceType,
             updated_at: now.toISOString(),
           })
           .eq('id', existingRating.id);
-        if (error) throw error;
-        setMessage({
-          type: 'success',
-          text: 'Your feedback has been updated. Thank you!'
-        });
+
+        if (updErr) {
+          // If update_comment column is missing, fallback: append to comment
+          const appended = `${existingRating.comment || ''}${existingRating.comment ? '\n\n' : ''}Update (${now.toLocaleDateString()}): ${ratingComment.trim()}`;
+          const { error: fallbackErr } = await supabase
+            .from('customer_ratings')
+            .update({
+              rating,
+              comment: appended,
+              device_type: deviceType,
+              updated_at: now.toISOString(),
+            })
+            .eq('id', existingRating.id);
+          if (fallbackErr) throw fallbackErr;
+        }
+        setMessage({ type: 'success', text: 'Your update has been posted. Thank you!' });
       } else {
-        // No rating exists, insert
+        // No rating exists, insert as new
         const { error } = await supabase
           .from('customer_ratings')
           .insert({
@@ -910,10 +979,7 @@ export default function CustomerArea() {
             device_type: deviceType,
           });
         if (error) throw error;
-        setMessage({
-          type: 'success',
-          text: '⭐ Thanks for your feedback!'
-        });
+        setMessage({ type: 'success', text: '⭐ Thanks for your feedback!' });
       }
       setShowRatingModal(false);
       setRating(0);
@@ -971,6 +1037,58 @@ export default function CustomerArea() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // add new state near other state declarations
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteRequiredText, setDeleteRequiredText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  // helper to open delete modal and set required text
+  const openDeleteModal = () => {
+    if (!customer) return;
+    // randomly require either phone or name (fallback to phone if name missing)
+    const options: string[] = [];
+    if (customer.name) options.push(customer.name);
+    if (customer.phone) options.push(customer.phone);
+    const required = options.length > 0 ? options[Math.floor(Math.random() * options.length)] : '';
+    setDeleteRequiredText(required);
+    setDeleteConfirmText('');
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteMyData = async () => {
+    if (!customer || !shop) return;
+    if (!deleteConfirmText.trim() || deleteConfirmText.trim() !== deleteRequiredText) {
+      setMessage({ type: 'error', text: 'Confirmation text does not match. Please type it exactly.' });
+      return;
+    }
+    setDeleting(true);
+    setMessage(null);
+    try {
+      // Delete related data first
+      await supabase.from('customer_visits').delete().eq('customer_id', customer.id);
+      await supabase.from('loyalty_transactions').delete().eq('customer_id', customer.id);
+      await supabase.from('redemptions').delete().eq('customer_id', customer.id).eq('shop_id', shop.id);
+      await supabase.from('customer_ratings').delete().eq('customer_id', customer.id).eq('shop_id', shop.id);
+      // Delete customer
+      await supabase.from('customers').delete().eq('id', customer.id).eq('shop_id', shop.id);
+
+      // Clear session and reset UI
+      localStorage.removeItem(`customer_session_${shop.id}`);
+      setCustomer(null);
+      setPhone('');
+      setName('');
+      setEmail('');
+      setAddress('');
+      setShowDeleteModal(false);
+      setMessage({ type: 'success', text: 'Your data has been deleted successfully.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Failed to delete data. Please try again.' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -1138,6 +1256,14 @@ export default function CustomerArea() {
           <h1 className="text-xl font-bold text-blue-700">
             Hello {customer?.name || 'there'} 👋
           </h1>
+          {customer && (
+            <button
+              onClick={handleLogout}
+              className="ml-auto text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200"
+            >
+              Log out
+            </button>
+          )}
         </div>
 
         {showCongrats && congratsMsg && (
@@ -1291,6 +1417,14 @@ export default function CustomerArea() {
         >
           Profile
         </button>
+        {customer && (
+          <button
+            onClick={openDeleteModal}
+            className="flex-1 py-3 rounded-full bg-red-50 text-red-600 border border-red-200 text-sm font-semibold shadow hover:bg-red-100"
+          >
+            Delete My Data
+          </button>
+        )}
         <button
           onClick={() => setShowRatingModal(true)}
           className="flex-1 py-3 rounded-full bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-700"
@@ -1365,10 +1499,15 @@ export default function CustomerArea() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="text-center text-gray-600 mb-4">
+            {lastRating && (
+              <div className="text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded-md p-2">
+                You have already submitted a review. New text you add now will be posted as an <b>update</b> to your previous review.
+              </div>
+            )}
+            <div className="text-center text-gray-600 mb-2">
               How was your experience at {shop?.shop_name}?
             </div>
-            <div className="flex justify-center gap-2 mb-4">
+            <div className="flex justify-center gap-2 mb-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
@@ -1382,7 +1521,7 @@ export default function CustomerArea() {
             <textarea
               value={ratingComment}
               onChange={(e) => setRatingComment(e.target.value)}
-              placeholder="Leave a comment (optional)"
+              placeholder={lastRating ? 'Write an update to your previous review (optional)' : 'Leave a comment (optional)'}
               rows={4}
               className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
             />
@@ -1391,8 +1530,38 @@ export default function CustomerArea() {
               disabled={submittingRating}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold shadow hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submittingRating ? 'Submitting...' : 'Submit Feedback'}
+              {submittingRating ? 'Submitting...' : (lastRating ? 'Post Update' : 'Submit Feedback')}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-[420px] p-5 shadow-xl">
+            <h3 className="text-lg font-bold text-red-700 mb-2">Delete Your Data</h3>
+            <p className="text-sm text-gray-700 mb-3">
+              This action is irreversible. Your profile, visits and rewards history for <b>{shop?.shop_name}</b> will be permanently deleted.
+            </p>
+            <p className="text-sm text-gray-700 mb-2">To confirm, type: <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{deleteRequiredText}</span></p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-4"
+              placeholder="Type here to confirm"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700">Cancel</button>
+              <button
+                onClick={handleDeleteMyData}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:opacity-50"
+              >
+                {deleting ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
