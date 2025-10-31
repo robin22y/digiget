@@ -65,12 +65,14 @@ export default function TaskHistoryPage() {
   const [dateRange, setDateRange] = useState(30);
 
   useEffect(() => {
-    if (shop.plan_type === 'pro') {
+    if (shopId && shop && shop.plan_type === 'pro') {
       loadTaskHistory();
     }
   }, [shopId, shop, dateRange]);
 
   const loadTaskHistory = async () => {
+    if (!shopId) return;
+    
     setLoading(true);
     try {
       const startDate = new Date();
