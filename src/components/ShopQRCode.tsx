@@ -88,19 +88,52 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   }, [shopId, defaultCheckInUrl]);
 
   const handleGenerateBranded = async () => {
-    if (!confirm('Generate branded QR poster? This will create a print-ready A5 poster with DigiGet branding.')) {
+    if (!confirm('Generate branded QR poster? This will create a print-ready poster with DigiGet branding.')) {
       return;
     }
 
     setGeneratingBranded(true);
     try {
-      // Call a backend API or trigger server-side generation
-      // For now, we'll show instructions since this requires Node.js
-      alert('Branded QR generation requires running the Node.js script:\n\nnode scripts/generateBrandedQR.js ' + shopId + '\n\nOr integrate with your backend API to trigger generation.');
-      setGeneratingBranded(false);
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('You must be logged in to generate branded QR codes.');
+        setGeneratingBranded(false);
+        return;
+      }
+
+      // Call Edge Function
+      const { data, error } = await supabase.functions.invoke('generate-branded-qr', {
+        body: { shopId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.success) {
+        // Reload shop data to get new branded QR URL
+        const { data: shopData } = await supabase
+          .from('shops')
+          .select('branded_qr_url, branded_qr_pdf')
+          .eq('id', shopId)
+          .single();
+        
+        if (shopData) {
+          setShop(shopData);
+        }
+        
+        alert('✅ Branded QR code generated successfully! You can now download it below.');
+      } else {
+        throw new Error(data?.error || 'Failed to generate branded QR');
+      }
     } catch (error: any) {
       console.error('Error generating branded QR:', error);
-      alert('Failed to generate branded QR: ' + error.message);
+      alert('Failed to generate branded QR: ' + (error.message || 'Unknown error'));
+    } finally {
       setGeneratingBranded(false);
     }
   };
