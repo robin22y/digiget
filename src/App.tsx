@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ShopProvider } from './contexts/ShopContext';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
@@ -52,7 +53,8 @@ import CookiePolicy from './pages/CookiePolicy';
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <ShopProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/signup" element={<SignupPage />} />
@@ -138,6 +140,7 @@ function App() {
 
         </Routes>
       </BrowserRouter>
+      </ShopProvider>
     </AuthProvider>
   );
 }
