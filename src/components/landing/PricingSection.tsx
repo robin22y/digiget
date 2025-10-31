@@ -1,168 +1,175 @@
 import { Link } from 'react-router-dom';
+import { CheckCircle, X } from 'lucide-react';
 
 export default function PricingSection() {
   return (
-    <section id="pricing" className="py-12 md:py-16 px-4 sm:px-6 lg:px-8 bg-white">
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 md:mb-12 text-center tracking-tight">
-          Two Simple Plans
+    <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <div className="max-w-6xl mx-auto">
+        
+        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-4">
+          Two Plans. Pick What Fits.
         </h2>
+        <p className="text-xl text-center text-gray-600 mb-16">
+          No card needed for either plan
+        </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mb-6 md:mb-8">
-          {/* Basic Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 hover:shadow-md transition-shadow duration-200">
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">BASIC</h3>
-            <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">FREE<span className="text-lg md:text-xl text-gray-600 font-normal">/month</span></div>
-            <p className="text-sm md:text-base text-gray-600 mb-5 md:mb-6">Customer loyalty only</p>
-
-            <ul className="space-y-2 md:space-y-3 mb-6 md:mb-8">
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Unlimited customers</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Digital loyalty program</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Customer balance checker</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Simple booking diary</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">1 staff member only</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">50 customer check-ins/month</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-red-600 mr-2 font-bold">✗</span>
-                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No flash offers</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-red-600 mr-2 font-bold">✗</span>
-                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No geofencing/location tracking</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-red-600 mr-2 font-bold">✗</span>
-                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No incident reports</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-red-600 mr-2 font-bold">✗</span>
-                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No clock requests</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-red-600 mr-2 font-bold">✗</span>
-                <span className="text-sm md:text-base text-gray-500 leading-relaxed">No tasks</span>
-              </li>
-            </ul>
-
-            <Link
-              to="/signup"
-              className="block w-full border-2 border-blue-600 text-blue-600 px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-center hover:bg-blue-50 transition-colors duration-200 text-sm md:text-base"
-            >
-              Start 90-Day Free Trial →
-            </Link>
-          </div>
-
-          {/* Pro Card */}
-          <div className="bg-white rounded-2xl shadow-lg border-2 border-blue-600 p-6 md:p-8 relative hover:shadow-xl transition-shadow duration-200">
-            <div className="absolute -top-3 md:-top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-semibold">
-              ⭐ Best Value
+        {/* Pricing Cards */}
+        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12">
+          
+          {/* BASIC PLAN */}
+          <div className="bg-white rounded-ios p-8 border-2 border-gray-200 hover:border-apple-green transition-all hover:shadow-apple-lg">
+            
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="inline-block bg-apple-green/10 text-apple-green px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                🆓 BASIC
+              </div>
+              <div className="text-5xl font-bold text-gray-900 mb-2">
+                FREE
+              </div>
+              <div className="text-lg text-gray-600">
+                Forever
+              </div>
             </div>
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">PRO</h3>
-            <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">£9.99<span className="text-lg md:text-xl text-gray-600 font-normal">/month</span></div>
-            <p className="text-sm md:text-base text-gray-600 mb-5 md:mb-6">Everything + staff management</p>
 
-            <ul className="space-y-2 md:space-y-3 mb-6 md:mb-8">
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Everything in Basic</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Unlimited staff</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Staff clock in/out</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Location verification (GPS)</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Task management</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Payroll reports</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2 font-bold">✓</span>
-                <span className="text-sm md:text-base text-gray-700 leading-relaxed">Incident reporting</span>
-              </li>
-            </ul>
+            {/* Description */}
+            <div className="bg-gray-50 rounded-ios p-4 mb-6">
+              <p className="text-center text-gray-700 font-medium">
+                Perfect if you're small:
+              </p>
+              <ul className="mt-2 space-y-1 text-center text-gray-600">
+                <li>• You + 1 staff</li>
+                <li>• 50 customers/month</li>
+              </ul>
+            </div>
 
+            {/* Features */}
+            <div className="space-y-3 mb-8">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+                <span className="text-gray-700">Staff clock in/out</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+                <span className="text-gray-700">Customer loyalty</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+                <span className="text-gray-700">Points tracking</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+                <span className="text-gray-700">Basic reports</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <X className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-500">No new features</span>
+              </div>
+            </div>
+
+            {/* CTA */}
             <Link
               to="/signup"
-              className="block w-full bg-blue-600 text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-center hover:bg-blue-700 transition-colors duration-200 text-sm md:text-base"
+              className="block w-full border-2 border-apple-blue text-apple-blue px-6 py-3 rounded-ios font-semibold text-center hover:bg-apple-blue/5 transition-colors duration-200 mb-3"
             >
-              Start 90-Day Free Trial →
+              Start Free →
             </Link>
+            <p className="text-center text-sm text-gray-500">
+              Stay free forever
+            </p>
+
           </div>
+
+          {/* PRO PLAN */}
+          <div className="bg-gradient-to-br from-apple-blue/10 to-apple-purple/10 rounded-ios p-8 border-2 border-apple-blue relative hover:shadow-apple-lg transition-all">
+            
+            {/* Popular Badge */}
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+              <div className="bg-gradient-to-r from-apple-blue to-apple-purple text-white px-6 py-2 rounded-full text-sm font-bold shadow-apple">
+                ⭐ BEST VALUE
+              </div>
+            </div>
+
+            {/* Header */}
+            <div className="text-center mb-6 mt-4">
+              <div className="inline-block bg-apple-blue/20 text-apple-blue px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                💼 PRO
+              </div>
+              <div className="text-5xl font-bold text-gray-900 mb-2">
+                £9.99
+              </div>
+              <div className="text-lg text-gray-600 mb-2">
+                per month
+              </div>
+              <div className="bg-apple-yellow/20 text-apple-orange px-4 py-2 rounded-ios text-sm font-semibold inline-block">
+                Free until Christmas 2025 🎄
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="bg-white/80 rounded-ios p-4 mb-6">
+              <p className="text-center text-gray-700 font-medium">
+                Perfect if you're growing:
+              </p>
+              <ul className="mt-2 space-y-1 text-center text-gray-600">
+                <li>• Unlimited staff</li>
+                <li>• Unlimited customers</li>
+              </ul>
+            </div>
+
+            {/* Features */}
+            <div className="space-y-3 mb-8">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-blue flex-shrink-0" />
+                <span className="text-gray-900 font-medium">Everything in Basic</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-blue flex-shrink-0" />
+                <span className="text-gray-900">Task management</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-blue flex-shrink-0" />
+                <span className="text-gray-900">Payroll reports</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-blue flex-shrink-0" />
+                <span className="text-gray-900">Incident reporting</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-blue flex-shrink-0" />
+                <span className="text-gray-900">Staff analytics</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-blue flex-shrink-0" />
+                <span className="text-gray-900">New features</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-apple-blue flex-shrink-0" />
+                <span className="text-gray-900">NFC tags (coming soon)</span>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <Link
+              to="/signup"
+              className="block w-full bg-apple-blue text-white px-6 py-3 rounded-ios font-semibold text-center hover:bg-opacity-90 transition-all duration-200 mb-3 shadow-apple"
+            >
+              Try Pro Free →
+            </Link>
+            <p className="text-center text-sm text-gray-600">
+              Free til Xmas, then £9.99/month
+            </p>
+
+          </div>
+
         </div>
 
-        <p className="text-center text-gray-600 mb-8">
-          Try either plan free for 90 days. No card required.
-          <br />
-          After trial: Continue paying monthly. Cancel anytime. No contracts.
-        </p>
-
-        {/* Comparison Table */}
-        <div className="bg-gray-50 rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6 mb-5 md:mb-6">
-          <table className="w-full text-xs md:text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 md:py-3 font-semibold text-gray-900">Feature</th>
-                <th className="text-right py-2 md:py-3 font-semibold text-gray-900">Market Price</th>
-                <th className="text-right py-2 md:py-3 font-semibold text-blue-600">DigiGet</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-100">
-                <td className="py-2 md:py-3 text-gray-700">Staff scheduling</td>
-                <td className="text-right py-2 md:py-3 text-gray-600">£68/month</td>
-                <td className="text-right py-2 md:py-3 text-blue-600 font-semibold">↓</td>
-              </tr>
-              <tr className="border-b border-gray-100">
-                <td className="py-2 md:py-3 text-gray-700">Loyalty program</td>
-                <td className="text-right py-2 md:py-3 text-gray-600">£29/month</td>
-                <td className="text-right py-2 md:py-3 text-blue-600 font-semibold">↓</td>
-              </tr>
-              <tr className="border-b border-gray-100">
-                <td className="py-2 md:py-3 text-gray-700">Time tracking</td>
-                <td className="text-right py-2 md:py-3 text-gray-600">£40/month</td>
-                <td className="text-right py-2 md:py-3 text-blue-600 font-semibold">↓</td>
-              </tr>
-              <tr className="font-bold">
-                <td className="py-2 md:py-3 text-gray-900">Total</td>
-                <td className="text-right py-2 md:py-3 text-gray-900">£137/month</td>
-                <td className="text-right py-2 md:py-3 text-blue-600">£9.99/month</td>
-              </tr>
-            </tbody>
-          </table>
+        {/* Additional Info */}
+        <div className="text-center text-gray-600 space-y-2">
+          <p className="text-lg">Upgrade or downgrade anytime.</p>
+          <p className="text-lg">Cancel anytime. No contracts.</p>
         </div>
 
-        <p className="text-center text-lg md:text-xl font-semibold text-gray-900">
-          You save over £1,500 per year.
-        </p>
       </div>
     </section>
   );

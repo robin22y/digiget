@@ -1,51 +1,66 @@
 export default function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="bg-gray-900 text-gray-300 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          {/* Column 1 */}
+        
+        {/* Main Footer Content */}
+        <div className="grid md:grid-cols-4 gap-8 mb-8">
+          
+          {/* Brand Column */}
           <div>
-            <h3 className="text-white font-bold text-xl mb-3">DigiGet</h3>
-            <p className="text-sm">
-              Simple shop management for UK independent businesses
+            <div className="text-2xl font-bold text-white mb-4">DigiGet</div>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              Simple staff & loyalty tracking for UK small shops
             </p>
           </div>
 
-          {/* Column 2 */}
+          {/* Product Column */}
           <div>
-            <h4 className="text-white font-semibold mb-3">Product</h4>
+            <h3 className="text-white font-semibold mb-4">Product</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
-              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Customer Loyalty</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Staff Management</a></li>
+              <li><a href="#how-it-works" className="hover:text-white">How It Works</a></li>
+              <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
+              <li><a href="#features" className="hover:text-white">Features</a></li>
+              <li><a href="#coming-soon" className="hover:text-white">What's Coming</a></li>
             </ul>
           </div>
 
-          {/* Column 3 */}
+          {/* Support Column */}
           <div>
-            <h4 className="text-white font-semibold mb-3">Support</h4>
+            <h3 className="text-white font-semibold mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-white transition-colors">Help Centre</a></li>
-              <li><a href="mailto:hello@digiget.uk" className="hover:text-white transition-colors">Contact Us</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">System Status</a></li>
+              <li><a href="/help" className="hover:text-white">Help Centre</a></li>
+              <li><a href="mailto:hello@digiget.uk" className="hover:text-white">Contact Us</a></li>
+              <li><a href="/status" className="hover:text-white">System Status</a></li>
             </ul>
           </div>
 
-          {/* Column 4 */}
+          {/* Legal Column */}
           <div>
-            <h4 className="text-white font-semibold mb-3">Legal</h4>
+            <h3 className="text-white font-semibold mb-4">Legal</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
+              <li><a href="/privacy" className="hover:text-white">Privacy Policy</a></li>
+              <li><a href="/terms" className="hover:text-white">Terms of Service</a></li>
+              <li><a href="/cookies" className="hover:text-white">Cookie Policy</a></li>
+              <li><a href="/gdpr" className="hover:text-white">GDPR Info</a></li>
             </ul>
+          </div>
+
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-gray-400">
+            © {currentYear} DigiGet. Made in the UK for UK shops.
+          </p>
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span className="text-xl">🇬🇧</span>
+            <span>Simple software for small businesses</span>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-8 text-center text-sm">
-          © 2024 DigiGet. Made in the UK.
-        </div>
       </div>
     </footer>
   );

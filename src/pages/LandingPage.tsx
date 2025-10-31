@@ -7,8 +7,10 @@ import PricingSection from '../components/landing/PricingSection';
 import WhoItsFor from '../components/landing/WhoItsFor';
 import HowItWorks from '../components/landing/HowItWorks';
 import FAQ from '../components/landing/FAQ';
+import ComingSoon from '../components/landing/ComingSoon';
 import FinalCTA from '../components/landing/FinalCTA';
 import Footer from '../components/landing/Footer';
+import CookieConsent from '../components/CookieConsent';
 
 export default function LandingPage() {
   return (
@@ -23,9 +25,11 @@ export default function LandingPage() {
         <WhoItsFor />
         <HowItWorks />
         <FAQ />
+        <ComingSoon />
         <FinalCTA />
       </main>
       <Footer />
+      <CookieConsent />
     </div>
   );
 }

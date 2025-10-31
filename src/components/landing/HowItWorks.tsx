@@ -1,71 +1,92 @@
 import { Link } from 'react-router-dom';
+import { CheckCircle } from 'lucide-react';
 import { ArrowRight } from 'lucide-react';
 
 export default function HowItWorks() {
+  const steps = [
+    {
+      number: "1️⃣",
+      title: "Sign Up",
+      subtitle: "(2 minutes)",
+      details: [
+        "Enter email",
+        "Choose plan",
+        "Done"
+      ]
+    },
+    {
+      number: "2️⃣",
+      title: "Add Staff",
+      subtitle: "Set Reward",
+      details: [
+        "Give staff their PINs",
+        "Create loyalty reward"
+      ]
+    },
+    {
+      number: "3️⃣",
+      title: "Start Using",
+      subtitle: "(same day)",
+      details: [
+        "Leave tablet open by till",
+        "That's it"
+      ]
+    }
+  ];
+
   return (
-    <section id="how-it-works" className="py-12 md:py-16 px-4 sm:px-6 lg:px-8 bg-white">
-      <div className="max-w-5xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 md:mb-12 text-center tracking-tight">
+    <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <div className="max-w-6xl mx-auto">
+        
+        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-4">
           Get Started in 3 Steps
         </h2>
-
-        <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-2 mb-6 md:mb-8">
-          {/* Step 1 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6 text-center relative w-full md:w-64 hover:shadow-md transition-shadow duration-200">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
-              1
-            </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 mt-4">Sign Up (2 minutes)</h3>
-            <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-              Enter your shop name and email. Choose your plan (Basic or Pro).
-            </p>
-          </div>
-
-          {/* Arrow (hidden on mobile) */}
-          <div className="hidden md:flex items-center justify-center px-2">
-            <ArrowRight className="w-8 h-8 text-gray-400" />
-          </div>
-
-          {/* Step 2 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6 text-center relative w-full md:w-64 hover:shadow-md transition-shadow duration-200">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
-              2
-            </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 mt-4">Add Your Team</h3>
-            <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-              Add staff members and give them 4-digit PINs. Set up your loyalty reward.
-            </p>
-          </div>
-
-          {/* Arrow (hidden on mobile) */}
-          <div className="hidden md:flex items-center justify-center px-2">
-            <ArrowRight className="w-8 h-8 text-gray-400" />
-          </div>
-
-          {/* Step 3 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6 text-center relative w-full md:w-64 hover:shadow-md transition-shadow duration-200">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
-              3
-            </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 mt-4">Start Using It</h3>
-            <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-              Open DigiGet on a tablet by your till. Staff and customers use it all day.
-            </p>
-          </div>
-        </div>
-
-        <p className="text-center text-sm md:text-base text-gray-600 mb-6 md:mb-8 italic leading-relaxed">
-          That's it. No installation. No training. No IT support needed.
+        <p className="text-xl text-center text-gray-600 mb-16">
+          No installation. No training. No IT help needed.
         </p>
+
+        {/* Steps */}
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          {steps.map((step, index) => (
+            <div key={index} className="relative">
+              
+              {/* Step Card */}
+              <div className="bg-white rounded-ios p-8 shadow-apple text-center h-full">
+                <div className="text-6xl mb-4">{step.number}</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  {step.title}
+                </h3>
+                <p className="text-gray-600 mb-6">{step.subtitle}</p>
+                <ul className="space-y-2 text-left">
+                  {step.details.map((detail, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+                      <span className="text-gray-700">{detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Arrow (desktop only) */}
+              {index < steps.length - 1 && (
+                <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 text-4xl text-gray-300">
+                  →
+                </div>
+              )}
+
+            </div>
+          ))}
+        </div>
 
         <div className="text-center">
           <Link
             to="/signup"
-            className="inline-block bg-blue-600 text-white px-7 md:px-8 py-3 md:py-4 rounded-xl text-base md:text-lg font-semibold hover:bg-blue-700 transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-xl"
+            className="inline-block bg-apple-blue text-white px-10 py-5 rounded-ios text-lg font-bold hover:bg-opacity-90 transition-all duration-200 shadow-apple-lg hover:shadow-apple hover:scale-[1.02]"
           >
-            Start Your Free Trial →
+            Start Free Now →
           </Link>
         </div>
+
       </div>
     </section>
   );

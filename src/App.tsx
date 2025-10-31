@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import CreateSuperAdmin from './pages/CreateSuperAdmin';
@@ -41,18 +42,17 @@ import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
 import TopRatedShops from './pages/super-admin/TopRatedShops';
 import ShopTalk from './pages/ShopTalk.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import GDPRRights from './pages/GDPRRights';
+import CookiePolicy from './pages/CookiePolicy';
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/create-super-admin" element={<CreateSuperAdmin />} />
-
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/create-super-admin" element={<CreateSuperAdmin />} />
@@ -74,6 +74,12 @@ function App() {
           <Route path="/dashboard/:shopId/checkin" element={<CheckInPage />} />
 
           <Route path="/blog" element={<ShopTalk />} />
+
+          {/* Legal Pages */}
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/gdpr" element={<GDPRRights />} />
+          <Route path="/cookies" element={<CookiePolicy />} />
 
           <Route
             path="/dashboard/:shopId"

@@ -1,49 +1,59 @@
 export default function WhoItsFor() {
+  const shopTypes = [
+    { emoji: "☕", name: "Coffee Shops" },
+    { emoji: "🥖", name: "Bakeries" },
+    { emoji: "🛒", name: "Small Groceries" },
+    { emoji: "💇", name: "Barbers & Salons" },
+    { emoji: "🥩", name: "Butchers" },
+    { emoji: "🍕", name: "Takeaways" }
+  ];
+
+  const notFor = [
+    "You need till/POS integration",
+    "You have 20+ staff across multiple shops",
+    "You want complex inventory management",
+    "You need advanced analytics"
+  ];
+
   return (
-    <section className="py-12 md:py-16 px-4 sm:px-6 lg:px-8 bg-white">
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 md:mb-12 text-center tracking-tight">
-          Perfect For:
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <div className="max-w-6xl mx-auto">
+        
+        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-16">
+          Perfect For
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8 md:mb-12">
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:shadow-sm transition-shadow duration-200">
-            <div className="text-2xl mb-2">☕</div>
-            <p className="text-sm md:text-base font-semibold text-gray-900">Coffee shops & cafés</p>
-            <p className="text-xs md:text-sm text-gray-600">(1-10 staff)</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:shadow-sm transition-shadow duration-200">
-            <div className="text-2xl mb-2">🏪</div>
-            <p className="text-sm md:text-base font-semibold text-gray-900">Convenience stores</p>
-            <p className="text-xs md:text-sm text-gray-600">(family-run)</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:shadow-sm transition-shadow duration-200">
-            <div className="text-2xl mb-2">🥖</div>
-            <p className="text-sm md:text-base font-semibold text-gray-900">Independent bakeries</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:shadow-sm transition-shadow duration-200">
-            <div className="text-2xl mb-2">✂️</div>
-            <p className="text-sm md:text-base font-semibold text-gray-900">Barbers & hair salons</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:shadow-sm transition-shadow duration-200">
-            <div className="text-2xl mb-2">🍕</div>
-            <p className="text-sm md:text-base font-semibold text-gray-900">Small takeaways</p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:shadow-sm transition-shadow duration-200">
-            <div className="text-2xl mb-2">🛍️</div>
-            <p className="text-sm md:text-base font-semibold text-gray-900">Local retailers</p>
-          </div>
+        {/* Shop Types Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-16">
+          {shopTypes.map((shop, index) => (
+            <div 
+              key={index}
+              className="bg-gray-50 rounded-ios p-6 text-center hover:bg-apple-blue/5 transition-colors cursor-default"
+            >
+              <div className="text-5xl mb-3">{shop.emoji}</div>
+              <div className="text-sm font-medium text-gray-700">{shop.name}</div>
+            </div>
+          ))}
         </div>
 
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-xl p-5 md:p-6">
-          <h3 className="text-base md:text-lg font-bold text-gray-900 mb-2 md:mb-3">Not for you if:</h3>
-          <ul className="space-y-1.5 md:space-y-2 text-sm md:text-base text-gray-700">
-            <li>• You need full POS/till integration</li>
-            <li>• You have 20+ staff across multiple locations</li>
-            <li>• You need complex inventory management</li>
-            <li>• You want advanced analytics and reporting</li>
+        {/* Not For Section */}
+        <div className="bg-gray-50 rounded-ios p-8 max-w-3xl mx-auto">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
+            You're probably NOT ready for DigiGet if:
+          </h3>
+          <ul className="space-y-3">
+            {notFor.map((item, index) => (
+              <li key={index} className="flex items-start gap-3">
+                <span className="text-gray-400 text-xl">•</span>
+                <span className="text-gray-700">{item}</span>
+              </li>
+            ))}
           </ul>
+          <p className="text-center text-gray-600 mt-6 italic">
+            We keep it simple. That's the point.
+          </p>
         </div>
+
       </div>
     </section>
   );

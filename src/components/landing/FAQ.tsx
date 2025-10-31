@@ -8,65 +8,66 @@ interface FAQItem {
 
 const faqs: FAQItem[] = [
   {
-    question: "Why is it so cheap?",
-    answer: "We only include features independent shops actually need. We don't add expensive features built for large chains that you'd never use."
+    question: "Is Basic really free forever?",
+    answer: "Yes. If you stay on Basic (you + 1 staff, 50 customers/month), it's free forever. No credit card needed. Ever."
   },
   {
-    question: "Do I need to buy any hardware?",
-    answer: "No. Works on any phone, tablet, or computer with a web browser."
+    question: "What happens at 51 customers?",
+    answer: "We'll prompt you to upgrade to Pro. You can either upgrade or wait until next month when it resets to 50 again."
   },
   {
-    question: "Is there really a 90-day free trial?",
-    answer: "Yes. Full access to everything. No card required to start. Only pay if you decide to keep it after 90 days."
+    question: "Is Pro really free until Christmas?",
+    answer: "Yes. We're testing the product. Pro is completely free until Christmas 2025. After that, it's £9.99/month or switch to Basic."
   },
   {
-    question: "Can I cancel anytime?",
-    answer: "Yes. Cancel from your dashboard anytime. No contracts. No penalties."
+    question: "Do I need to buy a tablet?",
+    answer: "No. Works on any phone, tablet, or computer you already have. Just open a web browser."
   },
   {
-    question: "What if I only have 1-2 staff?",
-    answer: "Perfect. £9.99/month covers unlimited staff. Whether you have 1 or 10."
-  },
-  {
-    question: "Do my customers need to download an app?",
+    question: "Do customers need to download an app?",
     answer: "No. They just give their phone number at the till. That's it."
   },
   {
-    question: "Does it work on iPhone/Android/iPad?",
-    answer: "Yes. Works on any device with a web browser (Chrome, Safari, etc)."
+    question: "Can staff clock in from home?",
+    answer: "No. We use GPS to check they're at your shop. If they're not there, they can't clock in."
   },
   {
-    question: "What happens to my data if I cancel?",
-    answer: "You can export all your data (customer info, staff hours, etc) before cancelling. We keep it for 30 days after cancellation, then permanently delete it."
+    question: "What if I want to cancel?",
+    answer: "Cancel anytime from your dashboard. No questions asked. You can export all your data before you go."
+  },
+  {
+    question: "How does the loyalty reward work?",
+    answer: "You decide: 'Buy 10 coffees, get 1 free' or '100 points = £5 off'. Customers see their points when they check in."
+  },
+  {
+    question: "Can I try Pro then downgrade to Basic?",
+    answer: "Yes. Switch between plans anytime. Downgrade and it's free again."
   },
   {
     question: "Is my data secure?",
     answer: "Yes. Bank-level encryption. UK-based servers. GDPR compliant."
-  },
-  {
-    question: "Can I upgrade from Basic to Pro later?",
-    answer: "Yes. Upgrade or downgrade anytime from your dashboard."
   }
 ];
 
 function FAQItem({ item, isOpen, onToggle }: { item: FAQItem; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="border-b border-gray-200 last:border-b-0">
+    <div className="border border-gray-200 rounded-ios overflow-hidden">
       <button
-        className="w-full py-3 md:py-4 px-4 md:px-5 text-left flex justify-between items-center hover:text-blue-600 transition-colors duration-200"
+        className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
         onClick={onToggle}
         aria-expanded={isOpen}
       >
-        <span className="text-sm md:text-base font-semibold text-gray-900 pr-4 leading-relaxed">{item.question}</span>
-        <ChevronDown
-          className={`w-5 h-5 text-gray-500 flex-shrink-0 transition-transform duration-200 ${
-            isOpen ? 'transform rotate-180' : ''
-          }`}
-        />
+        <span className="text-lg font-semibold text-gray-900 pr-8">
+          {item.question}
+        </span>
+        <span className="text-2xl text-gray-400 flex-shrink-0">
+          {isOpen ? "▼" : "▷"}
+        </span>
       </button>
+      
       {isOpen && (
-        <div className="px-4 md:px-5 pb-3 md:pb-4 text-sm md:text-base text-gray-600 leading-relaxed">
-          {item.answer}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <p className="text-gray-700 leading-relaxed">{item.answer}</p>
         </div>
       )}
     </div>
@@ -81,13 +82,14 @@ export default function FAQ() {
   };
 
   return (
-    <section id="faq" className="py-12 md:py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="max-w-3xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 md:mb-12 text-center tracking-tight">
-          Common Questions
+        
+        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-16">
+          Quick Questions
         </h2>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+        <div className="space-y-4">
           {faqs.map((item, index) => (
             <FAQItem
               key={index}
@@ -97,6 +99,7 @@ export default function FAQ() {
             />
           ))}
         </div>
+
       </div>
     </section>
   );
