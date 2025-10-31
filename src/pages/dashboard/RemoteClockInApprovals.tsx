@@ -68,6 +68,8 @@ export default function RemoteClockInApprovals() {
   }, [shopId]);
 
   const loadEmployees = async () => {
+    if (!shopId) return;
+    
     try {
       const { data, error } = await supabase
         .from('employees')
@@ -84,6 +86,8 @@ export default function RemoteClockInApprovals() {
   };
 
   const loadApprovals = async () => {
+    if (!shopId) return;
+    
     setLoading(true);
     try {
       const { data, error } = await supabase

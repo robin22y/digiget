@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Calendar, Plus, Clock, User, Phone, CheckCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Appointment {
   id: string;
@@ -17,7 +18,9 @@ interface Appointment {
 }
 
 export default function DiaryPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -33,11 +36,28 @@ export default function DiaryPage() {
     notes: '',
   });
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    loadAppointments();
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadAppointments();
+    }
   }, [shopId, selectedDate, view]);
 
   const loadAppointments = async () => {
+    if (!shopId) return;
+    
     try {
       const startDate = getStartDate();
       const endDate = getEndDate();

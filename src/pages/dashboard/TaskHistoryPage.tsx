@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Calendar, CheckCircle, XCircle, Camera, ChevronDown, ChevronUp, Image as ImageIcon, MapPin } from 'lucide-react';
 import { formatLocation, getGoogleMapsLink } from '../../utils/geolocation';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
   plan_type: 'basic' | 'pro';
@@ -39,9 +40,25 @@ interface DailyCompletions {
 }
 
 export default function TaskHistoryPage() {
-  const { shopId } = useParams();
-  const { shop } = useOutletContext<{ shop: Shop }>();
+  const { shopId: paramShopId } = useParams();
+  const { shop: outletShop } = useOutletContext<{ shop: Shop }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [dailyCompletions, setDailyCompletions] = useState<DailyCompletions[]>([]);
+
+  // Use currentShop from context or validated paramShopId
+  const shop = outletShop;
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
+  useEffect(() => {
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
   const [loading, setLoading] = useState(true);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
