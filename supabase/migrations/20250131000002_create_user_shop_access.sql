@@ -39,17 +39,13 @@ CREATE POLICY "Super admins see all access"
     )
   );
 
--- Shop owners can see access records for their shops
--- NOTE: Only checks shops.user_id to avoid recursion (doesn't query user_shop_access)
-CREATE POLICY "Shop owners see their shop access"
-  ON user_shop_access FOR SELECT
-  USING (
-    -- Check if user owns the shop directly via shops.user_id (avoids recursion)
-    shop_id IN (
-      SELECT id FROM shops
-      WHERE user_id = auth.uid()
-    )
-  );
+-- NOTE: Removed "Shop owners see their shop access" policy to prevent recursion
+-- Shop owners can see their shops via:
+-- 1. Direct ownership: shops.user_id = auth.uid()  
+-- 2. Their own access record: user_shop_access.user_id = auth.uid()
+-- 
+-- If shop owners need to see OTHER users' access to their shops, we'll implement
+-- that via a function or different approach that doesn't cause recursion.
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_user_shop_access_user ON user_shop_access(user_id);

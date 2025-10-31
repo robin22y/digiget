@@ -1,21 +1,17 @@
 /*
   # Fix infinite recursion in user_shop_access RLS policy
   
-  This migration fixes the "Shop owners see their shop access" policy
-  that was causing infinite recursion by querying user_shop_access within itself.
+  This migration removes the "Shop owners see their shop access" policy
+  that was causing infinite recursion by querying shops, which queries user_shop_access.
+  
+  Shop owners can still see their shops via:
+  1. Direct ownership: shops.user_id = auth.uid()
+  2. Their own access record: user_shop_access.user_id = auth.uid()
+  
+  The removed policy was for shop owners to see OTHER users' access to their shops,
+  which is a less common use case and causes recursion issues.
 */
 
--- Drop the problematic policy
+-- Drop the problematic policy that causes recursion
 DROP POLICY IF EXISTS "Shop owners see their shop access" ON user_shop_access;
-
--- Recreate it without the recursive query
-CREATE POLICY "Shop owners see their shop access"
-  ON user_shop_access FOR SELECT
-  USING (
-    -- Check if user owns the shop directly via shops.user_id (avoids recursion)
-    shop_id IN (
-      SELECT id FROM shops
-      WHERE user_id = auth.uid()
-    )
-  );
 
