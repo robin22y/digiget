@@ -68,13 +68,30 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Regular users: get shops from user_shop_access
-        const { data: access, error } = await supabase
-          .from('user_shop_access')
-          .select('shop_id, role, shops(*)')
-          .eq('user_id', user.id);
+        // First try the new user_shop_access table (if migrations are run)
+        let access = null;
+        let accessError = null;
+        
+        try {
+          const result = await supabase
+            .from('user_shop_access')
+            .select('shop_id, role, shops(*)')
+            .eq('user_id', user.id);
+          
+          access = result.data;
+          accessError = result.error;
+        } catch (err: any) {
+          // Table doesn't exist yet - will fall back to old method
+          accessError = err;
+        }
 
-        if (error) {
-          console.error('Error loading shop access:', error);
+        if (accessError) {
+          // Table doesn't exist or other error - use fallback method
+          // Only log if it's not a 404 (table doesn't exist)
+          if (accessError.code !== 'PGRST116' && accessError.status !== 404) {
+            console.error('Error loading shop access:', accessError);
+          }
+          
           // Fallback: check if user owns shops directly (backward compatibility)
           const { data: ownedShops } = await supabase
             .from('shops')
