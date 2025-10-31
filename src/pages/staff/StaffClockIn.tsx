@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { Clock, CheckCircle, X, AlertCircle } from 'lucide-react';
 import { getCurrentPosition, calculateDistance, getAreaName } from '../../utils/geolocation';
 import { useShop } from '../../contexts/ShopContext';
+import GPSConsentModal from '../../components/GPSConsentModal';
 
 interface Employee {
   id: string;
@@ -45,6 +46,8 @@ export default function StaffClockIn() {
   const [shop, setShop] = useState<any>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState('');
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [pendingEmployee, setPendingEmployee] = useState<Employee | null>(null);
 
   // Validate access if shopId comes from URL params
   useEffect(() => {
@@ -199,6 +202,24 @@ export default function StaffClockIn() {
         return;
       }
 
+      // Check GPS consent - show modal if consent is null (first time)
+      if (employees.gps_location_consent === null) {
+        setPendingEmployee(employees);
+        setShowConsentModal(true);
+        setPin('');
+        setIsLoading(false);
+        return;
+      }
+
+      // If consent declined, show error
+      if (employees.gps_location_consent === false) {
+        setError('GPS location consent is required to use the clock in/out feature. Please contact your manager.');
+        setPin('');
+        setIsLoading(false);
+        return;
+      }
+
+      // Consent given - proceed with normal flow
       setEmployee(employees);
       setPin('');
       // checkExistingClockIn will be called via useEffect
@@ -332,6 +353,62 @@ export default function StaffClockIn() {
       setPin(prev => prev + digit);
     }
   }
+
+  const handleConsentAgree = async () => {
+    if (!pendingEmployee || !shopId) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          gps_location_consent: true,
+          gps_consent_given_at: new Date().toISOString(),
+          gps_consent_version: '1.0'
+        })
+        .eq('id', pendingEmployee.id);
+
+      if (error) throw error;
+
+      // Refresh employee data and proceed
+      const updatedEmployee = { ...pendingEmployee, gps_location_consent: true };
+      setEmployee(updatedEmployee);
+      setPendingEmployee(null);
+      setShowConsentModal(false);
+
+      // Check for existing clock-in
+      await checkExistingClockIn();
+    } catch (err: any) {
+      console.error('Error saving consent:', err);
+      setError('Failed to save consent. Please try again.');
+      setShowConsentModal(false);
+    }
+  };
+
+  const handleConsentDecline = async () => {
+    if (!pendingEmployee || !shopId) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          gps_location_consent: false,
+          gps_consent_given_at: new Date().toISOString(),
+          gps_consent_version: '1.0'
+        })
+        .eq('id', pendingEmployee.id);
+
+      if (error) throw error;
+
+      setPendingEmployee(null);
+      setShowConsentModal(false);
+      setError('GPS location consent is required to use the clock in/out feature. Please contact your manager.');
+      setPin('');
+    } catch (err: any) {
+      console.error('Error saving consent decline:', err);
+      setError('Failed to save response. Please try again.');
+      setShowConsentModal(false);
+    }
+  };
 
   // If staff is clocked in, show clocked-in view
   if (currentClockEntry && employee) {
@@ -514,6 +591,13 @@ export default function StaffClockIn() {
           </form>
         </div>
       </div>
+
+      <GPSConsentModal
+        isOpen={showConsentModal}
+        employeeName={pendingEmployee?.first_name || 'Staff Member'}
+        onAgree={handleConsentAgree}
+        onDecline={handleConsentDecline}
+      />
     </div>
   );
 }
