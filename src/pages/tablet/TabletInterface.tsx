@@ -150,6 +150,7 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
       let employee;
       
       if (propEmployeeId) {
+        console.log('[TabletInterface] Verifying PIN for specific employee:', { propEmployeeId, shopId, pinLength: pin.length });
         // Verify PIN for specific employee
         const { data: specificEmployee, error: empError } = await supabase
           .from('employees')
@@ -159,6 +160,8 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
           .eq('pin', pin)
           .eq('active', true)
           .maybeSingle();
+
+        console.log('[TabletInterface] Employee lookup result:', { specificEmployee, empError });
 
         if (empError || !specificEmployee) {
           throw new Error('Invalid PIN. Please try again.');
@@ -179,6 +182,8 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
 
         employee = employees[0];
       }
+
+      console.log('[TabletInterface] Employee authenticated:', employee.first_name);
 
       // Check for PIN expiry (30 days after last change)
       const now = new Date();
@@ -217,6 +222,8 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
         .is('clock_out_time', null)
         .maybeSingle();
 
+      console.log('[TabletInterface] Active entry check:', { activeEntry });
+
       if (activeEntry) {
         setCurrentEntry(activeEntry);
         // Load location name if coordinates exist
@@ -227,14 +234,17 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
           );
           setClockInLocationName(locationName);
         }
+        console.log('[TabletInterface] Setting view to workspace');
         setView('workspace');
       } else {
         // Show ready view with Clock In button instead of auto-clocking in
+        console.log('[TabletInterface] Setting view to ready');
         setView('ready');
       }
 
       setPin('');
     } catch (err: any) {
+      console.error('[TabletInterface] PIN submit error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
