@@ -58,16 +58,8 @@ CREATE POLICY "Users can update own shop"
   ON shops FOR UPDATE
   USING (auth.uid() = user_id);
 
--- Super admins see all shops (note: cannot query auth.users in RLS - will be fixed in later migration)
-CREATE POLICY "Super admin sees all shops"
-  ON shops FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE id = auth.uid()
-      AND raw_user_meta_data->>'role' = 'super_admin'
-    )
-  );
+-- Note: Super admin policy removed here because it queries auth.users which isn't accessible from RLS
+-- See migration 20250131000011 for fixed super admin policy using auth.jwt()
 
 -- EMPLOYEES TABLE POLICIES
 -- Users can only see staff from their shops
