@@ -48,13 +48,6 @@ CREATE POLICY "Shop owners see their shop access"
       SELECT id FROM shops
       WHERE user_id = auth.uid()
     )
-    OR
-    -- Also check if user has owner role via user_shop_access (using SECURITY DEFINER to bypass RLS)
-    shop_id IN (
-      SELECT usa.shop_id FROM user_shop_access usa
-      WHERE usa.user_id = auth.uid()
-      AND usa.role = 'owner'
-    )
   );
 
 -- Indexes for performance
