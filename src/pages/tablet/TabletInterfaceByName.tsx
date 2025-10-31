@@ -11,6 +11,7 @@ import TabletInterface from './TabletInterface';
 export default function TabletInterfaceByName() {
   const { staffIdentifier } = useParams();
   const [shopId, setShopId] = useState<string | null>(null);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +36,7 @@ export default function TabletInterfaceByName() {
 
         if (!exactError && exactMatch && exactMatch.length > 0) {
           setShopId(exactMatch[0].shop_id);
+          setEmployeeId(exactMatch[0].id);
           setLoading(false);
           return;
         }
@@ -56,8 +58,9 @@ export default function TabletInterfaceByName() {
           return;
         }
 
-        // Use the first matching employee's shop_id
+        // Use the first matching employee's shop_id and id
         setShopId(employees[0].shop_id);
+        setEmployeeId(employees[0].id);
       } catch (err: any) {
         console.error('Error looking up staff:', err);
         setError(err.message || 'Failed to look up staff member');
@@ -105,7 +108,7 @@ export default function TabletInterfaceByName() {
     );
   }
 
-  // Render TabletInterface with the found shopId as prop
-  return <TabletInterface shopId={shopId} />;
+  // Render TabletInterface with the found shopId and employeeId as props
+  return <TabletInterface shopId={shopId} employeeId={employeeId || undefined} />;
 }
 

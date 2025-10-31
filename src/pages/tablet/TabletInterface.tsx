@@ -15,9 +15,10 @@ interface ClockEntry {
 
 interface TabletInterfaceProps {
   shopId?: string; // Optional prop to override URL param
+  employeeId?: string; // Optional employee ID for /xtra/:staffIdentifier routes
 }
 
-export default function TabletInterface({ shopId: propShopId }: TabletInterfaceProps = {}) {
+export default function TabletInterface({ shopId: propShopId, employeeId: propEmployeeId }: TabletInterfaceProps = {}) {
   const { shopId: paramShopId } = useParams<{ shopId?: string }>();
   const shopId = propShopId || paramShopId;
   
@@ -144,18 +145,40 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
     setError('');
 
     try {
-      const { data: employees } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('shop_id', shopId)
-        .eq('pin', pin)
-        .eq('active', true);
+      // If employeeId is provided (from /xtra route), verify PIN against that specific employee
+      // Otherwise, find any employee with matching PIN (for /tablet/:shopId route)
+      let employee;
+      
+      if (propEmployeeId) {
+        // Verify PIN for specific employee
+        const { data: specificEmployee, error: empError } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('id', propEmployeeId)
+          .eq('shop_id', shopId)
+          .eq('pin', pin)
+          .eq('active', true)
+          .maybeSingle();
 
-      if (!employees || employees.length === 0) {
-        throw new Error('Invalid PIN. Please try again.');
+        if (empError || !specificEmployee) {
+          throw new Error('Invalid PIN. Please try again.');
+        }
+        employee = specificEmployee;
+      } else {
+        // Find any employee with matching PIN (original behavior)
+        const { data: employees } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('shop_id', shopId)
+          .eq('pin', pin)
+          .eq('active', true);
+
+        if (!employees || employees.length === 0) {
+          throw new Error('Invalid PIN. Please try again.');
+        }
+
+        employee = employees[0];
       }
-
-      const employee = employees[0];
 
       // Check for PIN expiry (30 days after last change)
       const now = new Date();
