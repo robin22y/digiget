@@ -49,6 +49,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import GDPRRights from './pages/GDPRRights';
 import CookiePolicy from './pages/CookiePolicy';
+import DashboardRedirect from './pages/DashboardRedirect';
 
 function App() {
   return (
@@ -81,6 +82,16 @@ function App() {
           
           {/* Public check-in page - accessible without authentication */}
           <Route path="/dashboard/:shopId/checkin" element={<CheckInPage />} />
+
+          {/* Dashboard redirect - redirects to user's shop dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardRedirect />
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="/blog" element={<ShopTalk />} />
 
