@@ -12,6 +12,7 @@ interface Employee {
   last_name: string | null;
   pin: string;
   shop_id: string;
+  gps_location_consent: boolean | null;
 }
 
 interface ClockEntry {
