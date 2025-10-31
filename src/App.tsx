@@ -29,6 +29,8 @@ import TabletInterfaceByName from './pages/tablet/TabletInterfaceByName';
 import CustomerBalance from './pages/public/CustomerBalance';
 import CustomerArea from './pages/public/CustomerArea';
 import StaffPortal from './pages/staff/StaffPortal';
+import StaffClockIn from './pages/staff/StaffClockIn';
+import CustomerCheckIn from './pages/staff/CustomerCheckIn';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedSuperAdminRoute from './components/ProtectedSuperAdminRoute';
 import SuperAdminLayout from './layouts/SuperAdminLayout';
@@ -65,6 +67,11 @@ function App() {
           <Route path="/xtra/:staffIdentifier" element={<TabletInterfaceByName />} />
 
           <Route path="/:shopName/:staffName" element={<StaffPortal />} />
+
+          {/* New staff-facing pages */}
+          <Route path="/staff/:shopId/clock-in" element={<StaffClockIn />} />
+          <Route path="/staff/:shopId/check-in-customer" element={<CustomerCheckIn />} />
+          <Route path="/staff/:shopId/check-in-customer/:employeeId" element={<CustomerCheckIn />} />
 
           {/* Short check-in routes */}
           <Route path="/c/:shopId" element={<CheckInPage />} />
