@@ -706,15 +706,6 @@ function StaffClockView({
 }) {
   const [loading, setLoading] = useState(false);
 
-  function parseTodayTime(hhmm?: string | null): Date | null {
-    if (!hhmm) return null;
-    const [hh, mm] = hhmm.split(':');
-    if (hh === undefined || mm === undefined) return null;
-    const now = new Date();
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(hh), parseInt(mm), 0, 0);
-    return d;
-  }
-
   const handleClockIn = async () => {
     if (!employee || !shop) return;
 
