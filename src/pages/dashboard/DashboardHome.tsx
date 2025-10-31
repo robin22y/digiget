@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { useParams, useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Clock, Users, QrCode, UserCheck, Wrench, ClipboardList, DollarSign, Zap, Star, MessageSquare } from 'lucide-react';
 import DashboardNotifications from '../../components/DashboardNotifications';
 import { maskPhone, maskCustomerId, maskEmail, maskName } from '../../utils/maskCustomerData';
 import { isFeatureEnabled } from '../../config/features';
 import { useAuth } from '../../contexts/AuthContext';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
   id: string;
@@ -16,9 +17,23 @@ interface Shop {
 }
 
 export default function DashboardHome() {
-  const { shopId } = useParams();
-  const { shop } = useOutletContext<{ shop: Shop }>();
+  const { shopId: paramShopId } = useParams();
+  const { shop: outletShop } = useOutletContext<{ shop: Shop }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Use currentShop from context (preferred) or fallback to outlet context
+  const shop = currentShop ? {
+    id: currentShop.id,
+    shop_name: currentShop.shop_name,
+    plan_type: (outletShop?.plan_type || 'basic') as 'basic' | 'pro',
+    trial_ends_at: outletShop?.trial_ends_at || '',
+    subscription_status: outletShop?.subscription_status || ''
+  } : outletShop;
+
+  // Use currentShop.id from context (secure) or validated paramShopId
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : shop?.id);
   const [stats, setStats] = useState({
     todayCustomers: 0,
     todayRewards: 0,
@@ -32,11 +47,20 @@ export default function DashboardHome() {
   const [activeTab, setActiveTab] = useState<'actions' | 'feedbacks'>('actions');
   const [pinExpiryReminders, setPinExpiryReminders] = useState<any[]>([]);
 
+  // Validate access and load data
   useEffect(() => {
-    loadStats();
-    loadRatings();
-    loadPinExpiryReminders();
-  }, [shopId]);
+    if (!shopLoading) {
+      if (paramShopId && !hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+      if (shopId) {
+        loadStats();
+        loadRatings();
+        loadPinExpiryReminders();
+      }
+    }
+  }, [shopId, paramShopId, hasAccess, shopLoading, navigate]);
 
   const loadStats = async () => {
     try {

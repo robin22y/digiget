@@ -1,20 +1,36 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Star, Search, Users } from 'lucide-react';
 import { maskPhone } from '../../utils/maskCustomerData';
+import { useShop } from '../../contexts/ShopContext';
 
 export default function CustomersPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || null;
+
   useEffect(() => {
-    loadCustomers();
-  }, [shopId]);
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+    if (shopId) {
+      loadCustomers();
+    }
+  }, [shopId, paramShopId, hasAccess, shopLoading, navigate]);
 
   const loadCustomers = async () => {
+    if (!shopId) return;
+    
     try {
       const { data } = await supabase
         .from('customers')

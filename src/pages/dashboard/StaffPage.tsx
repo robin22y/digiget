@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { useParams, useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { UserPlus, Clock, Users as UsersIcon, Trash2, ExternalLink, Copy, KeyRound, Pencil } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
   plan_type: 'basic' | 'pro';
@@ -22,9 +23,15 @@ interface Employee {
 }
 
 export default function StaffPage() {
-  const { shopId } = useParams();
-  const { shop } = useOutletContext<{ shop: Shop }>();
+  const { shopId: paramShopId } = useParams();
+  const { shop: outletShop } = useOutletContext<{ shop: Shop }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<Employee[]>([]);
+
+  // Use currentShop from context or validated paramShopId
+  const shop = outletShop;
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -35,17 +42,27 @@ export default function StaffPage() {
   const [reissuingPinFor, setReissuingPinFor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (shop.plan_type === 'pro') {
-      loadEmployees();
-      loadWeeklyStats();
-    } else {
-      // For basic plan, still load employees but limit functionality
-      loadEmployees();
-      setLoading(false);
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
     }
-  }, [shopId, shop]);
+    if (shopId && shop) {
+      if (shop.plan_type === 'pro') {
+        loadEmployees();
+        loadWeeklyStats();
+      } else {
+        // For basic plan, still load employees but limit functionality
+        loadEmployees();
+        setLoading(false);
+      }
+    }
+  }, [shopId, shop, paramShopId, hasAccess, shopLoading, navigate]);
 
   const loadEmployees = async () => {
+    if (!shopId) return;
+    
     try {
       const { data, error } = await supabase
         .from('employees')
@@ -69,6 +86,8 @@ export default function StaffPage() {
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
       weekStart.setHours(0, 0, 0, 0);
 
+      if (!shopId) return;
+      
       const { data, error } = await supabase
         .from('clock_entries')
         .select('employee_id, hours_worked')

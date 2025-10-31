@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Clock, CheckCircle, X, AlertCircle } from 'lucide-react';
 import { getCurrentPosition, calculateDistance, getAreaName } from '../../utils/geolocation';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Employee {
   id: string;
@@ -32,7 +33,8 @@ interface CurrentlyWorking {
 }
 
 export default function StaffClockIn() {
-  const { shopId } = useParams<{ shopId: string }>();
+  const { shopId: paramShopId } = useParams<{ shopId: string }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const navigate = useNavigate();
   const [pin, setPin] = useState('');
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -43,6 +45,19 @@ export default function StaffClockIn() {
   const [shop, setShop] = useState<any>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState('');
+
+  // Validate access if shopId comes from URL params
+  useEffect(() => {
+    if (paramShopId && !shopLoading) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  // Use currentShop.id (from context) or validated paramShopId
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
 
   useEffect(() => {
     if (shopId) {

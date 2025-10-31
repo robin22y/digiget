@@ -3,7 +3,9 @@ import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
 import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
 import { isFeatureEnabled, isAdminOrOwner } from '../config/features';
+import ShopSwitcher from '../components/ShopSwitcher';
 
 interface Shop {
   id: string;
@@ -16,7 +18,8 @@ interface Shop {
 }
 
 export default function DashboardLayout() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading, isMultiLocation } = useShop();
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingClockRequests, setPendingClockRequests] = useState(0);
@@ -24,18 +27,31 @@ export default function DashboardLayout() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   
+  // Use currentShop.id from context (preferred) or validated paramShopId
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
   // Determine if current user is shop owner/admin for feature flag bypass
-  // Shop owners: User who created the shop (shop.user_id matches user.id)
-  // Super admins: Always have access (email ends with @digiget.uk OR role='super' OR is_super_admin=true)
   const isOwnerOrAdmin = user !== null && shop !== null && 
     (shop.user_id === user.id || isAdminOrOwner(user));
 
+  // Validate access when paramShopId changes
   useEffect(() => {
-    loadShop();
-    if (shopId && shop?.plan_type === 'pro') {
-      loadPendingClockRequests();
-      const interval = setInterval(loadPendingClockRequests, 30000); // Check every 30 seconds
-      return () => clearInterval(interval);
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadShop();
+      if (shop?.plan_type === 'pro') {
+        loadPendingClockRequests();
+        const interval = setInterval(loadPendingClockRequests, 30000);
+        return () => clearInterval(interval);
+      }
     }
   }, [shopId, shop?.plan_type]);
 
@@ -179,10 +195,16 @@ export default function DashboardLayout() {
     <div className="flex bg-system-bg">
       <aside className="hidden md:flex md:flex-shrink-0 md:fixed md:left-0 md:top-0 md:bottom-0">
         <div className="flex flex-col w-64 bg-white border-r border-system-separator">
-          <div className="flex items-center h-16 px-5 border-b border-system-separator bg-gradient-to-br from-modern-blue to-modern-indigo">
+          <div className="flex items-center justify-between h-16 px-5 border-b border-system-separator bg-gradient-to-br from-modern-blue to-modern-indigo">
             <div>
               <h1 className="text-xl font-bold text-white">DigiGet</h1>
-              <p className="text-xs text-white/80">{shop.shop_name}</p>
+              {isMultiLocation ? (
+                <div className="mt-1">
+                  <ShopSwitcher />
+                </div>
+              ) : (
+                <p className="text-xs text-white/80">{shop.shop_name}</p>
+              )}
             </div>
           </div>
 

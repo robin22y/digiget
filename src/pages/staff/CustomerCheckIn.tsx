@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { CheckCircle, Gift, Star, X, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Star, X } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Customer {
   id: string;
@@ -19,7 +20,9 @@ interface ShopSettings {
 }
 
 export default function CustomerCheckIn() {
-  const { shopId, employeeId } = useParams<{ shopId: string; employeeId?: string }>();
+  const { shopId: paramShopId, employeeId } = useParams<{ shopId: string; employeeId?: string }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -30,6 +33,19 @@ export default function CustomerCheckIn() {
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
   const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  // Validate access if shopId comes from URL params
+  useEffect(() => {
+    if (paramShopId && !shopLoading) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  // Use currentShop.id (from context) or validated paramShopId
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
 
   useEffect(() => {
     if (shopId) {
