@@ -190,15 +190,20 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
       const pinExpiry = employee.pin_expires_at ? new Date(employee.pin_expires_at) : null;
       const isPinExpired = pinExpiry && now > pinExpiry;
 
+      console.log('[TabletInterface] PIN expiry check:', { isPinExpired, pinExpiry });
+
       // Only force PIN change if expired (not on first use)
       if (isPinExpired) {
+        console.log('[TabletInterface] PIN expired, showing change PIN view');
         setPin('');
         setView('changepin');
         return;
       }
 
       // Check GPS consent - show modal if consent is null (first time)
+      console.log('[TabletInterface] GPS consent:', employee.gps_location_consent);
       if (employee.gps_location_consent === null) {
+        console.log('[TabletInterface] No GPS consent, showing consent modal');
         setPendingEmployee(employee);
         setShowConsentModal(true);
         setPin('');
@@ -207,12 +212,14 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
 
       // If consent declined, show error
       if (employee.gps_location_consent === false) {
+        console.log('[TabletInterface] GPS consent declined, showing error');
         setError('GPS location consent is required to use the clock in/out feature. Please contact your manager.');
         setPin('');
         return;
       }
 
       // Consent given - proceed with normal flow
+      console.log('[TabletInterface] All checks passed, proceeding with normal flow');
       setCurrentEmployee(employee);
 
       const { data: activeEntry } = await supabase
