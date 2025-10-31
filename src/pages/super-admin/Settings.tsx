@@ -4,7 +4,7 @@ import { Settings as SettingsIcon, DollarSign, Calendar, Mail, Database } from '
 
 export default function SuperAdminSettings() {
   const [settings, setSettings] = useState({
-    default_trial_days: 90,
+    default_trial_days: 14,
     default_basic_price: 0,
     default_pro_price: 9.99,
     email_automation_enabled: true,
@@ -59,7 +59,7 @@ export default function SuperAdminSettings() {
             <input
               type="number"
               value={settings.default_trial_days}
-              onChange={(e) => setSettings({ ...settings, default_trial_days: parseInt(e.target.value) || 90 })}
+              onChange={(e) => setSettings({ ...settings, default_trial_days: parseInt(e.target.value) || 14 })}
               className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               min="1"
             />

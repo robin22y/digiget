@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Search, Plus, Filter, Eye, Power, PowerOff, Trash2 } from 'lucide-react';
+import { Search, Plus, Filter, Eye, Power, PowerOff, Trash2, Calendar, X } from 'lucide-react';
 
 interface Shop {
   id: string;
@@ -13,6 +13,8 @@ interface Shop {
   subscription_status: string;
   created_at: string;
   updated_at: string;
+  trial_ends_at?: string;
+  is_test_shop?: boolean;
 }
 
 export default function ManageShops() {
@@ -25,6 +27,8 @@ export default function ManageShops() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedShops, setSelectedShops] = useState<Set<string>>(new Set());
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [trialDays, setTrialDays] = useState(14);
   
   // New shop form state
   const [newShop, setNewShop] = useState({
@@ -49,7 +53,7 @@ export default function ManageShops() {
       // Try with all columns first
       let { data, error } = await supabase
         .from('shops')
-        .select('id, shop_name, owner_name, owner_email, postcode, business_category, subscription_status, created_at, updated_at')
+        .select('id, shop_name, owner_name, owner_email, postcode, business_category, subscription_status, trial_ends_at, is_test_shop, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       // If postcode or business_category columns don't exist, try without them
@@ -57,7 +61,7 @@ export default function ManageShops() {
         console.warn('Some columns missing, trying fallback query');
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('shops')
-          .select('id, shop_name, owner_name, owner_email, subscription_status, created_at, updated_at')
+          .select('id, shop_name, owner_name, owner_email, subscription_status, trial_ends_at, is_test_shop, created_at, updated_at')
           .order('created_at', { ascending: false });
           
         if (!fallbackError) {
@@ -131,6 +135,7 @@ export default function ManageShops() {
     if (selectedShops.size === 0) return;
 
     const newStatus = action === 'activate' ? 'active' : 'cancelled';
+    const selectedCount = selectedShops.size;
 
     try {
       const { error } = await supabase
@@ -141,7 +146,7 @@ export default function ManageShops() {
       if (error) throw error;
       await loadShops();
       setSelectedShops(new Set());
-      alert(`${selectedShops.size} shop(s) ${action}d successfully`);
+      alert(`${selectedCount} shop(s) ${action}d successfully`);
     } catch (error: any) {
       alert(`Error: ${error.message}`);
     }
@@ -170,6 +175,72 @@ export default function ManageShops() {
 
       await loadShops();
       alert(`Shop ${action}d successfully`);
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleExtendTrial = async () => {
+    if (selectedShops.size === 0) {
+      alert('Please select at least one shop');
+      return;
+    }
+
+    try {
+      const selectedCount = selectedShops.size;
+      const newTrialEndDate = new Date();
+      newTrialEndDate.setDate(newTrialEndDate.getDate() + trialDays);
+
+      const { error } = await supabase
+        .from('shops')
+        .update({
+          subscription_status: 'trial',
+          trial_ends_at: newTrialEndDate.toISOString()
+        })
+        .in('id', Array.from(selectedShops));
+
+      if (error) throw error;
+
+      await loadShops();
+      setSelectedShops(new Set());
+      setShowTrialModal(false);
+      alert(`${selectedCount} shop(s) marked as trial with ${trialDays} days extended successfully`);
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleToggleTestShop = async () => {
+    if (selectedShops.size === 0) {
+      alert('Please select at least one shop');
+      return;
+    }
+
+    try {
+      const selectedCount = selectedShops.size;
+      // Get current test status of selected shops
+      const { data: selectedShopData, error: fetchError } = await supabase
+        .from('shops')
+        .select('id, is_test_shop')
+        .in('id', Array.from(selectedShops));
+
+      if (fetchError) throw fetchError;
+
+      // Determine if we should mark as test or production
+      // If any are not test shops, mark all as test; otherwise mark all as production
+      const hasNonTestShop = selectedShopData?.some(shop => !shop.is_test_shop);
+      const newTestStatus = hasNonTestShop;
+
+      const { error } = await supabase
+        .from('shops')
+        .update({ is_test_shop: newTestStatus })
+        .in('id', Array.from(selectedShops));
+
+      if (error) throw error;
+
+      await loadShops();
+      setSelectedShops(new Set());
+      alert(`${selectedCount} shop(s) ${newTestStatus ? 'marked as TEST shops' : 'marked as PRODUCTION shops'} successfully`);
     } catch (error: any) {
       alert(`Error: ${error.message}`);
     }
@@ -246,7 +317,7 @@ export default function ManageShops() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="relative">
             <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
@@ -280,24 +351,37 @@ export default function ManageShops() {
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
-
-          {selectedShops.size > 0 && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleBulkAction('activate')}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors text-sm"
-              >
-                Activate ({selectedShops.size})
-              </button>
-              <button
-                onClick={() => handleBulkAction('deactivate')}
-                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-colors text-sm"
-              >
-                Deactivate ({selectedShops.size})
-              </button>
-            </div>
-          )}
         </div>
+
+        {selectedShops.size > 0 && (
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => handleBulkAction('activate')}
+              className="px-4 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors text-sm"
+            >
+              Activate ({selectedShops.size})
+            </button>
+            <button
+              onClick={() => handleBulkAction('deactivate')}
+              className="px-4 py-2 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-colors text-sm"
+            >
+              Deactivate ({selectedShops.size})
+            </button>
+            <button
+              onClick={() => setShowTrialModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors text-sm flex items-center"
+            >
+              <Calendar className="w-4 h-4 mr-1" />
+              Extend Trial ({selectedShops.size})
+            </button>
+            <button
+              onClick={handleToggleTestShop}
+              className="px-4 py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors text-sm"
+            >
+              Toggle Test Status ({selectedShops.size})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Shops Table */}
@@ -336,7 +420,16 @@ export default function ManageShops() {
                       className="rounded border-gray-300"
                     />
                   </td>
-                  <td className="py-2 text-gray-900 font-medium">{shop.shop_name}</td>
+                  <td className="py-2 text-gray-900 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{shop.shop_name}</span>
+                      {shop.is_test_shop && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 uppercase">
+                          Test
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="py-2 text-gray-700">{shop.owner_name}</td>
                   <td className="py-2 text-gray-700">{shop.owner_email}</td>
                   <td className="py-2 text-gray-600">{shop.postcode || '-'}</td>
@@ -479,6 +572,61 @@ export default function ManageShops() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Trial Extension Modal */}
+      {showTrialModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Extend Trial Period</h2>
+              <button
+                onClick={() => setShowTrialModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Selected shops: <strong>{selectedShops.size}</strong>
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                These shops will be marked as "trial" and their trial period will be extended.
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Extend by how many days?
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={trialDays}
+                onChange={(e) => setTrialDays(parseInt(e.target.value) || 14)}
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTrialModal(false)}
+                className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExtendTrial}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Extend Trial
+              </button>
+            </div>
           </div>
         </div>
       )}

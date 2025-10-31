@@ -878,32 +878,6 @@ function StaffClockView({
 
     setLoading(true);
     try {
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('id')
-        .eq('shop_id', employee.shop_id)
-        .eq('active', true)
-        .or(`assigned_to.eq.all,assigned_employee_ids.cs.{${employee.id}}`);
-
-      const totalTasks = tasksData?.length || 0;
-
-      const { data: completionsData } = await supabase
-        .from('task_completions')
-        .select('completed')
-        .eq('clock_entry_id', currentClockEntry.id)
-        .eq('completed', true);
-
-      const completedTasks = completionsData?.length || 0;
-      const incompleteTasks = totalTasks - completedTasks;
-
-      if (incompleteTasks > 0) {
-        const confirmMessage = `You have ${incompleteTasks} task${incompleteTasks > 1 ? 's' : ''} not completed. Are you sure you want to clock out?`;
-        if (!confirm(confirmMessage)) {
-          setLoading(false);
-          return;
-        }
-      }
-
       const location = await getCurrentPosition();
 
       const clockOutTime = new Date();

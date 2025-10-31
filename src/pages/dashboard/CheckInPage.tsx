@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase';
 import { Star, Calendar, Clock, User, ArrowLeft, MessageSquare, X, Gift, Zap } from 'lucide-react';
 import { getDeviceType } from '../../utils/customerAreaHelpers';
 import { isFeatureEnabled } from '../../config/features';
-import { useAuth } from '../../contexts/AuthContext';
 import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
@@ -464,52 +463,6 @@ export default function CheckInPage() {
     }
   };
 
-  const handleRedeemReward = async (customerId: string) => {
-    if (!shop) return;
-    try {
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', customerId)
-        .single();
-
-      if (!customer) return;
-
-      const { data: updatedCustomer } = await supabase
-        .from('customers')
-        .update({
-          current_points: 0,
-          rewards_redeemed: customer.rewards_redeemed + 1,
-        })
-        .eq('id', customerId)
-        .select()
-        .single();
-      
-      if (updatedCustomer) {
-        setLoggedInCustomer(updatedCustomer);
-      }
-
-      await supabase
-        .from('loyalty_transactions')
-        .insert({
-          shop_id: shopId!,
-          customer_id: customerId,
-          transaction_type: 'reward_redeemed',
-          points_change: -shop.points_needed,
-          balance_after: 0,
-        });
-
-      setMessage({
-        type: 'success',
-        text: 'Reward redeemed! Customer starts fresh at 0 visits',
-      });
-
-      loadOffers();
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
-    }
-  };
-
   // Handle rating submission
   const handleSubmitRating = async () => {
     if (!shop || !currentCustomerId || rating === 0) {
@@ -808,6 +761,20 @@ export default function CheckInPage() {
                 required
                 className="w-full px-4 py-3.5 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
+              
+              {/* Optional name field for first-time visitors */}
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter customer name"
+                  className="w-full px-4 py-2.5 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
             </div>
 
 

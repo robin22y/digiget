@@ -21,6 +21,7 @@ interface Shop {
   reward_description: string;
   diary_enabled: boolean;
   auto_logout_hours: number;
+  days_between_points: number;
 }
 
 export default function SettingsPage() {
@@ -53,6 +54,7 @@ export default function SettingsPage() {
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
   const [pointsType, setPointsType] = useState<'per_visit' | 'per_spend'>('per_visit');
   const [pointsNeeded, setPointsNeeded] = useState(6);
+  const [daysBetweenPoints, setDaysBetweenPoints] = useState(7);
   const [rewardType, setRewardType] = useState<'free_product' | 'fixed_discount' | 'percentage_discount'>('free_product');
   const [rewardValue, setRewardValue] = useState('');
   const [rewardDescription, setRewardDescription] = useState('');
@@ -96,6 +98,7 @@ export default function SettingsPage() {
           setLoyaltyEnabled(updatedShop.loyalty_enabled);
           setPointsType(updatedShop.points_type);
           setPointsNeeded(updatedShop.points_needed);
+          setDaysBetweenPoints(updatedShop.days_between_points || 7);
           setRewardType(updatedShop.reward_type);
           setRewardValue(updatedShop.reward_value?.toString() || '');
           setRewardDescription(updatedShop.reward_description);
@@ -142,6 +145,7 @@ export default function SettingsPage() {
       setLoyaltyEnabled(data.loyalty_enabled);
       setPointsType(data.points_type);
       setPointsNeeded(data.points_needed);
+      setDaysBetweenPoints(data.days_between_points || 7);
       setRewardType(data.reward_type);
       setRewardValue(data.reward_value?.toString() || '');
       setRewardDescription(data.reward_description);
@@ -201,6 +205,7 @@ export default function SettingsPage() {
           loyalty_enabled: loyaltyEnabled,
           points_type: pointsType,
           points_needed: pointsNeeded,
+          days_between_points: daysBetweenPoints,
           reward_type: rewardType,
           reward_value: rewardValue ? parseFloat(rewardValue) : null,
           reward_description: rewardDescription,
@@ -245,27 +250,6 @@ export default function SettingsPage() {
       setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDowngradeToBasic = async () => {
-    if (!shopId) return;
-    if (!confirm('Are you sure you want to downgrade to Basic? You will lose Pro features.')) return;
-    setSaving(true);
-    setMessage(null);
-    try {
-      const { error } = await supabase
-        .from('shops')
-        .update({ plan_type: 'basic' })
-        .eq('id', shopId);
-      if (error) throw error;
-      setMessage({ type: 'success', text: 'Plan downgraded to Basic successfully.' });
-      setShop((prev) => prev ? { ...prev, plan_type: 'basic' } as any : prev);
-      setTimeout(() => setMessage(null), 3000);
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Failed to downgrade plan.' });
     } finally {
       setSaving(false);
     }
@@ -395,16 +379,11 @@ export default function SettingsPage() {
                   value={businessCategory}
                   onChange={(e) => setBusinessCategory(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled
                 >
                   <option value="hair_salon">Hair Salon / Barbershop</option>
-                  <option value="beauty_salon">Beauty & Nail Salon</option>
-                  <option value="cafe">Cafe / Coffee Shop</option>
-                  <option value="restaurant">Restaurant / Takeaway</option>
-                  <option value="retail">Retail / Convenience Store</option>
-                  <option value="health_wellness">Health & Wellness</option>
-                  <option value="professional_services">Professional Services</option>
-                  <option value="other">Other</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">Currently only available for Hair Salons / Barbershops</p>
               </div>
 
               <button
@@ -470,6 +449,22 @@ export default function SettingsPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <p className="text-sm text-gray-500 mt-1">Common values: 5, 6, 8, 10</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Days between points
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={daysBetweenPoints}
+                      onChange={(e) => setDaysBetweenPoints(parseInt(e.target.value) || 0)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Minimum days a customer must wait before earning the next point. Default: 7 days. Set to 0 to allow daily points.
+                    </p>
                   </div>
 
                   <div>
@@ -821,24 +816,6 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {shop.plan_type === 'pro' && (
-                <div className="border border-gray-200 rounded-lg p-4 md:p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Downgrade to Basic</h3>
-                  <p className="text-gray-600 mb-4">FREE/month (save £9.99/month)</p>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                    <p className="text-yellow-900 font-medium mb-2">You will lose access to:</p>
-                    <ul className="space-y-1 text-sm text-yellow-800">
-                      <li>• Staff management and clock in/out</li>
-                      <li>• Task checklists</li>
-                      <li>• Payroll tracking</li>
-                      <li>• Incident reports</li>
-                    </ul>
-                  </div>
-                  <button onClick={handleDowngradeToBasic} disabled={saving} className="w-full px-4 md:px-6 py-2.5 md:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm md:text-base font-medium disabled:opacity-50">
-                    {saving ? 'Processing…' : 'Downgrade to Basic'}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
