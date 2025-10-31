@@ -32,16 +32,18 @@ DROP POLICY IF EXISTS "Super admin sees all shops" ON shops;
 
 -- SHOPS TABLE POLICIES
 -- Users can only see shops they have access to
+-- Check user_id FIRST to avoid recursion when querying user_shop_access
 CREATE POLICY "Users see only their shops"
   ON shops FOR SELECT
   USING (
-    id IN (
+    -- Backward compatibility: shops owned directly (checked first to avoid recursion)
+    (user_id = auth.uid())
+    OR
+    -- Check user_shop_access (only if user doesn't own shop directly)
+    (user_id IS NULL OR user_id != auth.uid()) AND id IN (
       SELECT shop_id FROM user_shop_access
       WHERE user_id = auth.uid()
     )
-    OR
-    -- Backward compatibility: shops owned directly
-    (user_id = auth.uid())
   );
 
 -- Super admins see all shops
