@@ -522,52 +522,60 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
 
   if (view === 'pin') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Enter Your PIN</h2>
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Enter Your PIN</h2>
 
-          {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
 
-          <form onSubmit={handlePinSubmit}>
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              placeholder="••••"
-              className="w-full px-6 py-4 text-3xl text-center border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
-              autoFocus
-            />
+            <form onSubmit={handlePinSubmit}>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+                className="w-full px-6 py-4 text-3xl text-center border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={loading || pin.length !== 4}
+                className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50"
+              >
+                {loading ? 'Checking...' : 'Submit'}
+              </button>
+            </form>
+
             <button
-              type="submit"
-              disabled={loading || pin.length !== 4}
-              className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50"
+              onClick={() => {
+                setView('idle');
+                setPin('');
+                setError('');
+              }}
+              className="w-full mt-4 text-gray-600 hover:text-gray-900"
             >
-              {loading ? 'Checking...' : 'Submit'}
+              ← Back
             </button>
-          </form>
 
-          <button
-            onClick={() => {
-              setView('idle');
-              setPin('');
-              setError('');
-            }}
-            className="w-full mt-4 text-gray-600 hover:text-gray-900"
-          >
-            ← Back
-          </button>
-
-          <p className="mt-6 text-sm text-gray-500 text-center">
-            Forgot PIN? Ask your manager
-          </p>
+            <p className="mt-6 text-sm text-gray-500 text-center">
+              Forgot PIN? Ask your manager
+            </p>
+          </div>
         </div>
-      </div>
+        <GPSConsentModal
+          isOpen={showConsentModal}
+          employeeName={pendingEmployee?.first_name || 'Staff Member'}
+          onAgree={handleConsentAgree}
+          onDecline={handleConsentDecline}
+        />
+      </>
     );
   }
 
@@ -751,14 +759,5 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
     );
   }
 
-  return (
-    <>
-      <GPSConsentModal
-        isOpen={showConsentModal}
-        employeeName={pendingEmployee?.first_name || 'Staff Member'}
-        onAgree={handleConsentAgree}
-        onDecline={handleConsentDecline}
-      />
-    </>
-  );
+  return null;
 }
