@@ -3,6 +3,7 @@ import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
 import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { isFeatureEnabled, isAdminOrOwner } from '../config/features';
 
 interface Shop {
   id: string;
@@ -11,6 +12,7 @@ interface Shop {
   diary_enabled: boolean;
   payment_status?: 'ok' | 'failed' | 'grace' | 'past_due' | 'cancelled' | null;
   grace_until?: string | null;
+  user_id?: string;
 }
 
 export default function DashboardLayout() {
@@ -19,8 +21,12 @@ export default function DashboardLayout() {
   const [loading, setLoading] = useState(true);
   const [pendingClockRequests, setPendingClockRequests] = useState(0);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  
+  // Note: User role checking is handled in isFeatureEnabled() which calls isAdminOrOwner()
+  // Shop owners: User who created the shop (shop.user_id matches user.id)  
+  // Super admins: Always have access (email ends with @digiget.uk OR role='super' OR is_super_admin=true)
 
   useEffect(() => {
     loadShop();
@@ -51,7 +57,7 @@ export default function DashboardLayout() {
     try {
       const { data, error } = await supabase
         .from('shops')
-        .select('id, shop_name, plan_type, diary_enabled, payment_status, grace_until')
+        .select('id, shop_name, plan_type, diary_enabled, payment_status, grace_until, user_id')
         .eq('id', shopId)
         .single();
 
@@ -117,32 +123,55 @@ export default function DashboardLayout() {
     );
   }
 
+  // Build navigation items with feature flags
   const navItems = [
-    { to: `/dashboard/${shopId}`, icon: Home, label: 'Home', end: true },
-    { to: `/dashboard/${shopId}/qr-code`, icon: QrCode, label: 'QR Code' },
-    { to: `/dashboard/${shopId}/customers`, icon: Users, label: 'Customers' },
-    ...(shop.plan_type === 'pro' ? [
-      { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Manage Staff' },
-      { to: `/dashboard/${shopId}/staff-requests`, icon: Package, label: 'Staff Requests' },
-      { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Work Visits' },
-      { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers' },
-      { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals' },
-      { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Staff Jobs' },
-      { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem' },
-      { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries' },
+    // Core features (always visible)
+    { to: `/dashboard/${shopId}`, icon: Home, label: 'Home', end: true, feature: 'dashboard' as const },
+    { to: `/dashboard/${shopId}/qr-code`, icon: QrCode, label: 'QR Code', feature: 'qrCodes' as const },
+    { to: `/dashboard/${shopId}/customers`, icon: Users, label: 'Customers', feature: 'viewCustomers' as const },
+    
+    // Staff management (visible based on plan and feature flag, always visible to owners/admins)
+    ...((shop.plan_type === 'pro' || shop.plan_type === 'basic') && isFeatureEnabled('manageStaff', user) ? [
+      { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Manage Staff', feature: 'manageStaff' as const },
     ] : []),
+    
+    // Pro plan features with feature flags
+    // ADMIN/OWNER: Always see all features (feature flags bypassed)
+    ...(shop.plan_type === 'pro' ? [
+      // HIDDEN FOR BARBER SHOP FOCUS - Can be re-enabled via feature flags
+      // Owners/admins always see these regardless of feature flags
+      isFeatureEnabled('staffRequests', user) && { to: `/dashboard/${shopId}/staff-requests`, icon: Package, label: 'Staff Requests', feature: 'staffRequests' as const },
+      isFeatureEnabled('workVisits', user) && { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Work Visits', feature: 'workVisits' as const },
+      isFeatureEnabled('remoteWorkers', user) && { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers', feature: 'remoteWorkers' as const },
+      isFeatureEnabled('remoteApprovals', user) && { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals', feature: 'remoteApprovals' as const },
+      isFeatureEnabled('staffJobs', user) && { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Staff Jobs', feature: 'staffJobs' as const },
+      isFeatureEnabled('reportProblem', user) && { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem', feature: 'reportProblem' as const },
+      isFeatureEnabled('fixTimeEntries', user) && { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries', feature: 'fixTimeEntries' as const },
+    ].filter(Boolean) as any[] : []),
+    
+    // Diary (if enabled)
     ...(shop.diary_enabled ? [
-      { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary' },
+      { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary', feature: undefined },
     ] : []),
-    ...(shop.plan_type === 'basic' ? [
-      { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Manage Staff' },
+    
+    // Deals (Pro plan only, visible to admins/owners regardless of feature flag)
+    ...(shop.plan_type === 'pro' && isFeatureEnabled('dealsOffers', user) ? [
+      { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Deals', feature: 'dealsOffers' as const },
     ] : []),
-    ...(shop.plan_type === 'pro' ? [
-      { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Deals' },
+    
+    // Ratings (hidden by feature flag, but visible to admins/owners)
+    ...(isFeatureEnabled('ratings', user) ? [
+      { to: `/dashboard/${shopId}/ratings`, icon: Star, label: 'Ratings', feature: 'ratings' as const },
     ] : []),
-    { to: `/dashboard/${shopId}/ratings`, icon: Star, label: 'Ratings' },
-    { to: `/dashboard/${shopId}/settings`, icon: Settings, label: 'Shop Settings' },
-  ];
+    
+    // Settings (always visible)
+    { to: `/dashboard/${shopId}/settings`, icon: Settings, label: 'Shop Settings', feature: 'shopSettings' as const },
+  ].filter((item): item is typeof item & { to: string; icon: any; label: string } => {
+    // Filter out items that don't pass feature check
+    if (!item) return false;
+    if (item.feature && !isFeatureEnabled(item.feature)) return false;
+    return true;
+  });
 
   return (
     <div className="flex bg-system-bg">
@@ -215,24 +244,34 @@ export default function DashboardLayout() {
           </div>
         </main>
 
+        {/* Mobile Bottom Navigation - Simplified to 5 items max */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-system-separator z-50 safe-area-inset-bottom shadow-modern-lg">
           <div className="flex justify-around max-w-full overflow-x-hidden">
-            {navItems.slice(0, 4).map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setShowMobileMenu(false)}
-                className={({ isActive }) =>
-                  `flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 transition-all duration-200 ${
-                    isActive ? 'text-modern-blue' : 'text-system-secondary'
-                  }`
-                }
-              >
-                <item.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" />
-                <span className="truncate w-full text-center text-[10px] sm:text-xs">{item.label}</span>
-              </NavLink>
-            ))}
+            {/* Core items: Home, QR Code, Customers, Manage Staff, More */}
+            {navItems
+              .filter(item => {
+                // Show only core items in bottom nav: Home, QR Code, Customers, Manage Staff
+                const coreItems = ['Home', 'QR Code', 'Customers', 'Manage Staff'];
+                return coreItems.includes(item.label);
+              })
+              .slice(0, 4)
+              .map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setShowMobileMenu(false)}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 transition-all duration-200 ${
+                      isActive ? 'text-modern-blue' : 'text-system-secondary'
+                    }`
+                  }
+                >
+                  <item.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" />
+                  <span className="truncate w-full text-center text-[10px] sm:text-xs">{item.label}</span>
+                </NavLink>
+              ))}
+            {/* More button - shows all other items */}
             <button
               onClick={() => setShowMobileMenu(true)}
               className={`flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 transition-all duration-200 ${

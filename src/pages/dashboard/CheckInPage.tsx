@@ -3,6 +3,8 @@ import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Star, Calendar, Clock, User, ArrowLeft, MessageSquare, X, Gift, Zap } from 'lucide-react';
 import { getDeviceType } from '../../utils/customerAreaHelpers';
+import { isFeatureEnabled } from '../../config/features';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Shop {
   id: string;
@@ -864,8 +866,8 @@ export default function CheckInPage() {
         </div>
       )}
 
-      {/* Profile Section - Shown when "Your Profile" is clicked */}
-      {showAdditionalFields && (
+      {/* HIDDEN FOR BARBER SHOP FOCUS - Profile Section - Can be re-enabled via feature flags */}
+      {showAdditionalFields && isFeatureEnabled('customerProfileEdit') && (
         <div className="mt-6 pt-6 border-t border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Profile</h3>
           <div className="space-y-4">
@@ -940,103 +942,109 @@ export default function CheckInPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Customer Actions</h2>
         <div className="space-y-3">
-          {/* Your Profile Button */}
-          <button
-            type="button"
-            onClick={() => setShowAdditionalFields(!showAdditionalFields)}
-            className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3">
-              <User className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-gray-900">Your Profile</p>
-                <p className="text-xs text-gray-500">Add or update your details</p>
+          {/* HIDDEN FOR BARBER SHOP FOCUS - Can be re-enabled via feature flags */}
+          {isFeatureEnabled('customerProfileEdit') && (
+            <button
+              type="button"
+              onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+              className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3">
+                <User className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Your Profile</p>
+                  <p className="text-xs text-gray-500">Add or update your details</p>
+                </div>
               </div>
-            </div>
-            {showAdditionalFields ? (
-              <span className="text-blue-600 font-bold">−</span>
-            ) : (
-              <span className="text-gray-400 font-bold">+</span>
-            )}
-          </button>
+              {showAdditionalFields ? (
+                <span className="text-blue-600 font-bold">−</span>
+              ) : (
+                <span className="text-gray-400 font-bold">+</span>
+              )}
+            </button>
+          )}
 
-          {/* Offers for You Button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (!phone.trim()) {
-                setMessage({
-                  type: 'error',
-                  text: 'Please enter a phone number first to view offers.'
-                });
-                return;
-              }
-              setShowOffers(!showOffers);
-              if (!showOffers && offers.length === 0) {
+          {/* HIDDEN FOR BARBER SHOP FOCUS - Can be re-enabled via feature flags */}
+          {isFeatureEnabled('customerOffers') && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!phone.trim()) {
+                  setMessage({
+                    type: 'error',
+                    text: 'Please enter a phone number first to view offers.'
+                  });
+                  return;
+                }
+                setShowOffers(!showOffers);
+                if (!showOffers && offers.length === 0) {
+                  const cleanPhone = phone.replace(/\s/g, '');
+                  loadCustomerOffers(cleanPhone);
+                }
+              }}
+              className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3">
+                <Gift className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Offers for You</p>
+                  <p className="text-xs text-gray-500">
+                    {offers.length > 0 ? `${offers.length} personalized deal${offers.length !== 1 ? 's' : ''}` : 'View personalized deals'}
+                  </p>
+                </div>
+              </div>
+              {showOffers ? (
+                <span className="text-blue-600 font-bold">−</span>
+              ) : (
+                <span className="text-gray-400 font-bold">+</span>
+              )}
+            </button>
+          )}
+
+          {/* HIDDEN FOR BARBER SHOP FOCUS - Can be re-enabled via feature flags */}
+          {isFeatureEnabled('customerFeedback') && (
+            <button
+              onClick={async () => {
+                if (!phone.trim()) {
+                  setMessage({
+                    type: 'error',
+                    text: 'Please enter a phone number first to leave feedback.'
+                  });
+                  return;
+                }
                 const cleanPhone = phone.replace(/\s/g, '');
-                loadCustomerOffers(cleanPhone);
-              }
-            }}
-            className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3">
-              <Gift className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-gray-900">Offers for You</p>
-                <p className="text-xs text-gray-500">
-                  {offers.length > 0 ? `${offers.length} personalized deal${offers.length !== 1 ? 's' : ''}` : 'View personalized deals'}
-                </p>
+                const { data: customer } = await supabase
+                  .from('customers')
+                  .select('id')
+                  .eq('shop_id', shopId!)
+                  .eq('phone', cleanPhone)
+                  .maybeSingle();
+                
+                if (customer) {
+                  handleOpenFeedback(customer.id);
+                } else {
+                  setMessage({
+                    type: 'error',
+                    text: 'Please check in first to leave feedback, or enter your phone number.'
+                  });
+                }
+              }}
+              className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Leave Feedback</p>
+                  <p className="text-xs text-gray-500">Share your experience with us</p>
+                </div>
               </div>
-            </div>
-            {showOffers ? (
-              <span className="text-blue-600 font-bold">−</span>
-            ) : (
-              <span className="text-gray-400 font-bold">+</span>
-            )}
-          </button>
-
-          {/* Feedback Button */}
-          <button
-            onClick={async () => {
-              if (!phone.trim()) {
-                setMessage({
-                  type: 'error',
-                  text: 'Please enter a phone number first to leave feedback.'
-                });
-                return;
-              }
-              const cleanPhone = phone.replace(/\s/g, '');
-              const { data: customer } = await supabase
-                .from('customers')
-                .select('id')
-                .eq('shop_id', shopId!)
-                .eq('phone', cleanPhone)
-                .maybeSingle();
-              
-              if (customer) {
-                handleOpenFeedback(customer.id);
-              } else {
-                setMessage({
-                  type: 'error',
-                  text: 'Please check in first to leave feedback, or enter your phone number.'
-                });
-              }
-            }}
-            className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-gray-900">Leave Feedback</p>
-                <p className="text-xs text-gray-500">Share your experience with us</p>
-              </div>
-            </div>
-            <span className="text-blue-600">→</span>
-          </button>
+              <span className="text-blue-600">→</span>
+            </button>
+          )}
         </div>
 
-        {/* Offers Section */}
-        {showOffers && (
+        {/* HIDDEN FOR BARBER SHOP FOCUS - Offers Section - Can be re-enabled via feature flags */}
+        {showOffers && isFeatureEnabled('customerOffers') && (
           <div className="mt-4 pt-4 border-t border-gray-200">
             {offers.length === 0 ? (
               <div className="text-center py-6">

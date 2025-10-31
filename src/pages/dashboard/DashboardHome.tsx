@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Clock, TrendingUp, Award, Users, QrCode, UserCheck, Wrench, ClipboardList, DollarSign, Zap, Star, MessageSquare } from 'lucide-react';
+import { Clock, Users, QrCode, UserCheck, Wrench, ClipboardList, DollarSign, Zap, Star, MessageSquare } from 'lucide-react';
 import DashboardNotifications from '../../components/DashboardNotifications';
 import { maskPhone, maskCustomerId, maskEmail, maskName } from '../../utils/maskCustomerData';
+import { isFeatureEnabled } from '../../config/features';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Shop {
   id: string;
@@ -16,6 +18,7 @@ interface Shop {
 export default function DashboardHome() {
   const { shopId } = useParams();
   const { shop } = useOutletContext<{ shop: Shop }>();
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     todayCustomers: 0,
     todayRewards: 0,
@@ -229,72 +232,71 @@ export default function DashboardHome() {
             )}
           </div>
         </div>
+        {/* Simplified Stats - Only show essential metrics */}
         <h2 className="text-sm font-semibold text-system-secondary mb-4">Today's Stats</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-gradient-to-br from-modern-blue to-blue-400 rounded-modern p-4 shadow-modern border border-modern-blue/20">
             <div className="flex items-center text-white/90 text-sm mb-2">
               <Users className="w-5 h-5 mr-2" />
-              <span className="font-medium">Customers</span>
+              <span className="font-medium">Customers Today</span>
             </div>
             <div className="text-3xl font-bold text-white">{stats.todayCustomers}</div>
           </div>
-          <div className="bg-gradient-to-br from-modern-purple to-purple-400 rounded-modern p-4 shadow-modern border border-modern-purple/20">
-            <div className="flex items-center text-white/90 text-sm mb-2">
-              <Award className="w-5 h-5 mr-2" />
-              <span className="font-medium">Rewards</span>
-            </div>
-            <div className="text-3xl font-bold text-white">{stats.todayRewards}</div>
-          </div>
-          <div className="bg-gradient-to-br from-modern-green to-green-400 rounded-modern p-4 shadow-modern border border-modern-green/20">
-            <div className="flex items-center text-white/90 text-sm mb-2">
-              <TrendingUp className="w-5 h-5 mr-2" />
-              <span className="font-medium">Points</span>
-            </div>
-            <div className="text-3xl font-bold text-white">{stats.todayPoints}</div>
-          </div>
           {shop.plan_type === 'pro' && (
-            <div className="bg-gradient-to-br from-modern-orange to-orange-400 rounded-modern p-4 shadow-modern border border-modern-orange/20">
-              <div className="flex items-center text-white/90 text-sm mb-2">
-                <Clock className="w-5 h-5 mr-2" />
-                <span className="font-medium">Hours</span>
+            <>
+              <div className="bg-gradient-to-br from-modern-orange to-orange-400 rounded-modern p-4 shadow-modern border border-modern-orange/20">
+                <div className="flex items-center text-white/90 text-sm mb-2">
+                  <Clock className="w-5 h-5 mr-2" />
+                  <span className="font-medium">Staff Hours</span>
+                </div>
+                <div className="text-3xl font-bold text-white">{stats.staffHours.toFixed(1)}h</div>
               </div>
-              <div className="text-3xl font-bold text-white">{stats.staffHours.toFixed(1)}h</div>
-            </div>
+              <div className="bg-gradient-to-br from-modern-green to-green-400 rounded-modern p-4 shadow-modern border border-modern-green/20">
+                <div className="flex items-center text-white/90 text-sm mb-2">
+                  <UserCheck className="w-5 h-5 mr-2" />
+                  <span className="font-medium">Currently Working</span>
+                </div>
+                <div className="text-3xl font-bold text-white">{stats.activeStaff}</div>
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Tabs Section */}
+      {/* Quick Actions Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-3">
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            <button
-              onClick={() => setActiveTab('actions')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'actions'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Quick Actions
-            </button>
-            <button
-              onClick={() => setActiveTab('feedbacks')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'feedbacks'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Feedbacks from Customers
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab Content */}
         <div className="p-4">
-          {activeTab === 'actions' ? (
+          {/* HIDDEN FOR BARBER SHOP FOCUS - Feedbacks tab can be re-enabled via feature flag */}
+          {/* ADMIN/OWNER: Always visible regardless of feature flag */}
+          {isFeatureEnabled('feedbackTab', user) && (
+            <div className="border-b border-gray-200 mb-4">
+              <nav className="flex -mb-px">
+                <button
+                  onClick={() => setActiveTab('actions')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'actions'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Quick Actions
+                </button>
+                <button
+                  onClick={() => setActiveTab('feedbacks')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'feedbacks'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Feedbacks from Customers
+                </button>
+              </nav>
+            </div>
+          )}
+
+          {/* Tab Content */}
+          {(activeTab === 'actions' || !isFeatureEnabled('feedbackTab')) ? (
             <>
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -357,17 +359,21 @@ export default function DashboardHome() {
                 <div className="text-sm text-purple-100">Add or edit staff details</div>
                 <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">👥</div>
               </Link>
-              <Link
-                to={`/dashboard/${shopId}/clock-requests`}
-                className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-orange-600 to-red-600 rounded-xl text-white hover:from-orange-700 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <div className="font-bold text-lg flex items-center gap-2">
-                  <Wrench className="w-5 h-5" />
-                  Fix Time Entries
-                </div>
-                <div className="text-sm text-orange-100">Review and fix clock-in requests</div>
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">⏰</div>
-              </Link>
+              {/* HIDDEN FOR BARBER SHOP FOCUS - Can be re-enabled via feature flag */}
+              {/* ADMIN/OWNER: Always visible regardless of feature flag */}
+              {isFeatureEnabled('fixTimeEntries', user) && (
+                <Link
+                  to={`/dashboard/${shopId}/clock-requests`}
+                  className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-orange-600 to-red-600 rounded-xl text-white hover:from-orange-700 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    <Wrench className="w-5 h-5" />
+                    Fix Time Entries
+                  </div>
+                  <div className="text-sm text-orange-100">Review and fix clock-in requests</div>
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">⏰</div>
+                </Link>
+              )}
               <Link
                 to={`/dashboard/${shopId}/staff/payroll`}
                 className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl text-white hover:from-emerald-700 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
