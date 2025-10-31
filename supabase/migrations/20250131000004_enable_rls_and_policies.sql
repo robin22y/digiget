@@ -24,6 +24,8 @@ ALTER TABLE customer_visits ENABLE ROW LEVEL SECURITY;
 
 -- DROP existing policies if they exist (will recreate with proper shop isolation)
 DROP POLICY IF EXISTS "Users see only their shops" ON shops;
+DROP POLICY IF EXISTS "Users can insert own shop" ON shops;
+DROP POLICY IF EXISTS "Users can update own shop" ON shops;
 DROP POLICY IF EXISTS "Users see only their shop's staff" ON employees;
 DROP POLICY IF EXISTS "Users see only their shop's clock events" ON clock_entries;
 DROP POLICY IF EXISTS "Users see only their shop's customers" ON customers;
@@ -46,7 +48,17 @@ CREATE POLICY "Users see only their shops"
     )
   );
 
--- Super admins see all shops
+-- Users can insert their own shops (for signup)
+CREATE POLICY "Users can insert own shop"
+  ON shops FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can update their own shops
+CREATE POLICY "Users can update own shop"
+  ON shops FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- Super admins see all shops (note: cannot query auth.users in RLS - will be fixed in later migration)
 CREATE POLICY "Super admin sees all shops"
   ON shops FOR ALL
   USING (
