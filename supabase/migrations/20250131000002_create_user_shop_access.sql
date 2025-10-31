@@ -39,14 +39,21 @@ CREATE POLICY "Super admins see all access"
     )
   );
 
--- Shop owners can see access records for their shops
+-- Shop owners can see access records for their shops (via shops.user_id, not user_shop_access to avoid recursion)
 CREATE POLICY "Shop owners see their shop access"
   ON user_shop_access FOR SELECT
   USING (
+    -- Check if user owns the shop directly via shops.user_id
     shop_id IN (
-      SELECT shop_id FROM user_shop_access
+      SELECT id FROM shops
       WHERE user_id = auth.uid()
-      AND role = 'owner'
+    )
+    OR
+    -- Also check if user has owner role via user_shop_access (using SECURITY DEFINER to bypass RLS)
+    shop_id IN (
+      SELECT usa.shop_id FROM user_shop_access usa
+      WHERE usa.user_id = auth.uid()
+      AND usa.role = 'owner'
     )
   );
 
