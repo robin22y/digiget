@@ -29,14 +29,20 @@ CREATE POLICY "Users see their own access"
   USING (user_id = auth.uid());
 
 -- Super admins can see all access records
+-- Uses auth.jwt() instead of querying auth.users (which isn't accessible from RLS)
 CREATE POLICY "Super admins see all access"
   ON user_shop_access FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE id = auth.uid()
-      AND raw_user_meta_data->>'role' = 'super_admin'
-    )
+    -- Allow super admin emails (@digiget.uk)
+    auth.jwt() ->> 'email' LIKE '%@digiget.uk'
+    OR
+    -- Allow users with super role in metadata
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'super'
+    OR
+    -- Allow users with is_super_admin flag
+    (auth.jwt() -> 'user_metadata' ->> 'is_super_admin') = 'true'
+    OR
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'super_admin'
   );
 
 -- NOTE: Removed "Shop owners see their shop access" policy to prevent recursion
