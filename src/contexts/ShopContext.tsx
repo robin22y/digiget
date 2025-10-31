@@ -73,13 +73,39 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         let accessError = null;
         
         try {
+          // Query user_shop_access WITHOUT shops(*) join to avoid RLS recursion
           const result = await supabase
             .from('user_shop_access')
-            .select('shop_id, role, shops(*)')
+            .select('shop_id, role')
             .eq('user_id', user.id);
           
           access = result.data;
           accessError = result.error;
+          
+          // If we got access records, fetch shops separately to avoid recursion
+          if (access && access.length > 0) {
+            const shopIds = access.map((a: any) => a.shop_id);
+            const { data: shopData, error: shopsError } = await supabase
+              .from('shops')
+              .select('*')
+              .in('id', shopIds);
+            
+            if (!shopsError && shopData) {
+              const shops = shopData.map(shop => {
+                const accessRecord = access.find((a: any) => a.shop_id === shop.id);
+                return {
+                  ...shop,
+                  userRole: (accessRecord?.role || 'owner') as 'owner' | 'manager' | 'staff'
+                };
+              });
+              
+              setAccessibleShops(shops);
+              const savedShopId = localStorage.getItem('currentShopId');
+              const shopToSet = shops.find(s => s.id === savedShopId) || shops[0];
+              setCurrentShop(shopToSet);
+              return; // Exit early if successful
+            }
+          }
         } catch (err: any) {
           // Table doesn't exist yet - will fall back to old method
           accessError = err;
@@ -108,20 +134,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
             const shopToSet = shops.find(s => s.id === savedShopId) || shops[0];
             setCurrentShop(shopToSet);
           }
-        } else if (access && access.length > 0) {
-          const shops = access.map((a: any) => ({
-            ...(a.shops as Shop),
-            userRole: a.role as 'owner' | 'manager' | 'staff'
-          }));
-
-          setAccessibleShops(shops);
-
-          // Set current shop (from localStorage or first one)
-          const savedShopId = localStorage.getItem('currentShopId');
-          const shopToSet = shops.find(s => s.id === savedShopId) || shops[0];
-          setCurrentShop(shopToSet);
         } else {
-          // No shop access - try backward compatibility
+          // No shop access from user_shop_access - try backward compatibility
           const { data: ownedShops } = await supabase
             .from('shops')
             .select('*')

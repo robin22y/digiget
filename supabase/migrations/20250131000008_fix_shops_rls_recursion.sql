@@ -11,20 +11,14 @@ DROP POLICY IF EXISTS "Users can view own shop" ON shops;
 DROP POLICY IF EXISTS "Public can view shops" ON shops;
 DROP POLICY IF EXISTS "Anyone can view shop names for staff portal lookup" ON shops;
 
--- Recreate shops policies - check user_id FIRST to avoid recursion
+-- Recreate shops policies - ONLY check user_id to completely avoid recursion
+-- NOTE: We cannot query user_shop_access here because that causes recursion when
+-- user_shop_access queries shops with shops(*) join
 CREATE POLICY "Users see only their shops"
   ON shops FOR SELECT
   USING (
-    -- Primary check: user owns shop directly (avoids recursion completely)
+    -- ONLY check direct ownership to avoid recursion
     (user_id = auth.uid())
-    OR
-    -- Secondary check: user has access via user_shop_access
-    -- This uses the simple "Users see their own access" policy which doesn't query shops
-    EXISTS (
-      SELECT 1 FROM user_shop_access usa
-      WHERE usa.shop_id = shops.id
-      AND usa.user_id = auth.uid()
-    )
   );
 
 -- Keep public access for staff portal
