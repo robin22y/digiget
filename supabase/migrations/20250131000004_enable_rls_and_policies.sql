@@ -29,7 +29,11 @@ CREATE POLICY "Users see only their shops"
       WHERE user_id = auth.uid()
     )
     OR
-    user_id = auth.uid() -- Backward compatibility: shops owned directly
+    -- Backward compatibility: shops owned directly (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND user_id = auth.uid())
   );
 
 -- Super admins see all shops
@@ -53,10 +57,14 @@ CREATE POLICY "Users see only their shop's staff"
       WHERE user_id = auth.uid()
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- Users can insert staff to their shops only
@@ -69,10 +77,14 @@ CREATE POLICY "Users can insert staff to their shops only"
       AND role IN ('owner', 'manager')
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- Users can update their shop's staff only
@@ -85,10 +97,14 @@ CREATE POLICY "Users can update their shop's staff only"
       AND role IN ('owner', 'manager')
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- CLOCK_ENTRIES TABLE POLICIES
@@ -101,10 +117,14 @@ CREATE POLICY "Users see only their shop's clock events"
       WHERE user_id = auth.uid()
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- Staff can insert their own clock events
@@ -122,10 +142,14 @@ CREATE POLICY "Staff can clock in/out"
       AND role IN ('owner', 'manager', 'staff')
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- CUSTOMERS TABLE POLICIES
@@ -138,10 +162,14 @@ CREATE POLICY "Users see only their shop's customers"
       WHERE user_id = auth.uid()
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- Staff can add customers to their shop
@@ -153,10 +181,14 @@ CREATE POLICY "Staff can add customers to their shop"
       WHERE user_id = auth.uid()
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- Staff can update their shop's customers
@@ -168,10 +200,14 @@ CREATE POLICY "Staff can update their shop's customers"
       WHERE user_id = auth.uid()
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- CUSTOMER_VISITS TABLE POLICIES
@@ -184,10 +220,14 @@ CREATE POLICY "Users see only their shop's visits"
       WHERE user_id = auth.uid()
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- Staff can record visits for their shop
@@ -199,10 +239,14 @@ CREATE POLICY "Staff can record visits for their shop"
       WHERE user_id = auth.uid()
     )
     OR
-    shop_id IN (
+    -- Backward compatibility (only if user_id column exists)
+    (EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'shops' AND column_name = 'user_id'
+    ) AND shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
-    )
+    ))
   );
 
 -- Allow anonymous users for staff portal (backward compatibility)
