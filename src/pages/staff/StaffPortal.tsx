@@ -40,6 +40,15 @@ interface ClockEntry {
 
 type View = 'auth' | 'home' | 'customers' | 'tasks' | 'clock' | 'history' | 'incident' | 'locations' | 'requests';
 
+function parseTodayTime(hhmm?: string | null): Date | null {
+  if (!hhmm) return null;
+  const [hh, mm] = hhmm.split(':');
+  if (hh === undefined || mm === undefined) return null;
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(hh), parseInt(mm), 0, 0);
+  return d;
+}
+
 export default function StaffPortal() {
   const { shopName, staffName } = useParams();
   const [view, setView] = useState<View>('auth');
