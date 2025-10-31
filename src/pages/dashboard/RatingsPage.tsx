@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Star, MessageSquare } from 'lucide-react';
 import { maskPhone, maskCustomerId, maskEmail, maskName } from '../../utils/maskCustomerData';
-import { Switch } from '@headlessui/react'; // or use a custom toggle if you don't have this package
+import { Switch } from '@headlessui/react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Rating {
   id: string;
@@ -21,18 +22,37 @@ interface Rating {
 }
 
 export default function RatingsPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    loadRatings();
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadRatings();
+    }
   }, [shopId]);
 
   const loadRatings = async () => {
+    if (!shopId) return;
+    
     try {
       const { data, error } = await supabase
         .from('customer_ratings')

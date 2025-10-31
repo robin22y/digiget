@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Plus, X, Zap, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface FlashOffer {
   id: string;
@@ -20,11 +21,26 @@ interface Shop {
 }
 
 export default function FlashOffersPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [offers, setOffers] = useState<FlashOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
   const [shop, setShop] = useState<Shop | null>(null);
+
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
+  useEffect(() => {
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
 
   const [newOffer, setNewOffer] = useState({
     offer_text: '',
@@ -53,6 +69,7 @@ export default function FlashOffersPage() {
 
   const loadShop = async () => {
     if (!shopId) return;
+    
     try {
       const { data } = await supabase
         .from('shops')

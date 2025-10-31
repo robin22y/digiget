@@ -5,6 +5,7 @@ import { Star, Calendar, Clock, User, ArrowLeft, MessageSquare, X, Gift, Zap } f
 import { getDeviceType } from '../../utils/customerAreaHelpers';
 import { isFeatureEnabled } from '../../config/features';
 import { useAuth } from '../../contexts/AuthContext';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
   id: string;
@@ -23,12 +24,15 @@ interface Appointment {
 }
 
 export default function CheckInPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
   const navigate = useNavigate();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
   // Try to get shop from outlet context (for authenticated users), otherwise load directly
-  // useOutletContext will return undefined if not in a context, so we use optional chaining
   const outletContext = useOutletContext<{ shop?: Shop }>() || {};
   const [shop, setShop] = useState<Shop | null>(outletContext?.shop || null);
+
+  // Use currentShop.id from context (preferred) or validated paramShopId
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -52,6 +56,16 @@ export default function CheckInPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteRequiredText, setDeleteRequiredText] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  // Validate access if shopId comes from params
+  useEffect(() => {
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
 
   // Load shop data if not provided from outlet context
   useEffect(() => {

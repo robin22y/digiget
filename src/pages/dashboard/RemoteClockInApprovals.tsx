@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Calendar, CheckCircle, XCircle, Plus, Trash2, Clock } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Employee {
   id: string;
@@ -31,7 +32,9 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function RemoteClockInApprovals() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [approvals, setApprovals] = useState<RemoteApproval[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +47,24 @@ export default function RemoteClockInApprovals() {
     notes: '',
   });
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    loadEmployees();
-    loadApprovals();
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadEmployees();
+      loadApprovals();
+    }
   }, [shopId]);
 
   const loadEmployees = async () => {

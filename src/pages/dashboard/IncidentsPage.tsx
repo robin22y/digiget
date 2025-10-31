@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { AlertTriangle, CheckCircle, Download, Image as ImageIcon, MapPin } from 'lucide-react';
 import { formatLocation, getGoogleMapsLink } from '../../utils/geolocation';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
   plan_type: 'basic' | 'pro';
@@ -27,20 +28,38 @@ interface Incident {
 }
 
 export default function IncidentsPage() {
-  const { shopId } = useParams();
-  const { shop } = useOutletContext<{ shop: Shop }>();
+  const { shopId: paramShopId } = useParams();
+  const { shop: outletShop } = useOutletContext<{ shop: Shop }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
+  // Use currentShop from context or validated paramShopId
+  const shop = outletShop;
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    if (shop.plan_type === 'pro') {
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId && shop && shop.plan_type === 'pro') {
       loadIncidents();
     }
   }, [shopId, shop]);
 
   const loadIncidents = async () => {
+    if (!shopId) return;
+    
     try {
       const { data, error } = await supabase
         .from('incidents')

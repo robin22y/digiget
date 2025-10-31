@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Calendar, Download, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import { formatLocation, getGoogleMapsLink } from '../../utils/geolocation';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Employee {
   id: string;
@@ -29,14 +30,31 @@ interface PayrollData {
 }
 
 export default function PayrollPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
   const [period, setPeriod] = useState<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth'>('thisWeek');
   const [loading, setLoading] = useState(true);
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null);
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    loadPayrollData();
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadPayrollData();
+    }
   }, [shopId, period]);
 
   const getDateRange = () => {
@@ -81,6 +99,8 @@ export default function PayrollPage() {
   };
 
   const loadPayrollData = async () => {
+    if (!shopId) return;
+    
     setLoading(true);
     try {
       const { start, end } = getDateRange();

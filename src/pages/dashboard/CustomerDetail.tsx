@@ -3,6 +3,7 @@ import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom
 import { supabase } from '../../lib/supabase';
 import { ArrowLeft, Star, Award, Calendar, TrendingUp } from 'lucide-react';
 import { maskPhone, maskCustomerId } from '../../utils/maskCustomerData';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
   points_needed: number;
@@ -36,10 +37,25 @@ interface Transaction {
 }
 
 export default function CustomerDetail() {
-  const { shopId, customerId } = useParams();
+  const { shopId: paramShopId, customerId } = useParams();
   const navigate = useNavigate();
-  const { shop } = useOutletContext<{ shop: Shop }>();
+  const { shop: outletShop } = useOutletContext<{ shop: Shop }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const [customer, setCustomer] = useState<Customer | null>(null);
+
+  // Use currentShop from context or validated paramShopId
+  const shop = outletShop;
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
+  useEffect(() => {
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingTier, setUpdatingTier] = useState(false);

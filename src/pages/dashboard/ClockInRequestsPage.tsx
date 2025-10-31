@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { MapPin, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { formatLocation, getGoogleMapsLink, getAreaName } from '../../utils/geolocation';
+import { useShop } from '../../contexts/ShopContext';
 
 interface ClockInRequest {
   id: string;
@@ -24,16 +25,35 @@ interface ClockInRequest {
 }
 
 export default function ClockInRequestsPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<ClockInRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'all'>('pending');
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    loadRequests();
-  }, [shopId]);
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadRequests();
+    }
+  }, [shopId, filter]);
 
   const loadRequests = async () => {
+    if (!shopId) return;
+    
     try {
       // First, fetch all clock requests
       const { data: requestsData, error: requestsError } = await supabase

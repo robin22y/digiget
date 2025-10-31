@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { MapPin, User, Clock, Navigation, CheckCircle } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface RemoteWorker {
   employee_id: string;
@@ -14,17 +15,36 @@ interface RemoteWorker {
 }
 
 export default function RemoteWorkers() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [remoteWorkers, setRemoteWorkers] = useState<RemoteWorker[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    loadRemoteWorkers();
-    const interval = setInterval(loadRemoteWorkers, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadRemoteWorkers();
+      const interval = setInterval(loadRemoteWorkers, 30000);
+      return () => clearInterval(interval);
+    }
   }, [shopId]);
 
   const loadRemoteWorkers = async () => {
+    if (!shopId) return;
+    
     try {
       // Get all active clock entries (employees currently clocked in)
       const { data: activeEntries, error: entriesError } = await supabase

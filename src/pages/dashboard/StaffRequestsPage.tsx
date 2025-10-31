@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Package, Calendar, AlertCircle, CheckCircle, XCircle, Clock, Filter } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 
 interface StaffRequest {
   id: string;
@@ -29,7 +30,9 @@ const REQUEST_TYPES = {
 };
 
 export default function StaffRequestsPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<StaffRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'completed'>('all');
@@ -37,11 +40,28 @@ export default function StaffRequestsPage() {
   const [responseNotes, setResponseNotes] = useState('');
   const [responseStatus, setResponseStatus] = useState<'approved' | 'rejected' | 'completed'>('approved');
 
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
   useEffect(() => {
-    loadRequests();
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
+
+  useEffect(() => {
+    if (shopId) {
+      loadRequests();
+    }
   }, [shopId, statusFilter]);
 
   const loadRequests = async () => {
+    if (!shopId) return;
+    
     setLoading(true);
     try {
       let query = supabase

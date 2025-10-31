@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Plus, Edit, Trash2, TrendingUp, BarChart3, Camera, History, Calendar, Repeat, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
   plan_type: 'basic' | 'pro';
@@ -38,10 +38,25 @@ interface TaskFulfillment {
 }
 
 export default function TasksPage() {
-  const { shopId } = useParams();
+  const { shopId: paramShopId } = useParams();
   const navigate = useNavigate();
-  const { shop } = useOutletContext<{ shop: Shop }>();
+  const { shop: outletShop } = useOutletContext<{ shop: Shop }>();
+  const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  // Use currentShop from context or validated paramShopId
+  const shop = outletShop;
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Validate access
+  useEffect(() => {
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [taskFulfillment, setTaskFulfillment] = useState<TaskFulfillment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +65,7 @@ export default function TasksPage() {
   const [showFulfillment, setShowFulfillment] = useState(false);
 
   useEffect(() => {
-    if (shop.plan_type === 'pro') {
+    if (shopId && shop && shop.plan_type === 'pro') {
       loadTasks();
       loadEmployees();
       loadTaskFulfillment();
@@ -58,6 +73,7 @@ export default function TasksPage() {
   }, [shopId, shop]);
 
   const loadTasks = async () => {
+    if (!shopId) return;
     try {
       const { data, error } = await supabase
         .from('tasks')
