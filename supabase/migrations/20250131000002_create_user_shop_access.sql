@@ -39,11 +39,12 @@ CREATE POLICY "Super admins see all access"
     )
   );
 
--- Shop owners can see access records for their shops (via shops.user_id, not user_shop_access to avoid recursion)
+-- Shop owners can see access records for their shops
+-- NOTE: Only checks shops.user_id to avoid recursion (doesn't query user_shop_access)
 CREATE POLICY "Shop owners see their shop access"
   ON user_shop_access FOR SELECT
   USING (
-    -- Check if user owns the shop directly via shops.user_id
+    -- Check if user owns the shop directly via shops.user_id (avoids recursion)
     shop_id IN (
       SELECT id FROM shops
       WHERE user_id = auth.uid()
