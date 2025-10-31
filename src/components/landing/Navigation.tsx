@@ -23,7 +23,7 @@ export default function Navigation() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             <button
               onClick={() => scrollToSection('how-it-works')}
               className="text-gray-600 hover:text-gray-900 transition-colors"
@@ -36,17 +36,17 @@ export default function Navigation() {
             >
               Pricing
             </button>
-            <button
-              onClick={() => scrollToSection('faq')}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
+            <Link
+              to="/login"
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
             >
-              FAQ
-            </button>
+              Login
+            </Link>
             <Link
               to="/signup"
               className="bg-modern-blue text-white px-6 py-2 rounded-modern font-semibold hover:bg-opacity-90 transition-all shadow-modern hover:scale-[1.02]"
             >
-              Try Free
+              Start Free Trial
             </Link>
           </div>
 
@@ -81,17 +81,17 @@ export default function Navigation() {
             >
               Pricing
             </button>
-            <button
-              onClick={() => scrollToSection('faq')}
+            <Link
+              to="/login"
               className="block w-full text-left text-lg"
             >
-              FAQ
-            </button>
+              Login
+            </Link>
             <Link
               to="/signup"
               className="block w-full bg-modern-blue text-white px-6 py-3 rounded-modern font-semibold text-center hover:bg-opacity-90 transition-colors"
             >
-              Try Free
+              Start Free Trial
             </Link>
           </div>
         </div>

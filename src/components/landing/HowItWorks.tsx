@@ -1,90 +1,65 @@
-import { Link } from 'react-router-dom';
-import { CheckCircle } from 'lucide-react';
-import { ArrowRight } from 'lucide-react';
 
 export default function HowItWorks() {
   const steps = [
     {
-      number: "1️⃣",
-      title: "Sign Up",
-      subtitle: "(2 minutes)",
-      details: [
-        "Enter email",
-        "Choose plan",
-        "Done"
-      ]
+      number: 1,
+      title: 'Sign Up',
+      description: 'Email and password. That\'s it. No credit card needed for trial.'
     },
     {
-      number: "2️⃣",
-      title: "Add Staff",
-      subtitle: "Set Reward",
-      details: [
-        "Give staff their PINs",
-        "Create loyalty reward"
-      ]
+      number: 2,
+      title: 'Add Your Shop Location',
+      description: 'Type your address or tap "Use Current Location." Done.'
     },
     {
-      number: "3️⃣",
-      title: "Start Using",
-      subtitle: "(same day)",
-      details: [
-        "Leave tablet open by till",
-        "That's it"
-      ]
+      number: 3,
+      title: 'Add Your Staff',
+      description: 'Name, hourly rate, 4-digit PIN. Takes 30 seconds per person.'
+    },
+    {
+      number: 4,
+      title: 'Start Using It',
+      description: 'Staff clock in. You check in customers. That\'s it. You\'re done.'
     }
   ];
 
   return (
-    <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
+    <section id="setup" className="py-16 md:py-20 px-4 sm:px-6 lg:px-8 bg-blue-50">
+      <div className="max-w-4xl mx-auto text-center">
         
-        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-4">
-          Get Started in 3 Steps
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">
+          Set Up In 5 Minutes. Seriously.
         </h2>
-        <p className="text-xl text-center text-gray-600 mb-16">
-          No installation. No training. No IT help needed.
-        </p>
 
         {/* Steps */}
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid md:grid-cols-4 gap-6 md:gap-4 mb-8">
           {steps.map((step, index) => (
             <div key={index} className="relative">
-              
-              {/* Step Card */}
-              <div className="bg-white rounded-modern p-8 shadow-modern text-center h-full">
-                <div className="text-6xl mb-4">{step.number}</div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <div className="bg-white rounded-xl p-6 shadow-md border-2 border-gray-200">
+                <div className="w-16 h-16 mx-auto mb-4 bg-modern-blue text-white rounded-full flex items-center justify-center text-2xl font-bold">
+                  {step.number}
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
                   {step.title}
                 </h3>
-                <p className="text-gray-600 mb-6">{step.subtitle}</p>
-                <ul className="space-y-2 text-left">
-                  {step.details.map((detail, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
-                      <span className="text-gray-700">{detail}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {step.description}
+                </p>
               </div>
-
-              {/* Arrow (desktop only) */}
               {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 text-4xl text-gray-300">
+                <div className="hidden md:block absolute top-1/2 -right-2 transform -translate-y-1/2 text-gray-300 text-2xl">
                   →
                 </div>
               )}
-
             </div>
           ))}
         </div>
 
-        <div className="text-center">
-          <Link
-            to="/signup"
-            className="inline-block bg-modern-blue text-white px-10 py-5 rounded-modern text-lg font-bold hover:bg-opacity-90 transition-all duration-200 shadow-modern-lg hover:shadow-modern hover:scale-[1.02]"
-          >
-            Start Free Now →
-          </Link>
+        <div className="bg-white rounded-xl p-6 shadow-md border-2 border-modern-blue max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+            <span className="font-semibold">Works on any device you already own.</span> Phone, tablet, laptop - doesn't matter. 
+            Just open the browser. No app to download. No hardware to buy.
+          </p>
         </div>
 
       </div>

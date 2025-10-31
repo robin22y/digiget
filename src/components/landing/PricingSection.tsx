@@ -1,177 +1,110 @@
 import { Link } from 'react-router-dom';
-import { CheckCircle, X } from 'lucide-react';
+import { CheckCircle, Shield } from 'lucide-react';
 
 export default function PricingSection() {
+  const faqItems = [
+    {
+      question: 'Do I need to buy hardware?',
+      answer: 'No. Works on any phone or tablet you already have. Most shops use a cheap tablet (£50 Amazon Fire) at the counter, but your phone works fine to start.'
+    },
+    {
+      question: 'What about tax calculations?',
+      answer: 'We calculate gross pay (hours × rate). You export to CSV and send to your accountant or import into Xero/QuickBooks for tax calculations. We don\'t touch tax - that keeps your cost low and liability zero.'
+    },
+    {
+      question: 'Do customers need to download an app?',
+      answer: 'No. You type their phone number when they come in. They get points automatically. If they want to check their balance, they can visit a simple webpage - no app needed.'
+    }
+  ];
+
+  const features = [
+    'Unlimited staff',
+    'Unlimited customers',
+    'GPS-verified clock in/out',
+    'Customer loyalty points',
+    'Payroll reports (export to CSV)',
+    'Deals & flash offers',
+    'Works on any device',
+    'Email support'
+  ];
+
   return (
-    <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-      <div className="max-w-6xl mx-auto">
+    <section id="pricing" className="py-16 md:py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <div className="max-w-4xl mx-auto">
         
-        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-4">
-          Two Plans. Pick What Fits.
+        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+          One Price. Everything Included.
         </h2>
-        <p className="text-xl text-center text-gray-600 mb-16">
-          No card needed for either plan
-        </p>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12">
+        {/* Pricing Card */}
+        <div className="bg-gradient-to-br from-modern-blue/5 to-modern-indigo/5 rounded-2xl p-8 md:p-12 border-4 border-modern-blue relative mb-12">
           
-          {/* BASIC PLAN */}
-          <div className="bg-white rounded-modern p-8 border-2 border-gray-200 hover:border-modern-green transition-all hover:shadow-modern-lg">
-            
-            {/* Header */}
-            <div className="text-center mb-6">
-              <div className="inline-block bg-modern-green/10 text-modern-green px-4 py-2 rounded-full text-sm font-semibold mb-4">
-                🆓 BASIC
-              </div>
-              <div className="text-5xl font-bold text-gray-900 mb-2">
-                FREE
-              </div>
-              <div className="text-lg text-gray-600">
-                Forever
-              </div>
+          {/* Founding Member Badge */}
+          <div className="absolute -top-5 left-1/2 -translate-x-1/2">
+            <div className="bg-modern-orange text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+              🎉 Founding Member Rate
             </div>
-
-            {/* Description */}
-            <div className="bg-gray-50 rounded-modern p-4 mb-6">
-              <p className="text-center text-gray-700 font-medium">
-                Perfect if you're small:
-              </p>
-              <ul className="mt-2 space-y-1 text-center text-gray-600">
-                <li>• You + 1 staff</li>
-                <li>• 50 customers/month</li>
-              </ul>
-            </div>
-
-            {/* Features */}
-            <div className="space-y-3 mb-8">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
-                <span className="text-gray-700">Staff clock in/out</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
-                <span className="text-gray-700">Customer loyalty</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
-                <span className="text-gray-700">Points tracking</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
-                <span className="text-gray-700">Basic reports</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <X className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500">No new features</span>
-              </div>
-            </div>
-
-            {/* CTA */}
-            <Link
-              to="/signup"
-              className="block w-full border-2 border-modern-blue text-modern-blue px-6 py-3 rounded-modern font-semibold text-center hover:bg-modern-blue/5 transition-colors duration-200 mb-3"
-            >
-              Start Free →
-            </Link>
-            <p className="text-center text-sm text-gray-500">
-              Stay free forever
-            </p>
-
           </div>
 
-          {/* PRO PLAN */}
-          <div className="bg-gradient-to-br from-modern-blue/10 to-modern-purple/10 rounded-modern p-8 border-2 border-modern-blue relative hover:shadow-modern-lg transition-all">
-            
-            {/* Popular Badge */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <div className="bg-gradient-to-r from-modern-blue to-modern-purple text-white px-6 py-2 rounded-full text-sm font-bold shadow-modern">
-                ⭐ BEST VALUE
-              </div>
+          {/* Header */}
+          <div className="text-center mb-8 mt-4">
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">
+              DigiGet for Barbers
+            </h3>
+            <div className="flex items-baseline justify-center gap-2 mb-4">
+              <span className="text-3xl md:text-4xl font-bold text-gray-900">£</span>
+              <span className="text-6xl md:text-7xl font-bold text-gray-900">29</span>
+              <span className="text-2xl md:text-3xl text-gray-600">/month</span>
             </div>
-
-            {/* Header */}
-            <div className="text-center mb-6 mt-4">
-              <div className="inline-block bg-modern-blue/20 text-modern-blue px-4 py-2 rounded-full text-sm font-semibold mb-4">
-                💼 PRO
-              </div>
-              <div className="text-5xl font-bold text-gray-900 mb-2">
-                £9.99
-              </div>
-              <div className="text-lg text-gray-600 mb-2">
-                per month
-              </div>
-              <div className="bg-modern-yellow/20 text-modern-orange px-4 py-2 rounded-modern text-sm font-semibold inline-block">
-                Free until Christmas 2025 🎄
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="bg-white/80 rounded-modern p-4 mb-6">
-              <p className="text-center text-gray-700 font-medium">
-                Perfect if you're growing:
-              </p>
-              <ul className="mt-2 space-y-1 text-center text-gray-600">
-                <li>• Unlimited staff</li>
-                <li>• Unlimited customers</li>
-              </ul>
-            </div>
-
-            {/* Features */}
-            <div className="space-y-3 mb-8">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-blue flex-shrink-0" />
-                <span className="text-gray-900 font-medium">Everything in Basic</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-blue flex-shrink-0" />
-                <span className="text-gray-900">Task management</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-blue flex-shrink-0" />
-                <span className="text-gray-900">Payroll reports</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-blue flex-shrink-0" />
-                <span className="text-gray-900">Incident reporting</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-blue flex-shrink-0" />
-                <span className="text-gray-900">Staff analytics</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-blue flex-shrink-0" />
-                <span className="text-gray-900">New features</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-modern-blue flex-shrink-0" />
-                <span className="text-gray-900">NFC tags (coming soon)</span>
-              </div>
-            </div>
-
-            {/* CTA */}
-            <Link
-              to="/signup"
-              className="block w-full bg-modern-blue text-white px-6 py-3 rounded-modern font-semibold text-center hover:bg-opacity-90 transition-all duration-200 mb-3 shadow-modern"
-            >
-              Try Pro Free →
-            </Link>
-            <p className="text-center text-sm text-gray-600">
-              Free til Xmas, then £9.99/month
+            <p className="text-base md:text-lg text-gray-600">
+              First 20 shops only - locks in forever<br />
+              <span className="text-sm text-gray-500">After that: £39/month</span>
             </p>
-
           </div>
 
+          {/* Features List */}
+          <div className="grid md:grid-cols-2 gap-3 mb-8">
+            {features.map((feature, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
+                <span className="text-gray-700">{feature}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA Button */}
+          <div className="text-center mb-6">
+            <Link
+              to="/signup"
+              className="inline-block bg-modern-green text-white px-12 py-4 rounded-lg text-xl font-bold hover:bg-green-600 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            >
+              Start Your 14-Day Free Trial
+            </Link>
+          </div>
+
+          {/* Guarantee */}
+          <div className="flex items-start gap-3 bg-white/80 rounded-lg p-4 border-2 border-modern-green/30">
+            <Shield className="w-6 h-6 text-modern-green flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold">30-day money-back guarantee.</span> If you're not saving at least 2 hours a week, full refund.
+            </p>
+          </div>
         </div>
 
-        {/* Additional Info */}
-        <div className="text-center text-gray-600 space-y-2">
-          <p className="text-lg">Upgrade or downgrade anytime.</p>
-          <p className="text-lg">Cancel anytime. No contracts.</p>
+        {/* FAQ */}
+        <div className="space-y-6">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+            Common Questions
+          </h3>
+          {faqItems.map((item, index) => (
+            <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+              <h4 className="font-bold text-gray-900 mb-2">{item.question}</h4>
+              <p className="text-gray-700 leading-relaxed">{item.answer}</p>
+            </div>
+          ))}
         </div>
 
       </div>
     </section>
   );
 }
-

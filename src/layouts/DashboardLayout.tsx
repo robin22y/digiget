@@ -24,9 +24,11 @@ export default function DashboardLayout() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   
-  // Note: User role checking is handled in isFeatureEnabled() which calls isAdminOrOwner()
-  // Shop owners: User who created the shop (shop.user_id matches user.id)  
+  // Determine if current user is shop owner/admin for feature flag bypass
+  // Shop owners: User who created the shop (shop.user_id matches user.id)
   // Super admins: Always have access (email ends with @digiget.uk OR role='super' OR is_super_admin=true)
+  const isOwnerOrAdmin = user !== null && shop !== null && 
+    (shop.user_id === user.id || isAdminOrOwner(user));
 
   useEffect(() => {
     loadShop();
@@ -136,17 +138,17 @@ export default function DashboardLayout() {
     ] : []),
     
     // Pro plan features with feature flags
-    // ADMIN/OWNER: Always see all features (feature flags bypassed)
+    // ADMIN/OWNER: Always see all features (feature flags bypassed via isOwnerOrAdmin check in isFeatureEnabled)
     ...(shop.plan_type === 'pro' ? [
       // HIDDEN FOR BARBER SHOP FOCUS - Can be re-enabled via feature flags
       // Owners/admins always see these regardless of feature flags
-      isFeatureEnabled('staffRequests', user) && { to: `/dashboard/${shopId}/staff-requests`, icon: Package, label: 'Staff Requests', feature: 'staffRequests' as const },
-      isFeatureEnabled('workVisits', user) && { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Work Visits', feature: 'workVisits' as const },
-      isFeatureEnabled('remoteWorkers', user) && { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers', feature: 'remoteWorkers' as const },
-      isFeatureEnabled('remoteApprovals', user) && { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals', feature: 'remoteApprovals' as const },
-      isFeatureEnabled('staffJobs', user) && { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Staff Jobs', feature: 'staffJobs' as const },
-      isFeatureEnabled('reportProblem', user) && { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem', feature: 'reportProblem' as const },
-      isFeatureEnabled('fixTimeEntries', user) && { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries', feature: 'fixTimeEntries' as const },
+      (isOwnerOrAdmin || isFeatureEnabled('staffRequests', user)) && { to: `/dashboard/${shopId}/staff-requests`, icon: Package, label: 'Staff Requests', feature: 'staffRequests' as const },
+      (isOwnerOrAdmin || isFeatureEnabled('workVisits', user)) && { to: `/dashboard/${shopId}/staff-locations`, icon: Navigation, label: 'Work Visits', feature: 'workVisits' as const },
+      (isOwnerOrAdmin || isFeatureEnabled('remoteWorkers', user)) && { to: `/dashboard/${shopId}/remote-workers`, icon: MapPin, label: 'Remote Workers', feature: 'remoteWorkers' as const },
+      (isOwnerOrAdmin || isFeatureEnabled('remoteApprovals', user)) && { to: `/dashboard/${shopId}/remote-approvals`, icon: CheckCircle, label: 'Remote Approvals', feature: 'remoteApprovals' as const },
+      (isOwnerOrAdmin || isFeatureEnabled('staffJobs', user)) && { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Staff Jobs', feature: 'staffJobs' as const },
+      (isOwnerOrAdmin || isFeatureEnabled('reportProblem', user)) && { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem', feature: 'reportProblem' as const },
+      (isOwnerOrAdmin || isFeatureEnabled('fixTimeEntries', user)) && { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries', feature: 'fixTimeEntries' as const },
     ].filter(Boolean) as any[] : []),
     
     // Diary (if enabled)
@@ -160,7 +162,7 @@ export default function DashboardLayout() {
     ] : []),
     
     // Ratings (hidden by feature flag, but visible to admins/owners)
-    ...(isFeatureEnabled('ratings', user) ? [
+    ...((isOwnerOrAdmin || isFeatureEnabled('ratings', user)) ? [
       { to: `/dashboard/${shopId}/ratings`, icon: Star, label: 'Ratings', feature: 'ratings' as const },
     ] : []),
     

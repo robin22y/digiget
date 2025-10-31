@@ -10,9 +10,9 @@ export default function Footer() {
           
           {/* Brand Column */}
           <div>
-            <div className="text-2xl font-bold text-white mb-4">DigiGet</div>
+            <div className="text-2xl font-bold text-white mb-2">DigiGet</div>
             <p className="text-sm text-gray-400 leading-relaxed">
-              Simple staff & loyalty tracking for UK small shops
+              Built for UK barber shops
             </p>
           </div>
 
@@ -20,10 +20,12 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">Product</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="#how-it-works" className="hover:text-white">How It Works</a></li>
-              <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
-              <li><a href="#features" className="hover:text-white">Features</a></li>
-              <li><a href="#coming-soon" className="hover:text-white">What's Coming</a></li>
+              <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
+              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><button onClick={() => {
+                const element = document.getElementById('demo-video');
+                if (element) element.scrollIntoView({ behavior: 'smooth' });
+              }} className="hover:text-white transition-colors text-left">Demo</button></li>
             </ul>
           </div>
 
@@ -31,9 +33,8 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="/help" className="hover:text-white">Help Centre</a></li>
-              <li><a href="mailto:hello@digiget.uk" className="hover:text-white">Contact Us</a></li>
-              <li><a href="/status" className="hover:text-white">System Status</a></li>
+              <li><a href="mailto:help@digiget.uk" className="hover:text-white transition-colors">help@digiget.uk</a></li>
+              <li><span className="text-gray-400">07XXX XXX XXX</span></li>
             </ul>
           </div>
 
@@ -51,14 +52,10 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="border-t border-gray-800 pt-8 text-center">
           <p className="text-sm text-gray-400">
-            © {currentYear} DigiGet. Made in the UK for UK shops.
+            © {currentYear} DigiGet. Built in the UK, for UK barber shops.
           </p>
-          <div className="flex items-center gap-2 text-sm text-gray-400">
-            <span className="text-xl">🇬🇧</span>
-            <span>Simple software for small businesses</span>
-          </div>
         </div>
 
       </div>
