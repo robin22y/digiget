@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Clock, AlertCircle } from 'lucide-react';
 import { getCurrentPosition, calculateDistance, getAreaName } from '../../utils/geolocation';
+import GPSConsentModal from '../../components/GPSConsentModal';
 
 interface ClockEntry {
   id: string;
@@ -41,10 +42,87 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
   const [confirmPin, setConfirmPin] = useState('');
   const [clockInMessage, setClockInMessage] = useState('');
   const [clockInLocationName, setClockInLocationName] = useState<string | null>(null);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [pendingEmployee, setPendingEmployee] = useState<any>(null);
 
   useEffect(() => {
     loadShop();
   }, [shopId]);
+
+  const handleConsentAgree = async () => {
+    if (!pendingEmployee || !shopId) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          gps_location_consent: true,
+          gps_consent_given_at: new Date().toISOString(),
+          gps_consent_version: '1.0'
+        })
+        .eq('id', pendingEmployee.id);
+
+      if (error) throw error;
+
+      // Refresh employee data and proceed
+      const updatedEmployee = { ...pendingEmployee, gps_location_consent: true };
+      setCurrentEmployee(updatedEmployee);
+      setPendingEmployee(null);
+      setShowConsentModal(false);
+
+      // Continue with normal flow
+      const { data: activeEntry } = await supabase
+        .from('clock_entries')
+        .select('*')
+        .eq('employee_id', updatedEmployee.id)
+        .is('clock_out_time', null)
+        .maybeSingle();
+
+      if (activeEntry) {
+        setCurrentEntry(activeEntry);
+        if (activeEntry.clock_in_latitude && activeEntry.clock_in_longitude) {
+          const locationName = await getAreaName(
+            activeEntry.clock_in_latitude,
+            activeEntry.clock_in_longitude
+          );
+          setClockInLocationName(locationName);
+        }
+        setView('workspace');
+      } else {
+        setView('ready');
+      }
+    } catch (err: any) {
+      console.error('Error saving consent:', err);
+      setError('Failed to save consent. Please try again.');
+      setShowConsentModal(false);
+    }
+  };
+
+  const handleConsentDecline = async () => {
+    if (!pendingEmployee || !shopId) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          gps_location_consent: false,
+          gps_consent_given_at: new Date().toISOString(),
+          gps_consent_version: '1.0'
+        })
+        .eq('id', pendingEmployee.id);
+
+      if (error) throw error;
+
+      setPendingEmployee(null);
+      setShowConsentModal(false);
+      setError('GPS location consent is required to use the clock in/out feature. Please contact your manager.');
+      setView('idle');
+    } catch (err: any) {
+      console.error('Error saving consent decline:', err);
+      setError('Failed to save response. Please try again.');
+      setShowConsentModal(false);
+    }
+  };
 
 
   const [shopPlanType, setShopPlanType] = useState<'basic' | 'pro' | null>(null);
@@ -78,7 +156,6 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
       }
 
       const employee = employees[0];
-      setCurrentEmployee(employee);
 
       // Check for PIN expiry (30 days after last change)
       const now = new Date();
@@ -91,6 +168,24 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
         setView('changepin');
         return;
       }
+
+      // Check GPS consent - show modal if consent is null (first time)
+      if (employee.gps_location_consent === null) {
+        setPendingEmployee(employee);
+        setShowConsentModal(true);
+        setPin('');
+        return;
+      }
+
+      // If consent declined, show error
+      if (employee.gps_location_consent === false) {
+        setError('GPS location consent is required to use the clock in/out feature. Please contact your manager.');
+        setPin('');
+        return;
+      }
+
+      // Consent given - proceed with normal flow
+      setCurrentEmployee(employee);
 
       const { data: activeEntry } = await supabase
         .from('clock_entries')
@@ -133,6 +228,13 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
         location = await getCurrentPosition();
       } catch (locationError) {
         console.warn('Could not get location:', locationError);
+        // Only continue without location if consent was given (but location failed)
+        // If no consent, this shouldn't happen, but check anyway
+        if (!currentEmployee?.gps_location_consent) {
+          setError('GPS location is required. Please enable location services and try again.');
+          setLoading(false);
+          return;
+        }
         // Continue without location - allow clock-in to proceed
       }
       
@@ -609,5 +711,14 @@ export default function TabletInterface({ shopId: propShopId }: TabletInterfaceP
     );
   }
 
-  return null;
+  return (
+    <>
+      <GPSConsentModal
+        isOpen={showConsentModal}
+        employeeName={pendingEmployee?.first_name || 'Staff Member'}
+        onAgree={handleConsentAgree}
+        onDecline={handleConsentDecline}
+      />
+    </>
+  );
 }

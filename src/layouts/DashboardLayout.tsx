@@ -246,6 +246,15 @@ export default function DashboardLayout() {
               <Tablet className="w-5 h-5 mr-3" />
               Staff Access Link
             </a>
+            <a
+              href={`/staff/${shopId}/clock-in`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center px-4 py-3 text-sm font-medium rounded-modern transition-all duration-200 text-modern-blue hover:bg-system-bg border-t border-system-separator hover-lift"
+            >
+              <Clock className="w-5 h-5 mr-3" />
+              Staff Clock In/Out Console
+            </a>
           </nav>
 
           <div className="p-4 border-t border-system-separator bg-white">
