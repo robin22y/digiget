@@ -16,10 +16,12 @@ CREATE TABLE IF NOT EXISTS user_shop_access (
 
 ALTER TABLE user_shop_access ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users see their own access" ON user_shop_access;
 CREATE POLICY "Users see their own access"
   ON user_shop_access FOR SELECT
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Super admins see all access" ON user_shop_access;
 CREATE POLICY "Super admins see all access"
   ON user_shop_access FOR ALL
   USING (
