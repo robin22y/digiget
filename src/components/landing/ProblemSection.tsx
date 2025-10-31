@@ -27,7 +27,7 @@ export default function ProblemSection() {
           {problems.map((problem, index) => (
             <div 
               key={index}
-              className="bg-gray-50 rounded-ios p-8 text-center border-2 border-gray-200 hover:border-apple-blue transition-all duration-200 shadow-apple"
+              className="bg-gray-50 rounded-modern p-8 text-center border-2 border-gray-200 hover:border-modern-blue transition-all duration-200 shadow-modern"
             >
               <div className="text-6xl mb-4">{problem.emoji}</div>
               <p className="text-lg text-gray-700">{problem.text}</p>

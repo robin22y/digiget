@@ -51,7 +51,7 @@ export default function HowItWorks() {
             <div key={index} className="relative">
               
               {/* Step Card */}
-              <div className="bg-white rounded-ios p-8 shadow-apple text-center h-full">
+              <div className="bg-white rounded-modern p-8 shadow-modern text-center h-full">
                 <div className="text-6xl mb-4">{step.number}</div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   {step.title}
@@ -60,7 +60,7 @@ export default function HowItWorks() {
                 <ul className="space-y-2 text-left">
                   {step.details.map((detail, i) => (
                     <li key={i} className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+                      <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
                       <span className="text-gray-700">{detail}</span>
                     </li>
                   ))}
@@ -81,7 +81,7 @@ export default function HowItWorks() {
         <div className="text-center">
           <Link
             to="/signup"
-            className="inline-block bg-apple-blue text-white px-10 py-5 rounded-ios text-lg font-bold hover:bg-opacity-90 transition-all duration-200 shadow-apple-lg hover:shadow-apple hover:scale-[1.02]"
+            className="inline-block bg-modern-blue text-white px-10 py-5 rounded-modern text-lg font-bold hover:bg-opacity-90 transition-all duration-200 shadow-modern-lg hover:shadow-modern hover:scale-[1.02]"
           >
             Start Free Now →
           </Link>

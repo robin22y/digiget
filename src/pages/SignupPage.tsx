@@ -231,11 +231,11 @@ export default function SignupPage() {
           {/* Hero Section */}
           <div className="text-center mb-10">
             <div className="mb-4 flex justify-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-apple-blue to-apple-indigo rounded-ios flex items-center justify-center shadow-apple-lg">
+            <div className="w-20 h-20 bg-gradient-to-br from-modern-blue to-modern-indigo rounded-modern flex items-center justify-center shadow-modern-lg">
               <span className="text-4xl">🚀</span>
             </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 bg-gradient-to-r from-modern-blue to-modern-indigo bg-clip-text text-transparent">
               Welcome to DigiGet
             </h1>
             <p className="text-lg text-gray-600 mb-2">Transform your business with digital customer loyalty</p>
@@ -250,9 +250,9 @@ export default function SignupPage() {
                 <button
                   key={category.value}
                   onClick={() => handleCategorySelect(category.value)}
-                  className="group text-left px-6 py-4 border-2 border-gray-200 rounded-ios hover:border-apple-blue hover:bg-gradient-to-r hover:from-apple-blue/5 hover:to-apple-indigo/5 transition-all duration-300 hover:shadow-apple hover-lift"
+                  className="group text-left px-6 py-4 border-2 border-gray-200 rounded-modern hover:border-modern-blue hover:bg-gradient-to-r hover:from-modern-blue/5 hover:to-modern-indigo/5 transition-all duration-300 hover:shadow-modern hover-lift"
                 >
-                  <span className="text-base font-medium text-gray-800 group-hover:text-apple-blue transition-colors">
+                  <span className="text-base font-medium text-gray-800 group-hover:text-modern-blue transition-colors">
                     {category.label}
                   </span>
                 </button>
@@ -487,7 +487,7 @@ export default function SignupPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 max-w-md w-full">
           <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-modern-blue to-modern-indigo bg-clip-text text-transparent">
               Your Details
             </h1>
             <p className="text-gray-600">Let's set up your account</p>
@@ -510,7 +510,7 @@ export default function SignupPage() {
                 placeholder="John Doe"
                 value={signupData.ownerName || ''}
                 onChange={(e) => setSignupData({ ...signupData, ownerName: e.target.value })}
-                className="input-ios"
+                className="input-modern"
               />
             </div>
 
@@ -524,7 +524,7 @@ export default function SignupPage() {
                 placeholder="My Awesome Shop"
                 value={signupData.shopName || ''}
                 onChange={(e) => setSignupData({ ...signupData, shopName: e.target.value })}
-                className="input-ios"
+                className="input-modern"
               />
             </div>
 
@@ -538,7 +538,7 @@ export default function SignupPage() {
                 placeholder="you@example.com"
                 value={signupData.email || ''}
                 onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                className="input-ios"
+                className="input-modern"
               />
             </div>
 
@@ -553,7 +553,7 @@ export default function SignupPage() {
                 placeholder="••••••••"
                 value={signupData.password || ''}
                 onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                className="input-ios"
+                className="input-modern"
               />
               <p className="text-xs text-gray-500 mt-2">Minimum 8 characters</p>
             </div>
@@ -562,13 +562,13 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-ios btn-ios-primary"
+                className="w-full btn-modern btn-modern-primary"
               >
                 {loading ? 'Creating Account...' : 'Create Account & Start Free Trial'}
               </button>
             </div>
 
-            <div className="text-center text-sm text-gray-600 bg-apple-blue/5 py-3 rounded-ios border-2 border-apple-blue/20">
+            <div className="text-center text-sm text-gray-600 bg-modern-blue/5 py-3 rounded-modern border-2 border-modern-blue/20">
               ⭐ 90 days free • No card required
             </div>
           </form>

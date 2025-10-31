@@ -111,7 +111,7 @@ export default function CookieConsent() {
                     <div className="flex flex-wrap gap-3">
                       <button
                         onClick={handleAcceptAll}
-                        className="flex-1 md:flex-none px-6 py-3 bg-gradient-to-r from-apple-blue to-apple-purple text-white rounded-lg font-semibold hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
+                        className="flex-1 md:flex-none px-6 py-3 bg-gradient-to-r from-modern-blue to-modern-purple text-white rounded-lg font-semibold hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
                       >
                         Accept All
                       </button>
@@ -186,7 +186,7 @@ export default function CookieConsent() {
                         </button>
                         <button
                           onClick={handleSaveSettings}
-                          className="flex-1 md:flex-none px-6 py-3 bg-gradient-to-r from-apple-blue to-apple-purple text-white rounded-lg font-semibold hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
+                          className="flex-1 md:flex-none px-6 py-3 bg-gradient-to-r from-modern-blue to-modern-purple text-white rounded-lg font-semibold hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
                         >
                           Save Preferences
                         </button>

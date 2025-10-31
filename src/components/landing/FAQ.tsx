@@ -51,7 +51,7 @@ const faqs: FAQItem[] = [
 
 function FAQItem({ item, isOpen, onToggle }: { item: FAQItem; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="border border-gray-200 rounded-ios overflow-hidden">
+    <div className="border border-gray-200 rounded-modern overflow-hidden">
       <button
         className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
         onClick={onToggle}

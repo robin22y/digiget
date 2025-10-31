@@ -111,11 +111,11 @@ export default function LoginPage() {
         {/* Logo/Icon */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-apple-blue to-apple-indigo rounded-ios flex items-center justify-center shadow-apple">
+            <div className="w-16 h-16 bg-gradient-to-br from-modern-blue to-modern-indigo rounded-modern flex items-center justify-center shadow-modern">
               <span className="text-3xl">🔐</span>
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-modern-blue to-modern-indigo bg-clip-text text-transparent">
             Welcome Back
           </h1>
           <p className="text-gray-600 text-lg">Sign in to your DigiGet account</p>
@@ -138,7 +138,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="input-ios"
+              className="input-modern"
             />
           </div>
 
@@ -152,14 +152,14 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="input-ios"
+              className="input-modern"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-ios btn-ios-primary"
+            className="w-full btn-modern btn-modern-primary"
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
@@ -169,7 +169,7 @@ export default function LoginPage() {
           <p className="text-gray-600 mb-3">
             Don't have an account?
           </p>
-          <Link to="/signup" className="inline-block px-6 py-3 bg-gradient-to-r from-apple-blue/10 to-apple-indigo/10 text-apple-blue hover:from-apple-blue/20 hover:to-apple-indigo/20 font-bold rounded-ios transition-all duration-300 border-2 border-apple-blue/30 hover:border-apple-blue/50">
+          <Link to="/signup" className="inline-block px-6 py-3 bg-gradient-to-r from-modern-blue/10 to-modern-indigo/10 text-modern-blue hover:from-modern-blue/20 hover:to-modern-indigo/20 font-bold rounded-modern transition-all duration-300 border-2 border-modern-blue/30 hover:border-modern-blue/50">
             Start Free Trial
           </Link>
         </div>

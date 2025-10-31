@@ -24,13 +24,13 @@ export default function Hero() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
           <Link
             to="/signup"
-            className="inline-block bg-apple-blue text-white px-8 py-4 md:px-10 md:py-5 rounded-ios text-lg md:text-xl font-bold hover:bg-opacity-90 transition-all duration-200 shadow-apple-lg hover:shadow-apple hover:scale-[1.02]"
+            className="inline-block bg-modern-blue text-white px-8 py-4 md:px-10 md:py-5 rounded-modern text-lg md:text-xl font-bold hover:bg-opacity-90 transition-all duration-200 shadow-modern-lg hover:shadow-modern hover:scale-[1.02]"
           >
             Start Free →
           </Link>
           <Link
             to="#how-it-works"
-            className="inline-block bg-white text-apple-blue border-2 border-apple-blue px-8 py-4 md:px-10 md:py-5 rounded-ios text-lg md:text-xl font-bold hover:bg-apple-blue/5 transition-all duration-200 shadow-apple hover:scale-[1.02]"
+            className="inline-block bg-white text-modern-blue border-2 border-modern-blue px-8 py-4 md:px-10 md:py-5 rounded-modern text-lg md:text-xl font-bold hover:bg-modern-blue/5 transition-all duration-200 shadow-modern hover:scale-[1.02]"
           >
             See How It Works ↓
           </Link>
@@ -39,15 +39,15 @@ export default function Hero() {
         {/* Trust Badges */}
         <div className="flex flex-wrap justify-center gap-6 text-sm md:text-base text-gray-600 mb-4">
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+            <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
             <span>Free until Christmas 2025</span>
           </div>
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+            <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
             <span>No card needed</span>
           </div>
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-apple-green flex-shrink-0" />
+            <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
             <span>Set up in 2 minutes</span>
           </div>
         </div>

@@ -18,7 +18,7 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-apple-blue">
+          <Link to="/" className="text-2xl font-bold text-modern-blue">
             DigiGet
           </Link>
 
@@ -44,7 +44,7 @@ export default function Navigation() {
             </button>
             <Link
               to="/signup"
-              className="bg-apple-blue text-white px-6 py-2 rounded-ios font-semibold hover:bg-opacity-90 transition-all shadow-apple hover:scale-[1.02]"
+              className="bg-modern-blue text-white px-6 py-2 rounded-modern font-semibold hover:bg-opacity-90 transition-all shadow-modern hover:scale-[1.02]"
             >
               Try Free
             </Link>
@@ -89,7 +89,7 @@ export default function Navigation() {
             </button>
             <Link
               to="/signup"
-              className="block w-full bg-apple-blue text-white px-6 py-3 rounded-ios font-semibold text-center hover:bg-opacity-90 transition-colors"
+              className="block w-full bg-modern-blue text-white px-6 py-3 rounded-modern font-semibold text-center hover:bg-opacity-90 transition-colors"
             >
               Try Free
             </Link>

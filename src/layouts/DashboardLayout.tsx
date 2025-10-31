@@ -78,14 +78,14 @@ export default function DashboardLayout() {
       const hrs = Math.floor(ms / (1000 * 60 * 60));
       const mins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
       return (
-        <div className="mb-3 p-4 rounded-ios bg-gradient-to-r from-apple-orange/10 to-apple-yellow/10 border border-apple-orange/30 text-apple-orange shadow-apple">
+        <div className="mb-3 p-4 rounded-modern bg-gradient-to-r from-modern-orange/10 to-modern-yellow/10 border border-modern-orange/30 text-modern-orange shadow-modern">
           ⚠️ Payment failed. Pro remains active for: <b>{hrs}h {mins}m</b>. Please update your payment to avoid downgrade.
         </div>
       );
     }
     if (shop.payment_status === 'past_due') {
       return (
-        <div className="mb-3 p-4 rounded-ios bg-gradient-to-r from-apple-red/10 to-red-50 border border-apple-red/30 text-apple-red shadow-apple">
+        <div className="mb-3 p-4 rounded-modern bg-gradient-to-r from-modern-red/10 to-red-50 border border-modern-red/30 text-modern-red shadow-modern">
           🚫 Your account has been downgraded to Basic due to non-payment. Pro features are disabled until payment is restored.
         </div>
       );
@@ -145,10 +145,10 @@ export default function DashboardLayout() {
   ];
 
   return (
-    <div className="flex bg-ios-bg">
+    <div className="flex bg-system-bg">
       <aside className="hidden md:flex md:flex-shrink-0 md:fixed md:left-0 md:top-0 md:bottom-0">
-        <div className="flex flex-col w-64 bg-white border-r border-ios-separator">
-          <div className="flex items-center h-16 px-5 border-b border-ios-separator bg-gradient-to-br from-apple-blue to-apple-indigo">
+        <div className="flex flex-col w-64 bg-white border-r border-system-separator">
+          <div className="flex items-center h-16 px-5 border-b border-system-separator bg-gradient-to-br from-modern-blue to-modern-indigo">
             <div>
               <h1 className="text-xl font-bold text-white">DigiGet</h1>
               <p className="text-xs text-white/80">{shop.shop_name}</p>
@@ -164,10 +164,10 @@ export default function DashboardLayout() {
                   to={item.to}
                   end={item.end}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-4 py-3 text-sm font-medium rounded-ios transition-all duration-200 hover-lift ${
+                    `flex items-center justify-between px-4 py-3 text-sm font-medium rounded-modern transition-all duration-200 hover-lift ${
                       isActive
-                        ? 'bg-gradient-to-r from-apple-blue to-apple-indigo text-white shadow-apple'
-                        : 'text-ios-label hover:bg-ios-bg active:bg-ios-bg'
+                        ? 'bg-gradient-to-r from-modern-blue to-modern-indigo text-white shadow-modern'
+                        : 'text-system-label hover:bg-system-bg active:bg-system-bg'
                     }`
                   }
                 >
@@ -176,7 +176,7 @@ export default function DashboardLayout() {
                     {item.label}
                   </div>
                   {isClockRequests && pendingClockRequests > 0 && (
-                    <span className="ml-auto px-2.5 py-1 bg-apple-red text-white text-xs font-bold rounded-full shadow-apple">
+                    <span className="ml-auto px-2.5 py-1 bg-modern-red text-white text-xs font-bold rounded-full shadow-modern">
                       {pendingClockRequests}
                     </span>
                   )}
@@ -188,17 +188,17 @@ export default function DashboardLayout() {
               href={`/tablet/${shopId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center px-4 py-3 text-sm font-medium rounded-ios transition-all duration-200 text-apple-blue hover:bg-ios-bg border-t border-ios-separator mt-3 hover-lift"
+              className="flex items-center px-4 py-3 text-sm font-medium rounded-modern transition-all duration-200 text-modern-blue hover:bg-system-bg border-t border-system-separator mt-3 hover-lift"
             >
               <Tablet className="w-5 h-5 mr-3" />
               Staff Access Link
             </a>
           </nav>
 
-          <div className="p-4 border-t border-ios-separator bg-white">
+          <div className="p-4 border-t border-system-separator bg-white">
             <button
               onClick={handleSignOut}
-              className="flex items-center w-full px-4 py-3 text-sm font-medium text-apple-red rounded-ios transition-all duration-200 hover:bg-ios-bg active:bg-ios-bg"
+              className="flex items-center w-full px-4 py-3 text-sm font-medium text-modern-red rounded-modern transition-all duration-200 hover:bg-system-bg active:bg-system-bg"
             >
               <LogOut className="w-5 h-5 mr-3" />
               Sign Out
@@ -208,14 +208,14 @@ export default function DashboardLayout() {
       </aside>
 
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-x-hidden">
-        <main className="bg-ios-bg flex-1 overflow-x-hidden">
+        <main className="bg-system-bg flex-1 overflow-x-hidden">
           <div className="p-4 pb-20 md:pb-4 max-w-full overflow-x-hidden">
             {renderBillingBanner()}
             <Outlet context={{ shop }} />
           </div>
         </main>
 
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-ios-separator z-50 safe-area-inset-bottom shadow-apple-lg">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-system-separator z-50 safe-area-inset-bottom shadow-modern-lg">
           <div className="flex justify-around max-w-full overflow-x-hidden">
             {navItems.slice(0, 4).map((item) => (
               <NavLink
@@ -225,7 +225,7 @@ export default function DashboardLayout() {
                 onClick={() => setShowMobileMenu(false)}
                 className={({ isActive }) =>
                   `flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 transition-all duration-200 ${
-                    isActive ? 'text-apple-blue' : 'text-ios-secondary'
+                    isActive ? 'text-modern-blue' : 'text-system-secondary'
                   }`
                 }
               >
@@ -236,7 +236,7 @@ export default function DashboardLayout() {
             <button
               onClick={() => setShowMobileMenu(true)}
               className={`flex flex-col items-center py-2 px-2 sm:px-3 text-xs flex-1 min-w-0 transition-all duration-200 ${
-                showMobileMenu ? 'text-apple-blue' : 'text-ios-secondary'
+                showMobileMenu ? 'text-modern-blue' : 'text-system-secondary'
               }`}
             >
               <Menu className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" />
@@ -255,14 +255,14 @@ export default function DashboardLayout() {
               className="fixed right-0 top-0 bottom-0 bg-white w-80 max-w-[85vw] shadow-xl overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-gradient-to-br from-apple-blue to-apple-indigo border-b border-ios-separator px-5 py-4 flex items-center justify-between">
+              <div className="sticky top-0 bg-gradient-to-br from-modern-blue to-modern-indigo border-b border-system-separator px-5 py-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-bold text-white">Menu</h2>
                   <p className="text-xs text-white/80">{shop.shop_name}</p>
                 </div>
                 <button
                   onClick={() => setShowMobileMenu(false)}
-                  className="p-2 text-white hover:text-white/80 rounded-ios transition-all duration-200"
+                  className="p-2 text-white hover:text-white/80 rounded-modern transition-all duration-200"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -278,10 +278,10 @@ export default function DashboardLayout() {
                       end={item.end}
                       onClick={() => setShowMobileMenu(false)}
                       className={({ isActive }) =>
-                        `flex items-center justify-between px-4 py-3 text-sm font-medium rounded-ios transition-all duration-200 ${
+                        `flex items-center justify-between px-4 py-3 text-sm font-medium rounded-modern transition-all duration-200 ${
                           isActive
-                            ? 'bg-gradient-to-r from-apple-blue to-apple-indigo text-white shadow-apple'
-                            : 'text-ios-label hover:bg-ios-bg active:bg-ios-bg'
+                            ? 'bg-gradient-to-r from-modern-blue to-modern-indigo text-white shadow-modern'
+                            : 'text-system-label hover:bg-system-bg active:bg-system-bg'
                         }`
                       }
                     >
@@ -290,7 +290,7 @@ export default function DashboardLayout() {
                         {item.label}
                       </div>
                       {isClockRequests && pendingClockRequests > 0 && (
-                        <span className="ml-auto px-2.5 py-1 bg-apple-red text-white text-xs font-bold rounded-full shadow-apple">
+                        <span className="ml-auto px-2.5 py-1 bg-modern-red text-white text-xs font-bold rounded-full shadow-modern">
                           {pendingClockRequests}
                         </span>
                       )}
@@ -302,20 +302,20 @@ export default function DashboardLayout() {
                   href={`/tablet/${shopId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center px-4 py-3 text-sm font-medium rounded-ios transition-all duration-200 text-apple-blue hover:bg-ios-bg border-t border-ios-separator mt-3"
+                  className="flex items-center px-4 py-3 text-sm font-medium rounded-modern transition-all duration-200 text-modern-blue hover:bg-system-bg border-t border-system-separator mt-3"
                 >
                   <Tablet className="w-5 h-5 mr-3" />
                   Staff Access Link
                 </a>
               </nav>
 
-              <div className="p-4 border-t border-ios-separator bg-white">
+              <div className="p-4 border-t border-system-separator bg-white">
                 <button
                   onClick={() => {
                     handleSignOut();
                     setShowMobileMenu(false);
                   }}
-                  className="flex items-center w-full px-4 py-3 text-sm font-medium text-apple-red rounded-ios transition-all duration-200 hover:bg-ios-bg active:bg-ios-bg"
+                  className="flex items-center w-full px-4 py-3 text-sm font-medium text-modern-red rounded-modern transition-all duration-200 hover:bg-system-bg active:bg-system-bg"
                 >
                   <LogOut className="w-5 h-5 mr-3" />
                   Sign Out

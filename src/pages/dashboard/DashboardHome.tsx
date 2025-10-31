@@ -188,13 +188,13 @@ export default function DashboardHome() {
 
       {/* PIN Expiry Reminders */}
       {pinExpiryReminders.length > 0 && (
-        <div className="bg-gradient-to-r from-apple-orange/10 to-orange-50 border border-apple-orange/30 rounded-ios p-4 mb-4 shadow-apple">
+        <div className="bg-gradient-to-r from-modern-orange/10 to-orange-50 border border-modern-orange/30 rounded-modern p-4 mb-4 shadow-modern">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <span className="text-2xl">🔔</span>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-apple-orange mb-2">Staff PIN Expiring Soon</h3>
+              <h3 className="text-sm font-semibold text-modern-orange mb-2">Staff PIN Expiring Soon</h3>
               <div className="space-y-1">
                 {pinExpiryReminders.map(emp => (
                   <p key={emp.id} className="text-sm text-gray-700">
@@ -204,7 +204,7 @@ export default function DashboardHome() {
               </div>
               <Link
                 to={`/dashboard/${shopId}/staff`}
-                className="text-sm text-apple-blue hover:text-apple-blue/80 font-medium mt-2 inline-block"
+                className="text-sm text-modern-blue hover:text-modern-blue/80 font-medium mt-2 inline-block"
               >
                 Manage Staff →
               </Link>
@@ -214,38 +214,38 @@ export default function DashboardHome() {
       )}
 
       {/* Stats Grid with inline header */}
-      <div className="bg-white rounded-ios shadow-apple border border-ios-separator p-5 mb-4">
+      <div className="bg-white rounded-modern shadow-modern border border-system-separator p-5 mb-4">
         {/* Shop name and badges at top of stats card */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-2xl font-bold text-ios-label">{shop.shop_name}</h1>
+          <h1 className="text-2xl font-bold text-system-label">{shop.shop_name}</h1>
           <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-apple-indigo to-apple-purple text-white shadow-apple">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-modern-indigo to-modern-purple text-white shadow-modern">
               {shop.plan_type === 'pro' ? '✨ Pro' : 'Basic'}
             </span>
             {shop.subscription_status === 'trial' && (
-              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-apple-green to-green-400 text-white shadow-apple">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-modern-green to-green-400 text-white shadow-modern">
                 ⏰ {daysUntilTrialEnd}d
               </span>
             )}
           </div>
         </div>
-        <h2 className="text-sm font-semibold text-ios-secondary mb-4">Today's Stats</h2>
+        <h2 className="text-sm font-semibold text-system-secondary mb-4">Today's Stats</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-gradient-to-br from-apple-blue to-blue-400 rounded-ios p-4 shadow-apple border border-apple-blue/20">
+          <div className="bg-gradient-to-br from-modern-blue to-blue-400 rounded-modern p-4 shadow-modern border border-modern-blue/20">
             <div className="flex items-center text-white/90 text-sm mb-2">
               <Users className="w-5 h-5 mr-2" />
               <span className="font-medium">Customers</span>
             </div>
             <div className="text-3xl font-bold text-white">{stats.todayCustomers}</div>
           </div>
-          <div className="bg-gradient-to-br from-apple-purple to-purple-400 rounded-ios p-4 shadow-apple border border-apple-purple/20">
+          <div className="bg-gradient-to-br from-modern-purple to-purple-400 rounded-modern p-4 shadow-modern border border-modern-purple/20">
             <div className="flex items-center text-white/90 text-sm mb-2">
               <Award className="w-5 h-5 mr-2" />
               <span className="font-medium">Rewards</span>
             </div>
             <div className="text-3xl font-bold text-white">{stats.todayRewards}</div>
           </div>
-          <div className="bg-gradient-to-br from-apple-green to-green-400 rounded-ios p-4 shadow-apple border border-apple-green/20">
+          <div className="bg-gradient-to-br from-modern-green to-green-400 rounded-modern p-4 shadow-modern border border-modern-green/20">
             <div className="flex items-center text-white/90 text-sm mb-2">
               <TrendingUp className="w-5 h-5 mr-2" />
               <span className="font-medium">Points</span>
@@ -253,7 +253,7 @@ export default function DashboardHome() {
             <div className="text-3xl font-bold text-white">{stats.todayPoints}</div>
           </div>
           {shop.plan_type === 'pro' && (
-            <div className="bg-gradient-to-br from-apple-orange to-orange-400 rounded-ios p-4 shadow-apple border border-apple-orange/20">
+            <div className="bg-gradient-to-br from-modern-orange to-orange-400 rounded-modern p-4 shadow-modern border border-modern-orange/20">
               <div className="flex items-center text-white/90 text-sm mb-2">
                 <Clock className="w-5 h-5 mr-2" />
                 <span className="font-medium">Hours</span>

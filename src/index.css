@@ -18,52 +18,52 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Apple-inspired design system */
+/* Modern design system */
 @layer base {
   body {
-    @apply bg-ios-bg text-ios-label;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    @apply bg-system-bg text-system-label;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* iOS-style buttons */
-.btn-ios {
-  @apply px-6 py-3 rounded-ios font-semibold transition-all duration-200;
+/* Modern buttons */
+.btn-modern {
+  @apply px-6 py-3 rounded-modern font-semibold transition-all duration-200;
   @apply active:scale-95 active:brightness-90;
 }
 
-.btn-ios-primary {
-  @apply bg-apple-blue text-white shadow-apple;
+.btn-modern-primary {
+  @apply bg-modern-blue text-white shadow-modern;
   @apply hover:bg-opacity-90;
 }
 
-.btn-ios-success {
-  @apply bg-apple-green text-white shadow-apple;
+.btn-modern-success {
+  @apply bg-modern-green text-white shadow-modern;
   @apply hover:bg-opacity-90;
 }
 
-.btn-ios-danger {
-  @apply bg-apple-red text-white shadow-apple;
+.btn-modern-danger {
+  @apply bg-modern-red text-white shadow-modern;
   @apply hover:bg-opacity-90;
 }
 
-/* iOS-style cards */
-.card-ios {
-  @apply bg-white rounded-ios shadow-apple p-4;
+/* Modern cards */
+.card-modern {
+  @apply bg-white rounded-modern shadow-modern p-4;
 }
 
-/* iOS-style inputs */
-.input-ios {
-  @apply w-full px-4 py-3 bg-white rounded-ios border border-ios-separator;
-  @apply focus:outline-none focus:ring-2 focus:ring-apple-blue focus:border-transparent;
+/* Modern inputs */
+.input-modern {
+  @apply w-full px-4 py-3 bg-white rounded-modern border border-system-separator;
+  @apply focus:outline-none focus:ring-2 focus:ring-modern-blue focus:border-transparent;
   @apply transition-all duration-200;
 }
 
-/* iOS-style navigation */
-.nav-item-ios {
-  @apply px-4 py-3 rounded-ios transition-all duration-200;
+/* Modern navigation */
+.nav-item-modern {
+  @apply px-4 py-3 rounded-modern transition-all duration-200;
   @apply active:bg-black/5 active:scale-95;
 }
 

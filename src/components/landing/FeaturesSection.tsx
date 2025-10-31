@@ -42,7 +42,7 @@ export default function FeaturesSection() {
           {features.map((feature, index) => (
             <div 
               key={index}
-              className="bg-white rounded-ios p-8 shadow-apple hover:shadow-apple-lg transition-shadow border border-gray-200"
+              className="bg-white rounded-modern p-8 shadow-modern hover:shadow-modern-lg transition-shadow border border-gray-200"
             >
               <div className="flex items-start gap-4 mb-4">
                 <span className="text-5xl">{feature.icon}</span>
@@ -51,7 +51,7 @@ export default function FeaturesSection() {
                     {feature.title}
                   </h3>
                   {feature.badge && (
-                    <span className="inline-block bg-apple-blue/10 text-apple-blue px-3 py-1 rounded-full text-xs font-semibold">
+                    <span className="inline-block bg-modern-blue/10 text-modern-blue px-3 py-1 rounded-full text-xs font-semibold">
                       {feature.badge}
                     </span>
                   )}
@@ -60,7 +60,7 @@ export default function FeaturesSection() {
               <p className="text-gray-700 mb-4 leading-relaxed">
                 {feature.description}
               </p>
-              <p className="text-apple-blue font-medium">
+              <p className="text-modern-blue font-medium">
                 {feature.benefit}
               </p>
             </div>
@@ -70,7 +70,7 @@ export default function FeaturesSection() {
         <div className="text-center mt-12">
           <Link
             to="/signup"
-            className="inline-block bg-apple-blue text-white px-10 py-5 rounded-ios text-lg font-bold hover:bg-opacity-90 transition-all duration-200 shadow-apple-lg hover:shadow-apple hover:scale-[1.02]"
+            className="inline-block bg-modern-blue text-white px-10 py-5 rounded-modern text-lg font-bold hover:bg-opacity-90 transition-all duration-200 shadow-modern-lg hover:shadow-modern hover:scale-[1.02]"
           >
             Try It Free →
           </Link>

@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Apple-inspired color palette
-        apple: {
+        // Modern color palette
+        modern: {
           blue: '#007AFF',
           green: '#34C759',
           indigo: '#5856D6',
@@ -16,7 +16,7 @@ export default {
           teal: '#5AC8FA',
           yellow: '#FFCC00',
         },
-        ios: {
+        system: {
           bg: '#F2F2F7',
           separator: '#C6C6C8',
           label: '#000000',
@@ -27,11 +27,11 @@ export default {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
       },
       borderRadius: {
-        'ios': '12px',
+        'modern': '12px',
       },
       boxShadow: {
-        'apple': '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-        'apple-lg': '0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08)',
+        'modern': '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        'modern-lg': '0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08)',
       },
     },
   },

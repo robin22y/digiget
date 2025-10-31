@@ -28,7 +28,7 @@ export default function WhoItsFor() {
           {shopTypes.map((shop, index) => (
             <div 
               key={index}
-              className="bg-gray-50 rounded-ios p-6 text-center hover:bg-apple-blue/5 transition-colors cursor-default"
+              className="bg-gray-50 rounded-modern p-6 text-center hover:bg-modern-blue/5 transition-colors cursor-default"
             >
               <div className="text-5xl mb-3">{shop.emoji}</div>
               <div className="text-sm font-medium text-gray-700">{shop.name}</div>
@@ -37,7 +37,7 @@ export default function WhoItsFor() {
         </div>
 
         {/* Not For Section */}
-        <div className="bg-gray-50 rounded-ios p-8 max-w-3xl mx-auto">
+        <div className="bg-gray-50 rounded-modern p-8 max-w-3xl mx-auto">
           <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
             You're probably NOT ready for DigiGet if:
           </h3>
