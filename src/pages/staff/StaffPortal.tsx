@@ -113,6 +113,12 @@ export default function StaffPortal() {
     return () => clearInterval(interval);
   }, [shop]);
 
+  // Helper function to check if a string is a UUID
+  const isUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
   const loadShop = async () => {
     if (!shopSlug || !shopSlug.trim()) {
       setError('Shop slug missing');
@@ -120,22 +126,41 @@ export default function StaffPortal() {
       return;
     }
 
-    // Trim and validate slug
-    const trimmedSlug = shopSlug.trim();
+    // Trim and validate identifier
+    const trimmedIdentifier = shopSlug.trim();
     
-    if (trimmedSlug.length === 0) {
+    if (trimmedIdentifier.length === 0) {
       setError('Invalid shop URL');
       setLoading(false);
       return;
     }
 
     try {
-      // Try to load shop by slug with minimal columns first to avoid RLS issues
-      const { data: shopData, error: shopError } = await supabase
-        .from('shops')
-        .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
-        .eq('slug', trimmedSlug)
-        .maybeSingle(); // Use maybeSingle() instead of single() to handle missing shops gracefully
+      let shopData = null;
+      let shopError = null;
+
+      // Check if it's a UUID or slug
+      if (isUUID(trimmedIdentifier)) {
+        // It's a UUID - query by ID
+        console.log('Loading shop by UUID:', trimmedIdentifier);
+        const { data, error } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
+          .eq('id', trimmedIdentifier)
+          .maybeSingle();
+        shopData = data;
+        shopError = error;
+      } else {
+        // It's a slug - query by slug
+        console.log('Loading shop by slug:', trimmedIdentifier);
+        const { data, error } = await supabase
+          .from('shops')
+          .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
+          .eq('slug', trimmedIdentifier)
+          .maybeSingle();
+        shopData = data;
+        shopError = error;
+      }
 
       if (shopError) {
         console.error('Shop lookup error:', {
@@ -144,29 +169,71 @@ export default function StaffPortal() {
           message: shopError.message,
           details: shopError.details,
           hint: shopError.hint,
-          slug: trimmedSlug
+          identifier: trimmedIdentifier,
+          isUUID: isUUID(trimmedIdentifier)
         });
         
-        // Provide more detailed error information
-        if (shopError.code === 'PGRST116') {
-          setError('Shop not found. Please check the URL.');
-        } else if (shopError.code === '42501') {
-          setError('Permission denied. Please contact your shop owner.');
-        } else if (shopError.code === 'PGRST301') {
-          setError('Multiple shops found with this slug. Please contact support.');
-        } else if (shopError.code === '22P02') {
-          setError('Invalid shop identifier. Please check the URL.');
+        // Handle specific error cases
+        if (shopError.message?.includes('column') && shopError.message?.includes('does not exist')) {
+          // Column doesn't exist - try fallback to UUID lookup if it wasn't already tried
+          if (!isUUID(trimmedIdentifier)) {
+            console.log('Slug column may not exist, trying UUID lookup...');
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('shops')
+              .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
+              .eq('id', trimmedIdentifier)
+              .maybeSingle();
+            
+            if (!fallbackError && fallbackData) {
+              shopData = fallbackData;
+              shopError = null;
+            } else {
+              // Provide more detailed error information
+              if (shopError.code === 'PGRST116') {
+                setError('Shop not found. Please check the URL.');
+              } else if (shopError.code === '42501') {
+                setError('Permission denied. Please contact your shop owner.');
+              } else if (shopError.code === 'PGRST301') {
+                setError('Multiple shops found. Please contact support.');
+              } else if (shopError.code === '22P02') {
+                setError('Invalid shop identifier. Please check the URL.');
+              } else {
+                const errorMsg = shopError.message || shopError.details || 'Unknown error';
+                setError(`Failed to load shop: ${errorMsg}`);
+                console.error('Full error details:', JSON.stringify(shopError, null, 2));
+              }
+              setLoading(false);
+              return;
+            }
+          } else {
+            const errorMsg = shopError.message || shopError.details || 'Unknown error';
+            setError(`Failed to load shop: ${errorMsg}`);
+            console.error('Full error details:', JSON.stringify(shopError, null, 2));
+            setLoading(false);
+            return;
+          }
         } else {
-          const errorMsg = shopError.message || shopError.details || 'Unknown error';
-          setError(`Failed to load shop: ${errorMsg}`);
-          console.error('Full error details:', JSON.stringify(shopError, null, 2));
+          // Provide more detailed error information
+          if (shopError.code === 'PGRST116') {
+            setError('Shop not found. Please check the URL.');
+          } else if (shopError.code === '42501') {
+            setError('Permission denied. Please contact your shop owner.');
+          } else if (shopError.code === 'PGRST301') {
+            setError('Multiple shops found. Please contact support.');
+          } else if (shopError.code === '22P02') {
+            setError('Invalid shop identifier. Please check the URL.');
+          } else {
+            const errorMsg = shopError.message || shopError.details || 'Unknown error';
+            setError(`Failed to load shop: ${errorMsg}`);
+            console.error('Full error details:', JSON.stringify(shopError, null, 2));
+          }
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
       }
 
       if (!shopData) {
-        setError(`Shop not found with slug: ${trimmedSlug}. Please check the URL.`);
+        setError(`Shop not found with identifier: ${trimmedIdentifier}. Please check the URL.`);
         setLoading(false);
         return;
       }
