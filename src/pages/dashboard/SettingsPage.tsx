@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Save, CheckCircle, Lock } from 'lucide-react';
+import { Save, CheckCircle, Lock, KeyRound } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import ShopLocationSetup from '../../components/ShopLocationSetup';
 import OwnerPinModal from '../../components/OwnerPinModal';
+import ChangeOwnerPinModal from '../../components/ChangeOwnerPinModal';
 
 interface Shop {
   id: string;
   shop_name: string;
   owner_name: string;
   owner_email: string;
+  owner_pin: string | null;
   business_category: string;
   plan_type: 'basic' | 'pro';
   subscription_status: string;
@@ -39,13 +41,14 @@ export default function SettingsPage() {
   const { shopId: paramShopId } = useParams();
   const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'subscription' | 'nfc' | 'features'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'subscription' | 'nfc' | 'security'>('business');
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showChangePinModal, setShowChangePinModal] = useState(false);
 
   const handlePinSuccess = () => {
     setIsUnlocked(true);
@@ -110,11 +113,27 @@ export default function SettingsPage() {
   const [tabletPinEnabled, setTabletPinEnabled] = useState(true);
   const [gpsEnabled, setGpsEnabled] = useState(false);
 
-  // Check PIN unlock status on mount
+  // Check PIN unlock status on mount and if PIN needs to be set
   useEffect(() => {
     if (!shopId) return;
 
-    const checkUnlockStatus = () => {
+    const checkUnlockStatus = async () => {
+      // First check if PIN is set
+      const { data: shopData } = await supabase
+        .from('shops')
+        .select('owner_pin')
+        .eq('id', shopId)
+        .single();
+
+      // If PIN not set, show create PIN modal instead
+      if (!shopData?.owner_pin || shopData.owner_pin === '000000') {
+        setIsUnlocked(false);
+        setShowPinModal(false); // Don't show verify modal
+        setShowChangePinModal(true); // Show create PIN modal
+        return;
+      }
+
+      // PIN is set - check unlock status
       const unlocked = sessionStorage.getItem(`owner_unlocked_${shopId}`);
       const unlockTime = sessionStorage.getItem(`owner_unlock_time_${shopId}`);
 
@@ -800,7 +819,8 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'features' && (
+          {/* Features tab removed - no longer needed */}
+          {/* {activeTab === 'features' && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-900">Feature Settings</h2>
 
@@ -819,7 +839,7 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {shop.plan_type === 'pro' && (
+              {/* {shop.plan_type === 'pro' && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -895,9 +915,9 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 </>
-              )}
+              )} */
 
-              <button
+              {/* <button
                 onClick={saveFeatureSettings}
                 disabled={saving}
                 className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
@@ -906,7 +926,7 @@ export default function SettingsPage() {
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
-          )}
+          )} */}
 
           {activeTab === 'subscription' && (
             <div className="space-y-4 md:space-y-6">
@@ -1181,9 +1201,45 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
-        </div>
-      </div>
 
+          {activeTab === 'security' && (
+            <div className="space-y-4 md:space-y-6">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Security Settings</h2>
+
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Owner PIN</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Your 6-digit PIN protects sensitive settings. Change it regularly for better security.
+                    </p>
+                    {shop.owner_pin && shop.owner_pin !== '000000' ? (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-blue-800">
+                          <strong>Current Status:</strong> PIN is set and active. You can change it below.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Action Required:</strong> PIN not set. Please create a PIN to secure your settings.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowChangePinModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  {shop.owner_pin && shop.owner_pin !== '000000' ? 'Change PIN' : 'Create PIN'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Lock Button - Show when unlocked */}
@@ -1197,6 +1253,33 @@ export default function SettingsPage() {
           Lock Settings
         </button>
       </div>
+
+      {/* Change PIN Modal */}
+      {showChangePinModal && shop && (
+        <ChangeOwnerPinModal
+          shopId={shop.id}
+          currentPin={shop.owner_pin}
+          isFirstTime={!shop.owner_pin || shop.owner_pin === '000000'}
+          onSuccess={() => {
+            setShowChangePinModal(false);
+            setMessage({ type: 'success', text: shop.owner_pin === '000000' || !shop.owner_pin ? 'PIN created successfully!' : 'PIN changed successfully!' });
+            setTimeout(() => setMessage(null), 3000);
+            // Unlock settings after creating PIN
+            sessionStorage.setItem(`owner_unlocked_${shop.id}`, 'true');
+            sessionStorage.setItem(`owner_unlock_time_${shop.id}`, Date.now().toString());
+            setIsUnlocked(true);
+            // Reload shop to get updated PIN
+            loadShop();
+          }}
+          onCancel={() => {
+            setShowChangePinModal(false);
+            // If first time and cancelled, redirect to dashboard
+            if (!shop.owner_pin || shop.owner_pin === '000000') {
+              navigate('/dashboard');
+            }
+          }}
+        />
+      )}
     </>
   );
 }

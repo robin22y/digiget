@@ -12,10 +12,12 @@ export function InstallPrompt() {
 
     // Listen for beforeinstallprompt event
     const handler = (e: Event) => {
+      // Prevent default browser install prompt
       e.preventDefault();
-      setDeferredPrompt(e);
+      const promptEvent = e as any; // beforeinstallprompt event
+      setDeferredPrompt(promptEvent);
       
-      // Don't show immediately - wait for user to use the app
+      // Show our custom prompt after a delay
       setTimeout(() => {
         // Check if already dismissed
         const dismissed = localStorage.getItem('install-prompt-dismissed');
@@ -33,22 +35,33 @@ export function InstallPrompt() {
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      // Fallback: Try to show browser's install UI directly
+      // This won't work in all browsers but provides a fallback
+      return;
+    }
 
-    // Show install prompt
-    deferredPrompt.prompt();
+    try {
+      // Show install prompt
+      await deferredPrompt.prompt();
 
-    // Wait for user choice
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    console.log(`User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} install`);
+      // Wait for user choice
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      console.log(`User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} install`);
 
-    // Clear the prompt
-    setDeferredPrompt(null);
-    setShowPrompt(false);
+      // Clear the prompt
+      setDeferredPrompt(null);
+      setShowPrompt(false);
 
-    if (outcome === 'accepted') {
-      localStorage.setItem('install-prompt-dismissed', 'true');
+      if (outcome === 'accepted') {
+        localStorage.setItem('install-prompt-dismissed', 'true');
+      }
+    } catch (error) {
+      console.error('Error showing install prompt:', error);
+      // Clear prompt on error
+      setDeferredPrompt(null);
+      setShowPrompt(false);
     }
   };
 

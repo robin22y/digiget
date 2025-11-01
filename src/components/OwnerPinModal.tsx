@@ -103,6 +103,16 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
         return;
       }
 
+      // Check if PIN is not set (null or default)
+      if (!shopData.owner_pin || shopData.owner_pin === '000000') {
+        // PIN not set - redirect to create PIN flow
+        // We'll handle this by showing an error and letting the reset flow handle it
+        setError('PIN not set. Please use "Reset with password" below to create your PIN.');
+        setPin('');
+        setLoading(false);
+        return;
+      }
+
       // Verify PIN
       if (shopData.owner_pin !== pin) {
         const remaining = recordFailedAttempt(identifier);
