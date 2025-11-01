@@ -50,7 +50,7 @@ function parseTodayTime(hhmm?: string | null): Date | null {
 }
 
 export default function StaffPortal() {
-  const { shopName, staffName } = useParams();
+  const { shopId } = useParams();
   const [view, setView] = useState<View>('auth');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -65,8 +65,10 @@ export default function StaffPortal() {
   const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
 
   useEffect(() => {
-    loadShopAndEmployee();
-  }, [shopName, staffName]);
+    if (shopId) {
+      loadShop();
+    }
+  }, [shopId]);
 
   // Periodically check for auto clock-out
   useEffect(() => {
@@ -191,7 +193,6 @@ export default function StaffPortal() {
       await checkCurrentClockEntry();
       setView('home');
       setPin('');
-      }
     } catch (err) {
       console.error('Error verifying PIN:', err);
       setError('Failed to verify PIN');
@@ -287,14 +288,6 @@ export default function StaffPortal() {
 
     return () => clearInterval(interval);
   }, [currentClockEntry]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
