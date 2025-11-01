@@ -114,26 +114,59 @@ export default function StaffPortal() {
   }, [shop]);
 
   const loadShop = async () => {
-    if (!shopSlug) {
+    if (!shopSlug || !shopSlug.trim()) {
       setError('Shop slug missing');
       setLoading(false);
       return;
     }
 
+    // Trim and validate slug
+    const trimmedSlug = shopSlug.trim();
+    
+    if (trimmedSlug.length === 0) {
+      setError('Invalid shop URL');
+      setLoading(false);
+      return;
+    }
+
     try {
+      // Try to load shop by slug with minimal columns first to avoid RLS issues
       const { data: shopData, error: shopError } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
-        .eq('slug', shopSlug)
-        .single();
+        .eq('slug', trimmedSlug)
+        .maybeSingle(); // Use maybeSingle() instead of single() to handle missing shops gracefully
 
       if (shopError) {
-        console.error('Shop lookup error:', shopError);
-        throw shopError;
+        console.error('Shop lookup error:', {
+          error: shopError,
+          code: shopError.code,
+          message: shopError.message,
+          details: shopError.details,
+          hint: shopError.hint,
+          slug: trimmedSlug
+        });
+        
+        // Provide more detailed error information
+        if (shopError.code === 'PGRST116') {
+          setError('Shop not found. Please check the URL.');
+        } else if (shopError.code === '42501') {
+          setError('Permission denied. Please contact your shop owner.');
+        } else if (shopError.code === 'PGRST301') {
+          setError('Multiple shops found with this slug. Please contact support.');
+        } else if (shopError.code === '22P02') {
+          setError('Invalid shop identifier. Please check the URL.');
+        } else {
+          const errorMsg = shopError.message || shopError.details || 'Unknown error';
+          setError(`Failed to load shop: ${errorMsg}`);
+          console.error('Full error details:', JSON.stringify(shopError, null, 2));
+        }
+        setLoading(false);
+        return;
       }
 
       if (!shopData) {
-        setError('Shop not found');
+        setError(`Shop not found with slug: ${trimmedSlug}. Please check the URL.`);
         setLoading(false);
         return;
       }
@@ -146,9 +179,11 @@ export default function StaffPortal() {
         open_time: shopData.open_time || null,
         close_time: shopData.close_time || null,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading shop:', err);
-      setError('Failed to load shop');
+      // Provide more detailed error message
+      const errorMessage = err?.message || err?.error_description || 'Failed to load shop';
+      setError(`Error: ${errorMessage}. Please try again or contact support.`);
     } finally {
       setLoading(false);
     }
