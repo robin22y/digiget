@@ -265,12 +265,13 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
 
   // New PIN pad handler
   const handleNewPinPad = (digit: string) => {
-    if (confirmNewPin.length < 6) {
-      if (newPin.length < 6) {
-        setNewPin(prev => prev + digit);
-      } else {
-        setConfirmNewPin(prev => prev + digit);
-      }
+    if (loading) return; // Don't allow input while saving
+    
+    if (newPin.length < 6) {
+      setNewPin(prev => prev + digit);
+      setError('');
+    } else if (newPin.length === 6 && confirmNewPin.length < 6) {
+      setConfirmNewPin(prev => prev + digit);
       setError('');
     }
   };
@@ -554,6 +555,15 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                         maxLength={1}
                         value={newPin[index] || ''}
                         readOnly
+                        onKeyDown={(e) => {
+                          if (e.key >= '0' && e.key <= '9' && newPin.length < 6) {
+                            e.preventDefault();
+                            handleNewPinPad(e.key);
+                          } else if (e.key === 'Backspace' && newPin.length > 0) {
+                            e.preventDefault();
+                            handleNewPinBackspace();
+                          }
+                        }}
                         className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                         style={{
                           borderColor: newPin[index] ? '#3B82F6' : '#D1D5DB',
@@ -597,6 +607,17 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                         maxLength={1}
                         value={confirmNewPin[index] || ''}
                         readOnly
+                        onKeyDown={(e) => {
+                          if (newPin.length === 6) {
+                            if (e.key >= '0' && e.key <= '9' && confirmNewPin.length < 6) {
+                              e.preventDefault();
+                              handleNewPinPad(e.key);
+                            } else if (e.key === 'Backspace' && confirmNewPin.length > 0) {
+                              e.preventDefault();
+                              handleNewPinBackspace();
+                            }
+                          }
+                        }}
                         className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                         style={{
                           borderColor: confirmNewPin[index] 
@@ -627,23 +648,26 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                     <button
                       key={digit}
                       onClick={() => handleNewPinPad(digit.toString())}
-                      disabled={loading || (confirmNewPin.length >= 6 ? false : newPin.length >= 6)}
+                      disabled={loading || (newPin.length >= 6 && confirmNewPin.length >= 6)}
                       className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                      type="button"
                     >
                       {digit}
                     </button>
                   ))}
                   <button
                     onClick={() => handleNewPinPad('0')}
-                    disabled={loading || (confirmNewPin.length >= 6 ? false : newPin.length >= 6)}
+                    disabled={loading || (newPin.length >= 6 && confirmNewPin.length >= 6)}
                     className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    type="button"
                   >
                     0
                   </button>
                   <button
                     onClick={handleNewPinBackspace}
-                    disabled={loading || (confirmNewPin.length > 0 ? false : newPin.length === 0)}
+                    disabled={loading || (confirmNewPin.length === 0 && newPin.length === 0)}
                     className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    type="button"
                   >
                     ⌫
                   </button>
