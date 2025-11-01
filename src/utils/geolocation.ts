@@ -23,9 +23,9 @@ export async function getCurrentPosition(): Promise<GeoLocation | null> {
         resolve(null);
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+        enableHighAccuracy: true, // Use GPS for maximum accuracy
+        timeout: 15000, // Increased timeout for better GPS lock
+        maximumAge: 60000, // Accept cached position up to 1 minute old
       }
     );
   });
@@ -61,115 +61,113 @@ export function calculateDistance(
   return R * c;
 }
 
-// Get area name from coordinates using reverse geocoding
+// Get area name from coordinates using reverse geocoding with road/street level accuracy
 export async function getAreaName(latitude: number, longitude: number): Promise<string> {
   try {
-    // Use zoom level 16-17 for suburb/neighborhood level accuracy
+    // Use zoom level 18 for street/road level accuracy
+    // Add user agent header as required by Nominatim
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'DigiGet-Location/1.0'
+        }
+      }
     );
+    
+    if (!response.ok) {
+      console.error('Reverse geocoding failed:', response.status);
+      return 'Location unavailable';
+    }
+    
     const data = await response.json();
     
     if (data.address) {
-      // Get road/street information
-      const road = data.address.road || data.address.street || data.address.path || data.address.pedestrian;
+      const addr = data.address;
       
-      // Prioritize specific local area names first, then add city for context
-      const suburb = data.address.suburb;
-      const neighbourhood = data.address.neighbourhood;
-      const village = data.address.village;
-      const cityDistrict = data.address.city_district;
-      const borough = data.address.borough;
-      const district = data.address.district;
-      const ward = data.address.ward; // Orrell Park might be a ward
-      const quarter = data.address.quarter;
-      const residential = data.address.residential;
-      const city = data.address.city || data.address.town || data.address.municipality;
+      // Get road/street name (most specific location identifier)
+      const road = addr.road || addr.street || addr.footway || addr.path || addr.pedestrian || addr.cycleway;
       
-      // Build location name: prefer specific area, add city if different
-      let locationName = '';
+      // Get house number if available (most precise)
+      const houseNumber = addr.house_number || addr.house_name;
       
-      // First try to get a specific area name (check most specific first)
-      if (ward) {
-        locationName = ward;
-      } else if (suburb) {
-        locationName = suburb;
-      } else if (neighbourhood) {
-        locationName = neighbourhood;
-      } else if (residential) {
-        locationName = residential;
-      } else if (quarter) {
-        locationName = quarter;
-      } else if (village) {
-        locationName = village;
-      } else if (cityDistrict) {
-        locationName = cityDistrict;
-      } else if (borough) {
-        locationName = borough;
-      } else if (district) {
-        locationName = district;
-      }
+      // Get area identifiers (from most specific to least)
+      const suburb = addr.suburb || addr.neighbourhood || addr.village;
+      const cityDistrict = addr.city_district || addr.borough;
+      const city = addr.city || addr.town || addr.municipality;
+      const county = addr.county;
+      const postcode = addr.postcode;
       
-      // Build the final location string: Road + Area + City
+      // Build location string starting with most specific
       const parts: string[] = [];
       
-      // Add road name if available (most specific)
-      if (road) {
+      // Add house number + road name if available (most precise)
+      if (houseNumber && road) {
+        parts.push(`${houseNumber} ${road}`);
+      } else if (road) {
         parts.push(road);
       }
       
-      // Add area name if available and different from road
-      if (locationName && locationName !== road) {
-        parts.push(locationName);
+      // Add suburb/neighbourhood if available and different
+      if (suburb && suburb !== road) {
+        parts.push(suburb);
       }
       
-      // Add city if available and different from road and area
-      if (city && city !== road && city !== locationName) {
-        // Only add city if it's not already included
-        if (!parts.some(part => part.toLowerCase().includes(city.toLowerCase()) || 
-                                city.toLowerCase().includes(part.toLowerCase()))) {
-          parts.push(city);
-        }
+      // Add city/district if available and not already included
+      if (cityDistrict && cityDistrict !== road && cityDistrict !== suburb) {
+        parts.push(cityDistrict);
       }
       
-      // If we have parts, join them; otherwise fallback
+      // Add city if available and not already included
+      if (city && !parts.some(part => 
+        part.toLowerCase().includes(city.toLowerCase()) || 
+        city.toLowerCase().includes(part.toLowerCase())
+      )) {
+        parts.push(city);
+      }
+      
+      // If we have parts, return joined string
       if (parts.length > 0) {
-        locationName = parts.join(', ');
-      } else if (!locationName && city) {
-        // If no specific area found, just use the city
-        locationName = city;
+        return parts.join(', ');
       }
       
-      // If we still don't have a name, try to extract from display_name
-      if (!locationName && data.display_name) {
+      // Fallback: try display_name parsing for UK addresses
+      if (data.display_name) {
         const displayParts = data.display_name.split(',').map(s => s.trim());
-        // Look for meaningful location names (skip street, postal code, country)
-        const skipTerms = ['england', 'united kingdom', 'uk', 'gb'];
-        const foundParts: string[] = [];
         
-        for (let i = 0; i < Math.min(displayParts.length - 2, 5); i++) {
+        // For UK addresses, typically: "Road Name, Area, City, County, Postcode, Country"
+        // Extract first 2-3 meaningful parts (road and area)
+        const meaningfulParts: string[] = [];
+        const skipTerms = ['england', 'united kingdom', 'uk', 'gb', 'liverpool', 'london'];
+        
+        for (let i = 0; i < Math.min(displayParts.length, 4); i++) {
           const part = displayParts[i];
-          if (part && part.length >= 3 && !skipTerms.some(term => part.toLowerCase().includes(term))) {
-            foundParts.push(part);
-            if (foundParts.length >= 2) break; // Get road and area
+          if (part && part.length >= 3) {
+            const partLower = part.toLowerCase();
+            // Skip if it's a country/region or already included
+            if (!skipTerms.some(term => partLower.includes(term)) && 
+                !meaningfulParts.some(existing => existing.toLowerCase() === partLower)) {
+              meaningfulParts.push(part);
+              // Stop after getting road name and area (typically first 2 parts)
+              if (meaningfulParts.length >= 2 && part.match(/^[A-Za-z\s]+$/)) {
+                break;
+              }
+            }
           }
         }
         
-        if (foundParts.length > 0) {
-          locationName = foundParts.join(', ');
-          // Add city if different
-          if (city && !foundParts.some(part => part.toLowerCase().includes(city.toLowerCase()) || 
-                                           city.toLowerCase().includes(part.toLowerCase()))) {
-            locationName = `${locationName}, ${city}`;
-          }
+        if (meaningfulParts.length > 0) {
+          return meaningfulParts.join(', ');
         }
       }
       
-      return locationName || city || 'Unknown Area';
+      // Last resort: return city or county
+      return city || county || 'Location unavailable';
     }
-    return 'Unknown Area';
+    
+    return 'Location unavailable';
   } catch (error) {
     console.error('Error getting area name:', error);
-    return 'Unknown Area';
+    return 'Location unavailable';
   }
 }

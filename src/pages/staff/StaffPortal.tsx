@@ -467,23 +467,8 @@ export default function StaffPortal() {
               <p className="text-gray-600">View your shifts and completed tasks</p>
             </button>
 
-            <button
-              onClick={() => setView('incident')}
-              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-red-500"
-            >
-              <AlertTriangle className="w-12 h-12 text-red-600 mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Report Incident</h3>
-              <p className="text-gray-600">Report issues or incidents to management</p>
-            </button>
-
-            <button
-              onClick={() => setView('requests')}
-              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-indigo-500"
-            >
-              <Package className="w-12 h-12 text-indigo-600 mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Requests</h3>
-              <p className="text-gray-600">Request uniforms, equipment, or supplies</p>
-            </button>
+            {/* Incident reporting hidden */}
+            {/* Requests hidden */}
           </div>
 
           {currentClockEntry && (
@@ -517,24 +502,7 @@ export default function StaffPortal() {
         </div>
       )}
 
-      {view === 'tasks' && (
-        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <button
-            onClick={() => setView('home')}
-            className="mb-6 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            ← Back to Home
-          </button>
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">My Tasks</h2>
-            <StaffTaskManagement
-              employeeId={employee.id}
-              shopId={shop.id}
-              currentClockEntryId={currentClockEntry?.id}
-            />
-          </div>
-        </div>
-      )}
+      {/* Tasks view hidden */}
 
       {view === 'clock' && (
         <StaffClockView
