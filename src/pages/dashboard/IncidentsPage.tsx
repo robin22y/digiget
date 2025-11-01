@@ -52,7 +52,7 @@ export default function IncidentsPage() {
   }, [paramShopId, hasAccess, shopLoading, navigate]);
 
   useEffect(() => {
-    if (shopId && shop && shop.plan_type === 'pro') {
+    if (shopId && shop) {
       loadIncidents();
     }
   }, [shopId, shop]);

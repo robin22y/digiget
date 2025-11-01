@@ -169,24 +169,7 @@ export default function FlashOffersPage() {
     return <div>Loading...</div>;
   }
 
-  if (shop.plan_type === 'basic') {
-    return (
-      <div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-yellow-900 mb-2">Pro Feature</h2>
-          <p className="text-yellow-800 mb-4">
-            Flash offers (Deals) are only available on the Pro plan.
-          </p>
-          <Link
-            to={`/dashboard/${shopId}/settings`}
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-          >
-            Upgrade to Pro
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Flash offers available to all shops - no plan restrictions
 
   return (
     <div>

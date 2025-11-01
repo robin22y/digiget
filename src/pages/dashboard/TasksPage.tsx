@@ -65,7 +65,7 @@ export default function TasksPage() {
   const [showFulfillment, setShowFulfillment] = useState(false);
 
   useEffect(() => {
-    if (shopId && shop && shop.plan_type === 'pro') {
+    if (shopId && shop) {
       loadTasks();
       loadEmployees();
       loadTaskFulfillment();
@@ -193,18 +193,7 @@ export default function TasksPage() {
     }
   };
 
-  if (shop.plan_type !== 'pro') {
-    return (
-      <div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-yellow-900 mb-2">Pro Feature</h2>
-          <p className="text-yellow-800">
-            Staff Jobs management is only available on the Pro plan.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Tasks available to all shops - no plan restrictions
 
   if (loading) {
     return <div>Loading...</div>;

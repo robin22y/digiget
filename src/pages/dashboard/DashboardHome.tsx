@@ -145,7 +145,7 @@ export default function DashboardHome() {
   };
 
   const loadPinExpiryReminders = async () => {
-    if (shop.plan_type !== 'pro') return;
+    // Load PIN expiry reminders for all shops
     
     try {
       const { data: employees, error } = await supabase
@@ -247,7 +247,7 @@ export default function DashboardHome() {
           <h1 className="text-2xl font-bold text-system-label">{shop.shop_name}</h1>
           <div className="flex items-center space-x-2">
             <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-modern-indigo to-modern-purple text-white shadow-modern">
-              {shop.plan_type === 'pro' ? '✨ Pro' : 'Basic'}
+              Active
             </span>
             {shop.subscription_status === 'trial' && (
               <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-modern-green to-green-400 text-white shadow-modern">
@@ -266,7 +266,7 @@ export default function DashboardHome() {
             </div>
             <div className="text-3xl font-bold text-white">{stats.todayCustomers}</div>
           </div>
-          {shop.plan_type === 'pro' && (
+          {(
             <>
               <div className="bg-gradient-to-br from-modern-orange to-orange-400 rounded-modern p-4 shadow-modern border border-modern-orange/20">
                 <div className="flex items-center text-white/90 text-sm mb-2">
@@ -346,20 +346,7 @@ export default function DashboardHome() {
             <div className="text-sm text-indigo-100">View, print, or download your check-in QR</div>
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">📱</div>
           </Link>
-          {shop.plan_type === 'basic' && (
-            <Link
-              to={`/dashboard/${shopId}/staff`}
-              className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-            >
-              <div className="font-bold text-lg flex items-center gap-2">
-                <UserCheck className="w-5 h-5" />
-                Manage Your Staff
-              </div>
-              <div className="text-sm text-purple-100">Add or edit staff (1 staff limit)</div>
-              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">👥</div>
-            </Link>
-          )}
-          {shop.plan_type === 'pro' && (
+          {(
             <>
               <Link
                 to={`/dashboard/${shopId}/flash-offers`}
@@ -533,7 +520,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Active Staff Alert */}
-      {shop.plan_type === 'pro' && stats.activeStaff > 0 && (
+      {stats.activeStaff > 0 && (
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>

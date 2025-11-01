@@ -304,7 +304,7 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
       }
 
       // Check if location is more than 100m from shop (geofencing available to all shops)
-      if (location && shopData?.latitude && shopData?.longitude && shopPlanType === 'pro') {
+      if (location && shopData?.latitude && shopData?.longitude) {
         distance = calculateDistance(
           location.latitude,
           location.longitude,

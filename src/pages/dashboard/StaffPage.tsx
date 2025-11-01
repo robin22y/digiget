@@ -199,12 +199,9 @@ export default function StaffPage() {
     }
   };
 
-  // Check staff limit for basic plan
+  // No staff limits - all shops can add unlimited staff
   const checkStaffLimit = () => {
-    if (shop.plan_type === 'basic' && employees.length >= 1) {
-      return true;
-    }
-    return false;
+    return false; // Always allow adding staff
   };
 
   const getDaysUntilPinExpiry = (pinExpiresAt: string | null | undefined): number | null => {

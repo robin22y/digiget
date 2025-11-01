@@ -265,29 +265,7 @@ export default function CheckInPage() {
     setMessage(null);
 
     try {
-      // Check monthly check-in limit for basic plan
-      if (shop.plan_type === 'basic') {
-        const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        
-        const { count, error: countError } = await supabase
-          .from('loyalty_transactions')
-          .select('*', { count: 'exact', head: true })
-          .eq('shop_id', shopId)
-          .eq('transaction_type', 'point_added')
-          .gte('created_at', firstDayOfMonth.toISOString());
-
-        if (countError) {
-          console.error('Error checking monthly limit:', countError);
-        } else if (count && count >= 50) {
-          setMessage({
-            type: 'error',
-            text: `Monthly check-in limit reached (50 check-ins). Basic plan allows 50 customer check-ins per month. Please upgrade to Pro plan for unlimited check-ins.`
-          });
-          setLoading(false);
-          return;
-        }
-      }
+      // No check-in limits - all shops have unlimited check-ins
 
       const cleanPhone = phone.replace(/\s/g, '');
 

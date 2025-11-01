@@ -230,25 +230,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleUpgradeToPro = async () => {
-    if (!shopId) return;
-    setSaving(true);
-    setMessage(null);
-    try {
-      const { error } = await supabase
-        .from('shops')
-        .update({ plan_type: 'pro' })
-        .eq('id', shopId);
-      if (error) throw error;
-      setMessage({ type: 'success', text: 'Plan upgraded to Pro successfully.' });
-      setShop((prev) => prev ? { ...prev, plan_type: 'pro' } as any : prev);
-      setTimeout(() => setMessage(null), 3000);
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Failed to upgrade plan.' });
-    } finally {
-      setSaving(false);
-    }
-  };
+  // No upgrade function needed - all features available to all shops
 
   if (loading) {
     return <div>Loading...</div>;
@@ -781,37 +763,6 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {shop.plan_type === 'basic' && (
-                <div className="border-2 border-blue-200 rounded-lg p-4 md:p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Upgrade to Pro</h3>
-                  <p className="text-gray-600 mb-4">£9.99/month</p>
-                  <ul className="space-y-2 mb-4">
-                    <li className="flex items-start">
-                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs md:text-sm">Staff clock in/out tracking</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs md:text-sm">Task management with mandatory completion</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs md:text-sm">Payroll hours tracking and reports</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs md:text-sm">Incident reporting system</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs md:text-sm">Staff performance analytics</span>
-                    </li>
-                  </ul>
-                  <button onClick={handleUpgradeToPro} disabled={saving} className="w-full px-4 md:px-6 py-2.5 md:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base font-semibold disabled:opacity-50">
-                    {saving ? 'Processing…' : 'Upgrade to Pro'}
-                  </button>
-                </div>
-              )}
 
             </div>
           )}
