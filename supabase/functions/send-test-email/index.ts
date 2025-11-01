@@ -14,15 +14,37 @@ interface RequestBody {
 }
 
 Deno.serve(async (req: Request) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: corsHeaders,
+      headers: {
+        ...corsHeaders,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "86400",
+      },
     });
   }
 
   try {
-    const { to, subject, html, text }: RequestBody = await req.json();
+    // Get request body, handling potential errors
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    const { to, subject, html, text }: RequestBody = body;
 
     if (!to || !subject || !html) {
       return new Response(

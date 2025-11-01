@@ -115,7 +115,13 @@ export default function EmailTemplates() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch(`${supabaseUrl}/functions/v1/send-test-email`, {
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL is not configured');
+      }
+
+      const functionUrl = `${supabaseUrl}/functions/v1/send-test-email`;
+      
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
