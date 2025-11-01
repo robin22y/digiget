@@ -113,7 +113,7 @@ export default function StaffPage() {
 
   const handleAddEmployee = () => {
     if (checkStaffLimit()) {
-      alert('Basic plan allows only 1 staff member. Please upgrade to Pro plan to add more staff.');
+      // No restrictions - all shops can add unlimited staff
       return;
     }
     setEditingEmployee(null);
@@ -222,13 +222,6 @@ export default function StaffPage() {
 
       return (
         <div className="w-full max-w-full overflow-x-hidden">
-          {shop.plan_type === 'basic' && employees.length >= 1 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-yellow-800 text-sm">
-                <strong>Basic Plan Limit:</strong> You can have only 1 staff member. Upgrade to Pro for unlimited staff.
-              </p>
-            </div>
-          )}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Staff Management</h1>
             <button

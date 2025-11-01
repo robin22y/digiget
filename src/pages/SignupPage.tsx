@@ -21,7 +21,7 @@ export default function SignupPage() {
     loyaltyVisits: 6,
     rewardDescription: 'Free service',
     businessCategory: 'hair_salon', // Default to barber shop
-    planType: 'basic' // Default to basic plan
+    planType: 'pro' // All shops get full features
   });
 
   const navigate = useNavigate();

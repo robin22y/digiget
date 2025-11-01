@@ -80,8 +80,8 @@ export default function DashboardHome() {
       let staffHours = 0;
       let activeStaff = 0;
 
-      if (shop.plan_type === 'pro') {
-        const { data: clockEntries } = await supabase
+      // Load staff hours for all shops
+      const { data: clockEntries } = await supabase
           .from('clock_entries')
           .select('*, employees!inner(*)')
           .eq('shop_id', shopId)

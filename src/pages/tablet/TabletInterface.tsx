@@ -303,7 +303,7 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
         setClockInLocationName(null);
       }
 
-      // Check if location is more than 100m from shop (only for Pro plan - geofencing is Pro feature)
+      // Check if location is more than 100m from shop (geofencing available to all shops)
       if (location && shopData?.latitude && shopData?.longitude && shopPlanType === 'pro') {
         distance = calculateDistance(
           location.latitude,

@@ -255,8 +255,8 @@ export default function StaffClockIn() {
       // Get GPS location
       const location = await getCurrentPosition();
 
-      // Verify within shop radius (50m) - only for Pro plans
-      if (shop?.plan_type === 'pro' && location && shop.latitude && shop.longitude) {
+      // Verify within shop radius (50m) - for all shops
+      if (location && shop.latitude && shop.longitude) {
         const distance = calculateDistance(
           location.latitude,
           location.longitude,

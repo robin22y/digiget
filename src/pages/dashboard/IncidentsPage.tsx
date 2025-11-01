@@ -208,18 +208,7 @@ export default function IncidentsPage() {
     }
   };
 
-  if (shop.plan_type !== 'pro') {
-    return (
-      <div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-yellow-900 mb-2">Pro Feature</h2>
-          <p className="text-yellow-800">
-            Incident reporting is only available on the Pro plan.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Incidents available to all shops - no plan restrictions
 
   if (loading) {
     return <div>Loading...</div>;

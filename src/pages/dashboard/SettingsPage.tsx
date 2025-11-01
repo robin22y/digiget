@@ -753,10 +753,10 @@ export default function SettingsPage() {
                   <div>
                     <p className="text-sm text-gray-600">Current Plan</p>
                     <p className="text-lg font-semibold text-gray-900">
-                      {shop.plan_type === 'pro' ? 'Pro' : 'Basic'}
+                      Active
                     </p>
                     <p className="text-sm text-gray-600">
-                      {shop.plan_type === 'pro' ? '£9.99' : '£5.99'}/month
+                      Free Trial
                     </p>
                   </div>
                   <div>
@@ -775,7 +775,7 @@ export default function SettingsPage() {
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h3 className="font-semibold text-green-900 mb-1">Free Trial Active</h3>
                   <p className="text-green-800 text-sm">
-                    Your {shop.plan_type === 'pro' ? 'Pro' : 'Basic'} plan trial ends on{' '}
+                    Your 14-day free trial ends on{' '}
                     {new Date(shop.trial_ends_at).toLocaleDateString()}. No payment required until then.
                   </p>
                 </div>

@@ -24,7 +24,7 @@ async function getActiveShops(): Promise<Shop[]> {
     .from('shops')
     .select('id, shop_name, owner_email, subscription_status')
     .eq('subscription_status', 'active')
-    .eq('plan_type', 'pro'); // Only pro plans get weekly reports
+    // All active shops get weekly reports
 
   if (error) {
     console.error('Error fetching active shops:', error);

@@ -45,12 +45,11 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get active shops
+    // Get all active shops
     const { data: shops, error: shopsError } = await supabase
       .from("shops")
       .select("id, shop_name, owner_email, subscription_status")
-      .eq("subscription_status", "active")
-      .eq("plan_type", "pro");
+      .eq("subscription_status", "active");
 
     if (shopsError) {
       throw shopsError;

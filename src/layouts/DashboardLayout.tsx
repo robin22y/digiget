@@ -47,11 +47,10 @@ export default function DashboardLayout() {
   useEffect(() => {
     if (shopId) {
       loadShop();
-      if (shop?.plan_type === 'pro') {
-        loadPendingClockRequests();
-        const interval = setInterval(loadPendingClockRequests, 30000);
-        return () => clearInterval(interval);
-      }
+      // Load pending clock requests for all shops
+      loadPendingClockRequests();
+      const interval = setInterval(loadPendingClockRequests, 30000);
+      return () => clearInterval(interval);
     }
   }, [shopId, shop?.plan_type]);
 
@@ -148,14 +147,14 @@ export default function DashboardLayout() {
     { to: `/dashboard/${shopId}/qr-code`, icon: QrCode, label: 'QR Code', feature: 'qrCodes' as const },
     { to: `/dashboard/${shopId}/customers`, icon: Users, label: 'Customers', feature: 'viewCustomers' as const },
     
-    // Staff management (visible based on plan and feature flag, always visible to owners/admins)
-    ...((shop.plan_type === 'pro' || shop.plan_type === 'basic') && isFeatureEnabled('manageStaff', user) ? [
+    // Staff management (visible based on feature flag, always visible to owners/admins)
+    ...(isFeatureEnabled('manageStaff', user) ? [
       { to: `/dashboard/${shopId}/staff`, icon: UserCheck, label: 'Manage Staff', feature: 'manageStaff' as const },
     ] : []),
     
-    // Pro plan features with feature flags
+    // Features with feature flags
     // ADMIN/OWNER: Always see all features (feature flags bypassed via isOwnerOrAdmin check in isFeatureEnabled)
-    ...(shop.plan_type === 'pro' ? [
+    ...[
       // HIDDEN FOR BARBER SHOP FOCUS - Can be re-enabled via feature flags
       // Owners/admins always see these regardless of feature flags
       (isOwnerOrAdmin || isFeatureEnabled('staffRequests', user)) && { to: `/dashboard/${shopId}/staff-requests`, icon: Package, label: 'Staff Requests', feature: 'staffRequests' as const },
@@ -165,20 +164,18 @@ export default function DashboardLayout() {
       (isOwnerOrAdmin || isFeatureEnabled('staffJobs', user)) && { to: `/dashboard/${shopId}/tasks`, icon: ClipboardList, label: 'Staff Jobs', feature: 'staffJobs' as const },
       (isOwnerOrAdmin || isFeatureEnabled('reportProblem', user)) && { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem', feature: 'reportProblem' as const },
       (isOwnerOrAdmin || isFeatureEnabled('fixTimeEntries', user)) && { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries', feature: 'fixTimeEntries' as const },
-    ].filter(Boolean) as any[] : []),
+    ].filter(Boolean) as any[],
     
-    // Payroll Reports (Pro plan only)
-    ...(shop.plan_type === 'pro' ? [
-      { to: `/dashboard/${shopId}/payroll`, icon: Receipt, label: 'Payroll Report', feature: undefined },
-    ] : []),
+    // Payroll Reports (available to all shops)
+    { to: `/dashboard/${shopId}/payroll`, icon: Receipt, label: 'Payroll Report', feature: undefined },
     
     // Diary (if enabled) - HIDDEN FOR NOW
     // ...(shop.diary_enabled ? [
     //   { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary', feature: undefined },
     // ] : []),
     
-    // Deals (Pro plan only, visible to admins/owners regardless of feature flag)
-    ...(shop.plan_type === 'pro' && isFeatureEnabled('dealsOffers', user) ? [
+    // Deals (visible to admins/owners regardless of feature flag)
+    ...(isFeatureEnabled('dealsOffers', user) ? [
       { to: `/dashboard/${shopId}/flash-offers`, icon: Zap, label: 'Deals', feature: 'dealsOffers' as const },
     ] : []),
     
