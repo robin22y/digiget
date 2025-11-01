@@ -336,33 +336,7 @@ export default function SettingsPage() {
     }
   };
 
-  const saveFeatureSettings = async () => {
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const { error } = await supabase
-        .from('shops')
-        .update({
-          diary_enabled: diaryEnabled,
-          auto_logout_hours: autoLogoutHours,
-          latitude: latitude ? parseFloat(latitude) : null,
-          longitude: longitude ? parseFloat(longitude) : null,
-          open_time: openTime || null,
-          close_time: closeTime || null,
-        })
-        .eq('id', shopId);
-
-      if (error) throw error;
-
-      setMessage({ type: 'success', text: 'Feature settings saved successfully' });
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
-    } finally {
-      setSaving(false);
-    }
-  };
+  // saveFeatureSettings removed - features tab no longer exists
 
   const saveNFCSettings = async () => {
     setSaving(true);
