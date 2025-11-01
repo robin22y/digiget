@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { LogOut, Users, ClipboardList, Clock, History, AlertTriangle, MapPin, Package } from 'lucide-react';
+import { LogOut, Users, Clock, History, AlertTriangle, MapPin, Package } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import StaffCustomerManagement from '../../components/StaffCustomerManagement';
 // import StaffTaskManagement from '../../components/StaffTaskManagement';
@@ -40,7 +40,7 @@ interface ClockEntry {
   hours_worked: number | null;
 }
 
-type View = 'auth' | 'home' | 'customers' | 'tasks' | 'clock' | 'history' | 'incident' | 'locations' | 'requests';
+type View = 'auth' | 'home' | 'customers' | 'clock' | 'history' | 'incident' | 'locations' | 'requests';
 
 function parseTodayTime(hhmm?: string | null): Date | null {
   if (!hhmm) return null;
@@ -589,15 +589,7 @@ export default function StaffPortal() {
               <p className="text-gray-600">Manage customer check-ins and loyalty points</p>
             </button>
 
-            <button
-              onClick={() => setView('tasks')}
-              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-blue-500"
-            >
-              <ClipboardList className="w-12 h-12 text-green-600 mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Tasks</h3>
-              <p className="text-gray-600">View and complete your assigned tasks</p>
-            </button>
-
+            {/* Tasks button hidden */}
             <button
               onClick={() => setView('clock')}
               className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-blue-500"
@@ -628,7 +620,7 @@ export default function StaffPortal() {
             >
               <History className="w-12 h-12 text-orange-600 mb-4" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">Work History</h3>
-              <p className="text-gray-600">View your shifts and completed tasks</p>
+              <p className="text-gray-600">View your shifts and work history</p>
             </button>
 
             {/* Incident reporting hidden */}
