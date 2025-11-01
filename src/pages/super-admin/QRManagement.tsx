@@ -189,7 +189,7 @@ export default function QRManagement() {
                 </tr>
               ) : (
                 shops.map((shop) => {
-                  const checkInUrl = shop.qr_url || `${window.location.origin}/dashboard/${shop.id}/checkin`;
+                  const checkInUrl = shop.qr_url || `${window.location.origin}/customer/${shop.id}/login`;
                   return (
                     <tr key={shop.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 text-gray-900 font-medium">{shop.shop_name}</td>
@@ -343,7 +343,7 @@ export default function QRManagement() {
 
             <div className="bg-white p-6 rounded-lg border-2 border-gray-200 mb-4 flex justify-center">
               <QRCode
-                value={selectedShop.qr_url || `${window.location.origin}/dashboard/${selectedShop.id}/checkin`}
+                value={selectedShop.qr_url || `${window.location.origin}/customer/${selectedShop.id}/login`}
                 size={200}
                 level="H"
                 includeMargin={true}
@@ -355,7 +355,7 @@ export default function QRManagement() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={selectedShop.qr_url || `${window.location.origin}/dashboard/${selectedShop.id}/checkin`}
+                  value={selectedShop.qr_url || `${window.location.origin}/customer/${selectedShop.id}/login`}
                   readOnly
                   className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm font-mono truncate"
                 />
@@ -381,7 +381,7 @@ export default function QRManagement() {
                 Download QR
               </button>
               <a
-                href={`mailto:${selectedShop.owner_email}?subject=DigiGet Check-In QR Code&body=Your check-in QR code link: ${selectedShop.qr_url || `${window.location.origin}/dashboard/${selectedShop.id}/checkin`}`}
+                href={`mailto:${selectedShop.owner_email}?subject=DigiGet Customer Portal QR Code&body=Your customer portal QR code link: ${selectedShop.qr_url || `${window.location.origin}/customer/${selectedShop.id}/login`}`}
                 className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Email Link
