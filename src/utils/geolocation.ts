@@ -62,28 +62,28 @@ export function calculateDistance(
 }
 
 // Get area name from coordinates using reverse geocoding with road/street level accuracy
+// Note: Nominatim API blocks direct browser requests due to CORS policy
+// This function will gracefully fall back to coordinates if the API is unavailable
 export async function getAreaName(latitude: number, longitude: number): Promise<string> {
+  // Immediate fallback to coordinates (Nominatim doesn't allow direct browser access)
+  // To use reverse geocoding, we would need a backend proxy endpoint
+  return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+  // NOTE: The code below is disabled because Nominatim blocks browser requests
+  // If you want to use reverse geocoding, create a Supabase Edge Function proxy:
+  // 1. Create: supabase/functions/reverse-geocode/index.ts
+  // 2. Call Nominatim from server-side (no CORS issues)
+  // 3. Call your function instead of Nominatim directly
+  
+  /*
   try {
-    // Use zoom level 18 for street/road level accuracy
-    // Add user agent header as required by Nominatim
-    // Note: Nominatim may block CORS requests from browsers - this will fail gracefully
+    // This would require a backend proxy due to CORS restrictions
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-      {
-        headers: {
-          'User-Agent': 'DigiGet-Location/1.0',
-          'Accept-Language': 'en-GB,en'
-        },
-        // Add mode: 'no-cors' would prevent reading response, so we'll catch the error instead
-      }
-    ).catch((fetchError) => {
-      // CORS or network error - return coordinates as fallback
-      console.warn('Reverse geocoding failed (CORS/network):', fetchError);
-      return null;
-    });
+      `/api/reverse-geocode?lat=${latitude}&lon=${longitude}`,
+      { method: 'GET' }
+    );
     
     if (!response || !response.ok) {
-      // If request failed, return coordinates as fallback
       return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
     
@@ -174,9 +174,8 @@ export async function getAreaName(latitude: number, longitude: number): Promise<
     
     return 'Location unavailable';
   } catch (error: any) {
-    // CORS errors, network errors, or parsing errors - return coordinates as fallback
-    console.warn('Error getting area name:', error?.message || error);
     // Return formatted coordinates as fallback
     return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   }
+  */
 }
