@@ -31,6 +31,7 @@ import TabletInterface from './pages/tablet/TabletInterface';
 import TabletInterfaceByName from './pages/tablet/TabletInterfaceByName';
 import CustomerBalance from './pages/public/CustomerBalance';
 import CustomerArea from './pages/public/CustomerArea';
+import CustomerLoginPortal from './pages/public/CustomerLoginPortal';
 import StaffPortal from './pages/staff/StaffPortal';
 import StaffClockIn from './pages/staff/StaffClockIn';
 import CustomerCheckIn from './pages/staff/CustomerCheckIn';
@@ -69,6 +70,7 @@ function App() {
 
           <Route path="/:shopId/balance" element={<CustomerBalance />} />
           <Route path="/rewards" element={<CustomerArea />} />
+          <Route path="/customer/:shopId/login" element={<CustomerLoginPortal />} />
 
           <Route path="/tablet/:shopId" element={<TabletInterface />} />
           
