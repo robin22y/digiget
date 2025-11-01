@@ -183,6 +183,18 @@ export default function SignupPage() {
         .update({ qr_url: qrUrl })
         .eq('id', shop.id);
 
+      // Send welcome email (don't block navigation if it fails)
+      try {
+        const { onShopSignup } = await import('../lib/email');
+        await onShopSignup(
+          { name: shop.shop_name, id: shop.id },
+          { email: signupData.email!, name: signupData.ownerName! }
+        );
+      } catch (emailError) {
+        console.warn('Failed to send welcome email:', emailError);
+        // Don't block signup if email fails
+      }
+
       // Check if we have an active session before navigating
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (currentSession) {
