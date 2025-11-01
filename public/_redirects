@@ -1,2 +1,15 @@
 /*    /index.html   200
 
+# Service Worker - no cache
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Manifest - no cache
+/manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Security headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Plus, X, Zap, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, X, Zap, Calendar, ToggleLeft, ToggleRight, Lock } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
+import { useOwnerPinProtection } from '../../hooks/useOwnerPinProtection';
 
 interface FlashOffer {
   id: string;
@@ -31,6 +32,12 @@ export default function FlashOffersPage() {
 
   // Use currentShop.id from context (secure)
   const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // PIN protection
+  const { isUnlocked, checking, showPinModal, PinProtectionModal } = useOwnerPinProtection({
+    shopId,
+    onCancel: () => navigate('/dashboard'),
+  });
 
   // Validate access
   useEffect(() => {
@@ -63,9 +70,11 @@ export default function FlashOffersPage() {
   };
 
   useEffect(() => {
-    loadShop();
-    loadOffers();
-  }, [shopId]);
+    if (shopId && isUnlocked) {
+      loadShop();
+      loadOffers();
+    }
+  }, [shopId, isUnlocked]);
 
   const loadShop = async () => {
     if (!shopId) return;
@@ -165,6 +174,37 @@ export default function FlashOffersPage() {
   const activeOffers = offers.filter((o) => o.active);
   const inactiveOffers = offers.filter((o) => !o.active);
 
+  // Show PIN modal if not unlocked
+  if (checking || showPinModal) {
+    return (
+      <>
+        <PinProtectionModal />
+        {showPinModal && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">PIN required to access deals management</p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <>
+        <PinProtectionModal />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">PIN required to access deals management</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (loading || !shop) {
     return <div>Loading...</div>;
   }
@@ -172,7 +212,9 @@ export default function FlashOffersPage() {
   // Flash offers available to all shops - no plan restrictions
 
   return (
-    <div>
+    <>
+      <PinProtectionModal />
+      <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Flash Offers</h1>
         <button
@@ -549,6 +591,7 @@ export default function FlashOffersPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

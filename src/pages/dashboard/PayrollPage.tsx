@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Calendar, Download, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import { Calendar, Download, ChevronDown, ChevronUp, MapPin, Lock } from 'lucide-react';
 import { formatLocation, getGoogleMapsLink } from '../../utils/geolocation';
 import { useShop } from '../../contexts/ShopContext';
+import { useOwnerPinProtection } from '../../hooks/useOwnerPinProtection';
 
 interface Employee {
   id: string;
@@ -43,6 +44,12 @@ export default function PayrollPage() {
   // Use currentShop.id from context (secure)
   const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
 
+  // PIN protection
+  const { isUnlocked, checking, showPinModal, PinProtectionModal } = useOwnerPinProtection({
+    shopId,
+    onCancel: () => navigate('/dashboard'),
+  });
+
   // Validate access
   useEffect(() => {
     if (!shopLoading && paramShopId) {
@@ -54,10 +61,10 @@ export default function PayrollPage() {
   }, [paramShopId, hasAccess, shopLoading, navigate]);
 
   useEffect(() => {
-    if (shopId) {
+    if (shopId && isUnlocked) {
       loadPayrollData();
     }
-  }, [shopId, period]);
+  }, [shopId, period, isUnlocked]);
 
   const getDateRange = () => {
     const now = new Date();
@@ -216,12 +223,45 @@ export default function PayrollPage() {
     }
   }
 
+  // Show PIN modal if not unlocked
+  if (checking || showPinModal) {
+    return (
+      <>
+        <PinProtectionModal />
+        {showPinModal && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">PIN required to access payroll report</p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <>
+        <PinProtectionModal />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">PIN required to access payroll report</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (loading) {
     return <div>Loading...</div>;
   }
 
   return (
-    <div>
+    <>
+      <PinProtectionModal />
+      <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Payroll Report</h1>
         <button
@@ -387,6 +427,7 @@ export default function PayrollPage() {
           ))
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

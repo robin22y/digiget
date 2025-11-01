@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Save, CheckCircle } from 'lucide-react';
+import { Save, CheckCircle, Lock } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import ShopLocationSetup from '../../components/ShopLocationSetup';
+import OwnerPinModal from '../../components/OwnerPinModal';
 
 interface Shop {
   id: string;
@@ -43,6 +44,22 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+
+  const handlePinSuccess = () => {
+    setIsUnlocked(true);
+    setShowPinModal(false);
+  };
+
+  const handleLockSettings = () => {
+    if (shopId) {
+      sessionStorage.removeItem(`owner_unlocked_${shopId}`);
+      sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+      setIsUnlocked(false);
+      setShowPinModal(true);
+    }
+  };
 
   // Use currentShop.id from context (secure)
   const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
@@ -93,7 +110,46 @@ export default function SettingsPage() {
   const [tabletPinEnabled, setTabletPinEnabled] = useState(true);
   const [gpsEnabled, setGpsEnabled] = useState(false);
 
+  // Check PIN unlock status on mount
   useEffect(() => {
+    if (!shopId) return;
+
+    const checkUnlockStatus = () => {
+      const unlocked = sessionStorage.getItem(`owner_unlocked_${shopId}`);
+      const unlockTime = sessionStorage.getItem(`owner_unlock_time_${shopId}`);
+
+      if (unlocked === 'true' && unlockTime) {
+        // Check if unlock is still valid (30 minutes)
+        const timeSinceUnlock = Date.now() - parseInt(unlockTime, 10);
+        const UNLOCK_DURATION = 30 * 60 * 1000; // 30 minutes
+
+        if (timeSinceUnlock < UNLOCK_DURATION) {
+          setIsUnlocked(true);
+          setShowPinModal(false);
+          return;
+        } else {
+          // Unlock expired
+          sessionStorage.removeItem(`owner_unlocked_${shopId}`);
+          sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+        }
+      }
+
+      // Not unlocked or expired - show PIN modal
+      setIsUnlocked(false);
+      setShowPinModal(true);
+    };
+
+    checkUnlockStatus();
+
+    // Check unlock status periodically (every minute)
+    const interval = setInterval(checkUnlockStatus, 60000);
+
+    return () => clearInterval(interval);
+  }, [shopId]);
+
+  useEffect(() => {
+    if (!isUnlocked || !shopId) return;
+
     loadShop();
     
     // Set up real-time subscription for shop settings
@@ -146,7 +202,7 @@ export default function SettingsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [shopId]);
+  }, [shopId, isUnlocked]);
 
   const loadShop = async () => {
     try {
@@ -331,21 +387,54 @@ export default function SettingsPage() {
 
   // No upgrade function needed - all features available to all shops
 
+  // Show loading/PIN modal while checking unlock status
+  if ((loading && !isUnlocked) || (!isUnlocked && showPinModal)) {
+    return (
+      <>
+        {showPinModal && shopId && (
+          <OwnerPinModal
+            shopId={shopId}
+            onSuccess={handlePinSuccess}
+            onCancel={() => navigate('/dashboard')}
+          />
+        )}
+        {!showPinModal && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  if (!shop) {
+  if (!shop || !isUnlocked) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Shop not found</h2>
-        <p className="text-gray-600">Unable to load shop settings</p>
-      </div>
+      <>
+        {showPinModal && shopId && (
+          <OwnerPinModal
+            shopId={shopId}
+            onSuccess={handlePinSuccess}
+            onCancel={() => navigate('/dashboard')}
+          />
+        )}
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Shop not found</h2>
+          <p className="text-gray-600">Unable to load shop settings</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="page">
+    <>
+      <div className="page">
       <div className="container">
         <h1 className="mb-4">Settings</h1>
 
@@ -1094,6 +1183,20 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
-    </div>
+
+      </div>
+
+      {/* Lock Button - Show when unlocked */}
+      <div className="fixed bottom-6 right-6">
+        <button
+          onClick={handleLockSettings}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg"
+          title="Lock settings (requires PIN to unlock again)"
+        >
+          <Lock className="w-4 h-4" />
+          Lock Settings
+        </button>
+      </div>
+    </>
   );
 }

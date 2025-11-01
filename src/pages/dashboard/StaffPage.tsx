@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { UserPlus, Clock, Users as UsersIcon, Trash2, ExternalLink, Copy, KeyRound, Pencil } from 'lucide-react';
+import { UserPlus, Clock, Users as UsersIcon, Trash2, ExternalLink, Copy, KeyRound, Pencil, Lock } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
+import { useOwnerPinProtection } from '../../hooks/useOwnerPinProtection';
 
 interface Shop {
   id: string;
@@ -35,11 +36,18 @@ export default function StaffPage() {
   // Use currentShop from context or validated paramShopId
   const shop = outletShop;
   const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // PIN protection
+  const { isUnlocked, checking, showPinModal, PinProtectionModal } = useOwnerPinProtection({
+    shopId,
+    onCancel: () => navigate('/dashboard'),
+  });
+
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<any>({});
-  const [showPinModal, setShowPinModal] = useState(false);
+  const [showPinDisplayModal, setShowPinDisplayModal] = useState(false);
   const [generatedPin, setGeneratedPin] = useState('');
   const [newEmployeeName, setNewEmployeeName] = useState('');
   const [reissuingPinFor, setReissuingPinFor] = useState<string | null>(null);
@@ -52,7 +60,7 @@ export default function StaffPage() {
         return;
       }
     }
-    if (shopId && shop) {
+    if (shopId && shop && isUnlocked) {
       loadShop();
       if (shop.plan_type === 'pro') {
         loadEmployees();
@@ -63,7 +71,7 @@ export default function StaffPage() {
         setLoading(false);
       }
     }
-  }, [shopId, shop, paramShopId, hasAccess, shopLoading, navigate]);
+  }, [shopId, shop, paramShopId, hasAccess, shopLoading, navigate, isUnlocked]);
 
   const loadShop = async () => {
     if (!shopId) return;
@@ -213,7 +221,7 @@ export default function StaffPage() {
 
       setGeneratedPin(generatedPin);
       setNewEmployeeName(employee.first_name);
-      setShowPinModal(true);
+      setShowPinDisplayModal(true);
     } catch (error: any) {
       alert(error.message);
     } finally {
@@ -235,12 +243,45 @@ export default function StaffPage() {
     return diffDays;
   };
 
+  // Show PIN modal if not unlocked
+  if (checking || showPinModal) {
+    return (
+      <>
+        <PinProtectionModal />
+        {showPinModal && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">PIN required to access staff management</p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <>
+        <PinProtectionModal />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">PIN required to access staff management</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (loading) {
     return <div>Loading...</div>;
   }
 
       return (
-        <div className="w-full max-w-full overflow-x-hidden">
+        <>
+          <PinProtectionModal />
+          <div className="w-full max-w-full overflow-x-hidden">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Staff Management</h1>
             <button
@@ -445,25 +486,26 @@ export default function StaffPage() {
             if (pin && employeeName) {
               setGeneratedPin(pin);
               setNewEmployeeName(employeeName);
-              setShowPinModal(true);
+              setShowPinDisplayModal(true);
             }
           }}
         />
       )}
 
-      {showPinModal && (
+      {showPinDisplayModal && (
         <PinDisplayModal
           pin={generatedPin}
           employeeName={newEmployeeName}
           onClose={() => {
-            setShowPinModal(false);
+            setShowPinDisplayModal(false);
             setGeneratedPin('');
             setNewEmployeeName('');
           }}
         />
       )}
-    </div>
-  );
+          </div>
+        </>
+      );
 }
 
 interface EmployeeModalProps {
