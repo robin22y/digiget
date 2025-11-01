@@ -108,21 +108,29 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
     setError('');
 
     try {
+      console.log('Attempting to update PIN for shop:', shopId);
+      
       // Update PIN in database
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('shops')
         .update({ owner_pin: newPin })
-        .eq('id', shopId);
+        .eq('id', shopId)
+        .select('owner_pin')
+        .single();
 
       if (updateError) {
+        console.error('PIN update error:', updateError);
         throw updateError;
       }
+
+      console.log('PIN updated successfully:', data);
 
       // Success
       onSuccess();
     } catch (err: any) {
       console.error('Set new PIN error:', err);
-      setError('Failed to set new PIN. Please try again.');
+      const errorMessage = err?.message || err?.error_description || 'Failed to set new PIN. Please try again.';
+      setError(`Error: ${errorMessage}. ${err?.code ? `Code: ${err.code}` : ''}`);
       setLoading(false);
     }
   };
@@ -250,10 +258,13 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               {/* PIN Validation Messages */}
               {newPin.length > 0 && (
                 <div className="mt-3">
-                  {!validateOwnerPIN(newPin) && newPin.length === 6 && (
-                    <p className="text-sm text-red-600">PIN must be exactly 6 digits</p>
+                  {newPin.length < 6 && (
+                    <p className="text-sm text-gray-600">Enter {6 - newPin.length} more digit{6 - newPin.length !== 1 ? 's' : ''}</p>
                   )}
-                  {isWeakOwnerPIN(newPin) && (
+                  {newPin.length === 6 && !validateOwnerPIN(newPin) && (
+                    <p className="text-sm text-red-600">PIN must contain only digits</p>
+                  )}
+                  {validateOwnerPIN(newPin) && isWeakOwnerPIN(newPin) && (
                     <p className="text-sm text-orange-600">
                       ⚠️ {getWeakPINReason(newPin)}
                     </p>
@@ -288,8 +299,18 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                   />
                 ))}
               </div>
-              {confirmNewPin.length === 6 && newPin !== confirmNewPin && (
-                <p className="text-sm text-red-600 mt-2">PINs don't match</p>
+              {confirmNewPin.length > 0 && (
+                <div className="mt-2">
+                  {confirmNewPin.length < 6 && (
+                    <p className="text-sm text-gray-600">Confirm PIN: {6 - confirmNewPin.length} more digit{6 - confirmNewPin.length !== 1 ? 's' : ''}</p>
+                  )}
+                  {confirmNewPin.length === 6 && newPin !== confirmNewPin && (
+                    <p className="text-sm text-red-600">PINs don't match</p>
+                  )}
+                  {confirmNewPin.length === 6 && newPin === confirmNewPin && validateOwnerPIN(newPin) && !isWeakOwnerPIN(newPin) && (
+                    <p className="text-sm text-green-600">✓ PINs match</p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -345,8 +366,17 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               )}
               <button
                 onClick={handleSetNewPin}
-                disabled={loading || !validateOwnerPIN(newPin) || newPin !== confirmNewPin || isWeakOwnerPIN(newPin)}
+                disabled={loading || newPin.length !== 6 || confirmNewPin.length !== 6 || !validateOwnerPIN(newPin) || newPin !== confirmNewPin || isWeakOwnerPIN(newPin)}
                 className={`${!isFirstTime && step !== 'verify' ? 'flex-1' : 'w-full'} px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={
+                  loading ? 'Saving...' :
+                  newPin.length !== 6 ? 'Enter 6-digit PIN' :
+                  confirmNewPin.length !== 6 ? 'Confirm your PIN' :
+                  !validateOwnerPIN(newPin) ? 'PIN must be 6 digits' :
+                  newPin !== confirmNewPin ? 'PINs must match' :
+                  isWeakOwnerPIN(newPin) ? 'PIN is too weak' :
+                  'Click to save PIN'
+                }
               >
                 {loading ? 'Saving...' : isFirstTime ? 'Create PIN' : 'Change PIN'}
               </button>
