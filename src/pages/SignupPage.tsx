@@ -177,7 +177,7 @@ export default function SignupPage() {
       }
 
       // Generate and save QR URL after shop is created (so we have the ID)
-      const qrUrl = `${window.location.origin}/dashboard/${shop.id}/checkin`;
+      const qrUrl = `${window.location.origin}/c/${shop.id}`;
       await supabase
         .from('shops')
         .update({ qr_url: qrUrl })

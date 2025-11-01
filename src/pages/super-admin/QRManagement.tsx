@@ -65,7 +65,7 @@ export default function QRManagement() {
       // Ensure all shops have QR URLs
       const shopsWithQR = (data || []).map(shop => ({
         ...shop,
-        qr_url: shop.qr_url || `${window.location.origin}/dashboard/${shop.id}/checkin`
+        qr_url: shop.qr_url || `${window.location.origin}/c/${shop.id}`
       }));
       
       setShops(shopsWithQR);

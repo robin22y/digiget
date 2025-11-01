@@ -30,8 +30,10 @@ export default function CheckInPage() {
   const outletContext = useOutletContext<{ shop?: Shop }>() || {};
   const [shop, setShop] = useState<Shop | null>(outletContext?.shop || null);
 
-  // Use currentShop.id from context (preferred) or validated paramShopId
-  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+  // Use currentShop.id from context (preferred) or paramShopId
+  // For public routes (/c/:shopId), use paramShopId directly without access check
+  const isPublicRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/c/');
+  const shopId = currentShop?.id || (paramShopId && (isPublicRoute || hasAccess(paramShopId)) ? paramShopId : null);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -56,9 +58,13 @@ export default function CheckInPage() {
   const [deleteRequiredText, setDeleteRequiredText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  // Validate access if shopId comes from params
+  // Validate access if shopId comes from params (only for dashboard routes, not public /c/:shopId routes)
   useEffect(() => {
-    if (!shopLoading && paramShopId) {
+    // Check if we're on a public check-in route (/c/:shopId)
+    const isPublicRoute = window.location.pathname.startsWith('/c/');
+    
+    // Only check access for dashboard routes, public routes should work for everyone
+    if (!shopLoading && paramShopId && !isPublicRoute) {
       if (!hasAccess(paramShopId)) {
         navigate('/dashboard');
         return;
