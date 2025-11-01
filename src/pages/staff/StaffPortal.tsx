@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { LogOut, Users, CheckCircle, ClipboardList, Clock, History, AlertTriangle, MapPin, Package } from 'lucide-react';
+import { LogOut, Users, ClipboardList, Clock, History, AlertTriangle, MapPin, Package } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import StaffCustomerManagement from '../../components/StaffCustomerManagement';
-import StaffTaskManagement from '../../components/StaffTaskManagement';
+// import StaffTaskManagement from '../../components/StaffTaskManagement';
 import StaffWorkHistory from '../../components/StaffWorkHistory';
 import StaffIncidentReport from '../../components/StaffIncidentReport';
 import StaffLocationCheckins from '../../components/StaffLocationCheckins';
 import StaffRequests from '../../components/StaffRequests';
 import { getCurrentPosition, formatLocation, calculateDistance, getAreaName } from '../../utils/geolocation';
+import { createShopNotification } from '../../utils/deviceDetection';
+import { handleStaffClock } from '../../lib/clockService';
 
 interface Employee {
   id: string;
@@ -50,7 +52,7 @@ function parseTodayTime(hhmm?: string | null): Date | null {
 }
 
 export default function StaffPortal() {
-  const { shopId } = useParams();
+  const { shopSlug } = useParams();
   const [view, setView] = useState<View>('auth');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -65,16 +67,20 @@ export default function StaffPortal() {
   const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (shopId) {
+    if (shopSlug) {
       loadShop();
     }
-  }, [shopId]);
+  }, [shopSlug]);
 
-  // Periodically check for auto clock-out
+  // Periodically check for clock entry status (for sync with staff access link)
   useEffect(() => {
+    if (!employee?.id) return;
+    
+    // Check immediately and then every 10 seconds to stay in sync
+    checkCurrentClockEntry();
     const interval = setInterval(() => {
       checkCurrentClockEntry();
-    }, 5 * 60 * 1000); // every 5 minutes
+    }, 10000); // every 10 seconds for real-time sync
     return () => clearInterval(interval);
   }, [employee?.id, shop?.id]);
 
@@ -108,8 +114,8 @@ export default function StaffPortal() {
   }, [shop]);
 
   const loadShop = async () => {
-    if (!shopId) {
-      setError('Shop ID missing');
+    if (!shopSlug) {
+      setError('Shop slug missing');
       setLoading(false);
       return;
     }
@@ -118,7 +124,7 @@ export default function StaffPortal() {
       const { data: shopData, error: shopError } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
-        .eq('id', shopId)
+        .eq('slug', shopSlug)
         .single();
 
       if (shopError) {
@@ -152,7 +158,7 @@ export default function StaffPortal() {
     e.preventDefault();
     setError('');
 
-    if (!shop || !shopId || !pin.trim()) {
+    if (!shop || !shop.id || !pin.trim()) {
       setError('Please enter your PIN');
       return;
     }
@@ -162,7 +168,7 @@ export default function StaffPortal() {
       const { data: employeeData, error: employeeError } = await supabase
         .from('employees')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('shop_id', shop.id)
         .eq('pin', pin.trim())
         .eq('active', true)
         .maybeSingle();
@@ -189,6 +195,48 @@ export default function StaffPortal() {
         }
       }
 
+      // Get location for notification tracking
+      let location: { latitude: number; longitude: number } | null = null;
+      let distance = 0;
+      let locationName: string | null = null;
+      
+      try {
+        location = await getCurrentPosition();
+        if (location && shop.latitude && shop.longitude) {
+          distance = calculateDistance(
+            location.latitude,
+            location.longitude,
+            shop.latitude,
+            shop.longitude
+          );
+          locationName = await getAreaName(location.latitude, location.longitude);
+        }
+      } catch (locationError) {
+        console.warn('Could not get location for notification:', locationError);
+      }
+
+      // Create notification if login is from a distance (> 100m from shop)
+      if (location && shop.latitude && shop.longitude && distance > 100) {
+        const distanceText = distance < 1000 
+          ? `${Math.round(distance)}m` 
+          : `${(distance / 1000).toFixed(2)}km`;
+        
+        await createShopNotification(
+          shop.id,
+          'login_attempt',
+          {
+            title: 'Remote Login Attempt',
+            message: `${employeeData.first_name} ${employeeData.last_name || ''} logged in from ${distanceText} away from shop location${locationName ? ` (${locationName})` : ''}.`,
+            employeeId: employeeData.id,
+            employeeName: `${employeeData.first_name} ${employeeData.last_name || ''}`,
+            attemptLatitude: location.latitude,
+            attemptLongitude: location.longitude,
+            distanceFromShop: distance,
+            locationName: locationName,
+          }
+        );
+      }
+
       setEmployee(employeeData);
       await checkCurrentClockEntry();
       setView('home');
@@ -201,16 +249,27 @@ export default function StaffPortal() {
   };
 
   const checkCurrentClockEntry = async () => {
-    if (!employee) return;
+    if (!employee || !shop) {
+      setCurrentClockEntry(null);
+      setElapsedTime('');
+      return;
+    }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('clock_entries')
       .select('*')
       .eq('employee_id', employee.id)
+      .eq('shop_id', shop.id)
       .is('clock_out_time', null)
       .order('clock_in_time', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows returned, which is fine
+      console.error('Error checking clock entry:', error);
+      return;
+    }
 
     if (data && shop && !autoLogoutChecked) {
       const clockInTime = new Date(data.clock_in_time);
@@ -230,7 +289,10 @@ export default function StaffPortal() {
       }
     }
 
-    setCurrentClockEntry(data);
+    setCurrentClockEntry(data || null);
+    if (!data) {
+      setElapsedTime('');
+    }
   };
 
   const autoClockOut = async (entry: ClockEntry, hours?: number) => {
@@ -472,15 +534,29 @@ export default function StaffPortal() {
           </div>
 
           {currentClockEntry && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-                <div>
-                  <p className="font-semibold text-green-900">Currently Clocked In</p>
-                  <p className="text-sm text-green-700">
-                    Since {new Date(currentClockEntry.clock_in_time).toLocaleTimeString()}
-                  </p>
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <div>
+                    <p className="font-bold text-green-900 text-lg mb-1">Currently Clocked In</p>
+                    <p className="text-sm text-green-700 mb-2">
+                      Clocked in at {new Date(currentClockEntry.clock_in_time).toLocaleTimeString()}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-green-600" />
+                      <span className="text-2xl font-bold text-green-900 font-mono">{elapsedTime}</span>
+                      <span className="text-sm text-green-700">working</span>
+                    </div>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setView('clock')}
+                  className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl flex items-center gap-2"
+                >
+                  <Clock className="w-5 h-5" />
+                  Clock Out
+                </button>
               </div>
             </div>
           )}
@@ -667,19 +743,53 @@ function StaffClockView({
         }
       }
 
-      // Clock in immediately (allow work to continue)
-      // Location is optional - null values are allowed
-      const { error } = await supabase
-        .from('clock_entries')
-        .insert({
-          shop_id: employee.shop_id,
-          employee_id: employee.id,
-          clock_in_time: new Date().toISOString(),
-          clock_in_latitude: location?.latitude || null,
-          clock_in_longitude: location?.longitude || null,
-        });
+      // Use unified clock service for GPS clock-in
+      // Note: GPS method allows remote clock-ins (no radius restriction)
+      const result = await handleStaffClock(
+        employee.id,
+        employee.shop_id,
+        'gps',
+        {
+          shopLocation: shop.latitude && shop.longitude ? {
+            latitude: shop.latitude,
+            longitude: shop.longitude,
+            radius: 10000 // Large radius for GPS method (allows remote)
+          } : undefined
+        }
+      );
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to clock in');
+      }
+
+      // Create notification for clock-in attempts from distance
+      if (location && shop.latitude && shop.longitude) {
+        let locationName: string | null = null;
+        try {
+          locationName = await getAreaName(location.latitude, location.longitude);
+        } catch (error) {
+          console.warn('Could not get location name:', error);
+        }
+
+        const distanceText = distance < 1000 
+          ? `${Math.round(distance)}m` 
+          : `${(distance / 1000).toFixed(2)}km`;
+
+        await createShopNotification(
+          shop.id,
+          'clock_in_attempt',
+          {
+            title: isRemoteClockIn ? 'Remote Clock-In' : 'Clock-In',
+            message: `${employee.first_name} ${employee.last_name || ''} clocked in${isRemoteClockIn ? ` from ${distanceText} away from shop` : ' at shop location'}${locationName ? ` (${locationName})` : ''}.`,
+            employeeId: employee.id,
+            employeeName: `${employee.first_name} ${employee.last_name || ''}`,
+            attemptLatitude: location.latitude,
+            attemptLongitude: location.longitude,
+            distanceFromShop: distance,
+            locationName: locationName,
+          }
+        );
+      }
 
       // If remote clock-in, create approval request for shop owner (unless pre-approved)
       if (location && isRemoteClockIn && !hasPreApproval) {
@@ -700,25 +810,6 @@ function StaffClockView({
         if (requestError) {
           console.warn('Failed to create clock-in request:', requestError);
           // Don't block the clock-in if request creation fails
-        } else {
-          // Create notification for shop owner
-          const distanceText = distance < 1000 
-            ? `${Math.round(distance)}m` 
-            : `${(distance / 1000).toFixed(2)}km`;
-          
-          const { error: noticeError } = await supabase
-            .from('notices')
-            .insert({
-              title: 'Remote Clock-In Request',
-              body: `${employee.first_name} ${employee.last_name} clocked in from ${distanceText} away from the shop location. Please review and approve in the Clock Requests section.`,
-              audience_filter: `shop:${shop.id}`,
-              sent_by: 'system',
-              show_on_dashboard: true,
-            });
-
-          if (noticeError) {
-            console.warn('Failed to create notification:', noticeError);
-          }
         }
 
         // Show friendly message with owner name
@@ -776,27 +867,28 @@ function StaffClockView({
   };
 
   const handleClockOut = async () => {
-    if (!currentClockEntry) return;
+    if (!employee || !shop) return;
 
     setLoading(true);
     try {
-      const location = await getCurrentPosition();
+      // Use unified clock service (automatically detects clock out)
+      const result = await handleStaffClock(
+        employee.id,
+        employee.shop_id,
+        'gps',
+        {
+          shopLocation: shop.latitude && shop.longitude ? {
+            latitude: shop.latitude,
+            longitude: shop.longitude,
+            radius: 10000 // Large radius for GPS method
+          } : undefined
+        }
+      );
 
-      const clockOutTime = new Date();
-      const clockInTime = new Date(currentClockEntry.clock_in_time);
-      const hoursWorked = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to clock out');
+      }
 
-      const { error } = await supabase
-        .from('clock_entries')
-        .update({
-          clock_out_time: clockOutTime.toISOString(),
-          hours_worked: hoursWorked,
-          clock_out_latitude: location?.latitude || null,
-          clock_out_longitude: location?.longitude || null,
-        })
-        .eq('id', currentClockEntry.id);
-
-      if (error) throw error;
       await onClockAction();
     } catch (err) {
       console.error('Error clocking out:', err);

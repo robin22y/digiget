@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { generateSlug, generateUniqueSlug } from '../utils/slugGenerator';
 
 interface SignupData {
   businessCategory: string;
@@ -96,6 +97,10 @@ export default function SignupPage() {
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
+      // Generate unique slug for the shop
+      const baseSlug = generateSlug(signupData.shopName!);
+      const uniqueSlug = await generateUniqueSlug(baseSlug);
+
       // Create shop data
       const shopData: any = {
         user_id: userId,
@@ -112,6 +117,7 @@ export default function SignupPage() {
         reward_type: 'free_product',
         reward_description: signupData.rewardDescription!,
         diary_enabled: ['hair_salon', 'beauty_salon', 'health_wellness'].includes(signupData.businessCategory!),
+        slug: uniqueSlug,
       };
 
       // Try inserting with QR code column first, fallback without it if column doesn't exist

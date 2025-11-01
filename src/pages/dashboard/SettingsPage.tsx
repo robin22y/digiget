@@ -24,13 +24,21 @@ interface Shop {
   diary_enabled: boolean;
   auto_logout_hours: number;
   days_between_points: number;
+  nfc_tag_id: string | null;
+  nfc_tag_active: boolean;
+  require_nfc: boolean;
+  allow_gps_fallback: boolean;
+  qr_code_enabled: boolean;
+  nfc_enabled: boolean;
+  tablet_pin_enabled: boolean;
+  gps_enabled: boolean;
 }
 
 export default function SettingsPage() {
   const { shopId: paramShopId } = useParams();
   const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'subscription'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'subscription' | 'nfc' | 'features'>('business');
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,6 +81,17 @@ export default function SettingsPage() {
   const [tierVipThreshold, setTierVipThreshold] = useState('');
   const [tierSuperStarThreshold, setTierSuperStarThreshold] = useState('');
   const [tierRoyalThreshold, setTierRoyalThreshold] = useState('');
+
+  // NFC settings
+  const [nfcTagActive, setNfcTagActive] = useState(false);
+  const [requireNfc, setRequireNfc] = useState(false);
+  const [allowGpsFallback, setAllowGpsFallback] = useState(true);
+  
+  // Clock-in method settings (4-tier system)
+  const [qrCodeEnabled, setQrCodeEnabled] = useState(true);
+  const [nfcEnabled, setNfcEnabled] = useState(false);
+  const [tabletPinEnabled, setTabletPinEnabled] = useState(true);
+  const [gpsEnabled, setGpsEnabled] = useState(false);
 
   useEffect(() => {
     loadShop();
@@ -164,6 +183,17 @@ export default function SettingsPage() {
       setTierVipThreshold(data.tier_vip_threshold?.toString() || '');
       setTierSuperStarThreshold(data.tier_super_star_threshold?.toString() || '');
       setTierRoyalThreshold(data.tier_royal_threshold?.toString() || '');
+
+      // Load NFC settings
+      setNfcTagActive(data.nfc_tag_active || false);
+      setRequireNfc(data.require_nfc || false);
+      setAllowGpsFallback(data.allow_gps_fallback !== false); // Default to true
+      
+      // Load clock-in method settings
+      setQrCodeEnabled(data.qr_code_enabled !== false); // Default to true
+      setNfcEnabled(data.nfc_enabled || false);
+      setTabletPinEnabled(data.tablet_pin_enabled !== false); // Default to true
+      setGpsEnabled(data.gps_enabled || false);
     } catch (error) {
       console.error('Error loading shop:', error);
     } finally {
@@ -231,6 +261,74 @@ export default function SettingsPage() {
     }
   };
 
+  const saveFeatureSettings = async () => {
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const { error } = await supabase
+        .from('shops')
+        .update({
+          diary_enabled: diaryEnabled,
+          auto_logout_hours: autoLogoutHours,
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
+          open_time: openTime || null,
+          close_time: closeTime || null,
+        })
+        .eq('id', shopId);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Feature settings saved successfully' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveNFCSettings = async () => {
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      // Validate at least one method is enabled
+      if (!qrCodeEnabled && !nfcEnabled && !tabletPinEnabled && !gpsEnabled) {
+        setMessage({ type: 'error', text: 'You must enable at least one clock-in method!' });
+        setSaving(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('shops')
+        .update({
+          nfc_tag_active: nfcTagActive,
+          require_nfc: requireNfc,
+          allow_gps_fallback: allowGpsFallback,
+          // Clock-in method toggles
+          qr_code_enabled: qrCodeEnabled,
+          nfc_enabled: nfcEnabled,
+          tablet_pin_enabled: tabletPinEnabled,
+          gps_enabled: gpsEnabled,
+        })
+        .eq('id', shopId);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Clock-in settings saved successfully' });
+      setTimeout(() => setMessage(null), 3000);
+      
+      // Reload shop data to reflect changes
+      await loadShop();
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // No upgrade function needed - all features available to all shops
 
   if (loading) {
@@ -271,6 +369,12 @@ export default function SettingsPage() {
               className={`tab ${activeTab === 'subscription' ? 'active' : ''}`}
             >
               Subscription
+            </button>
+            <button
+              onClick={() => setActiveTab('nfc')}
+              className={`tab ${activeTab === 'nfc' ? 'active' : ''}`}
+            >
+              NFC Clock-In
             </button>
           </div>
 
@@ -611,18 +715,6 @@ export default function SettingsPage() {
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-900">Feature Settings</h2>
 
-              {shop.plan_type === 'basic' && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <h3 className="font-semibold text-yellow-900 mb-1">Upgrade to Pro</h3>
-                  <p className="text-yellow-800 text-sm mb-3">
-                    Get access to staff management, task checklists, payroll tracking, and incident reports.
-                  </p>
-                  <button onClick={handleUpgradeToPro} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold disabled:opacity-50">
-                    {saving ? 'Processing…' : 'Upgrade to Pro - £9.99/month'}
-                  </button>
-                </div>
-              )}
-
               <div>
                 <div className="flex items-center mb-2">
                   <input
@@ -813,6 +905,191 @@ export default function SettingsPage() {
               )}
 
 
+            </div>
+          )}
+
+          {activeTab === 'nfc' && (
+            <div className="space-y-4 md:space-y-6">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">NFC Clock-In Setup</h2>
+
+              {shop.nfc_tag_id ? (
+                <>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-semibold text-green-900">NFC Tag Assigned</span>
+                    </div>
+                    <p className="text-green-800 text-sm">
+                      Your shop has an NFC tag. Staff can tap their phone to the tag for instant clock-in.
+                    </p>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Tag ID</label>
+                        <div className="mt-1 flex items-center gap-2">
+                          <code className="text-sm bg-gray-100 px-2 py-1 rounded">{shop.nfc_tag_id}</code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(shop.nfc_tag_id || '');
+                              setMessage({ type: 'success', text: 'Tag ID copied to clipboard!' });
+                              setTimeout(() => setMessage(null), 2000);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 text-sm"
+                            title="Copy Tag ID"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Status</label>
+                        <div className="mt-1">
+                          {nfcTagActive ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              Inactive
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">NFC Clock-In URL</label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 break-all">
+                          {`${window.location.origin}/nfc-clock?tag=${shop.nfc_tag_id}`}
+                        </code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/nfc-clock?tag=${shop.nfc_tag_id}`);
+                            setMessage({ type: 'success', text: 'URL copied to clipboard!' });
+                            setTimeout(() => setMessage(null), 2000);
+                          }}
+                          className="text-blue-600 hover:text-blue-700 text-sm"
+                          title="Copy URL"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        id="nfc-active"
+                        checked={nfcTagActive}
+                        onChange={(e) => setNfcTagActive(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <label htmlFor="nfc-active" className="flex-1">
+                        <span className="font-medium text-gray-900">NFC tag is active</span>
+                        <p className="text-sm text-gray-600 mt-1">
+                          When enabled, staff can use the NFC tag to clock in/out. Disable if tag is lost or damaged.
+                        </p>
+                      </label>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        id="require-nfc"
+                        checked={requireNfc}
+                        onChange={(e) => setRequireNfc(e.target.checked)}
+                        disabled={!nfcTagActive}
+                        className="mt-1"
+                      />
+                      <label htmlFor="require-nfc" className="flex-1">
+                        <span className="font-medium text-gray-900">Require NFC for all clock-ins</span>
+                        <p className="text-sm text-gray-600 mt-1">
+                          When enabled, staff MUST use NFC tag (GPS clock-in disabled). Only enable if all staff have NFC-capable phones.
+                        </p>
+                      </label>
+                    </div>
+
+                    {requireNfc && nfcTagActive && (
+                      <div className="flex items-start gap-3 ml-7">
+                        <input
+                          type="checkbox"
+                          id="allow-gps-fallback"
+                          checked={allowGpsFallback}
+                          onChange={(e) => setAllowGpsFallback(e.target.checked)}
+                          className="mt-1"
+                        />
+                        <label htmlFor="allow-gps-fallback" className="flex-1">
+                          <span className="font-medium text-gray-900">Allow GPS as backup</span>
+                          <p className="text-sm text-gray-600 mt-1">
+                            If NFC fails or staff phone doesn't support NFC, allow GPS clock-in as fallback.
+                          </p>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-blue-900 mb-2">📱 Installing Your NFC Tag</h3>
+                    <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800">
+                      <li>Place tag near shop entrance (chest height, easy to reach)</li>
+                      <li>Clean surface before sticking (use alcohol wipe if needed)</li>
+                      <li>Test by tapping your phone to the tag - should open clock-in page</li>
+                      <li>Instruct staff to tap tag when arriving/leaving</li>
+                      <li>Tag works indoors (no GPS needed) and is instant</li>
+                    </ol>
+                  </div>
+
+                  <button
+                    onClick={saveNFCSettings}
+                    disabled={saving}
+                    className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
+                  >
+                    <Save className="w-5 h-5 mr-2" />
+                    {saving ? 'Saving...' : 'Save NFC Settings'}
+                  </button>
+                </>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+                  <h3 className="font-semibold text-yellow-900 mb-2">No NFC Tag Assigned</h3>
+                  <p className="text-yellow-800 text-sm mb-4">
+                    NFC tags are available for the first 20 founding member shops (free, worth £25).
+                  </p>
+                  <p className="text-yellow-800 text-sm">
+                    Contact <a href="mailto:support@digiget.uk" className="underline">support@digiget.uk</a> to request your free NFC tag.
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-6">
+                <h3 className="font-semibold text-gray-900 mb-2">💡 Why NFC is Better Than GPS</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="font-medium text-gray-900 mb-1">GPS Problems:</p>
+                    <ul className="list-disc list-inside space-y-1 text-gray-700">
+                      <li>Fails indoors/basements</li>
+                      <li>Inaccurate in city centers</li>
+                      <li>"100m from shop" when inside</li>
+                      <li>Drains battery</li>
+                      <li>Takes 10-30 seconds</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 mb-1">NFC Benefits:</p>
+                    <ul className="list-disc list-inside space-y-1 text-gray-700">
+                      <li>Tap phone = clocked in (&lt;1 second)</li>
+                      <li>Works anywhere (indoors, basement, etc)</li>
+                      <li>100% accurate</li>
+                      <li>No battery drain</li>
+                      <li>Physical proof of presence</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

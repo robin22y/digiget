@@ -26,6 +26,8 @@ interface PayrollData {
     clockInLng: number | null;
     clockOutLat: number | null;
     clockOutLng: number | null;
+    clockInMethod: string;
+    clockOutMethod: string | null;
   }>;
 }
 
@@ -136,6 +138,8 @@ export default function PayrollPage() {
           clockInLng: entry.clock_in_longitude,
           clockOutLat: entry.clock_out_latitude,
           clockOutLng: entry.clock_out_longitude,
+          clockInMethod: entry.clock_in_method || 'unknown',
+          clockOutMethod: entry.clock_out_method || null,
         })) || [];
 
         return {
@@ -188,6 +192,29 @@ export default function PayrollPage() {
 
   const totalHours = payrollData.reduce((sum, d) => sum + d.totalHours, 0);
   const totalPay = payrollData.reduce((sum, d) => sum + d.totalPay, 0);
+
+  // Helper functions for method display
+  function getMethodIcon(method: string): string {
+    switch(method) {
+      case 'nfc': return '📱';
+      case 'qr_code': return '📸';
+      case 'shop_tablet': return '💻';
+      case 'gps': return '📍';
+      case 'manual_override': return '✋';
+      default: return '❓';
+    }
+  }
+
+  function getMethodColorClass(method: string): string {
+    switch(method) {
+      case 'nfc': return 'bg-green-100 text-green-800';
+      case 'qr_code': return 'bg-blue-100 text-blue-800';
+      case 'shop_tablet': return 'bg-gray-100 text-gray-800';
+      case 'gps': return 'bg-orange-100 text-orange-800';
+      case 'manual_override': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  }
 
   if (loading) {
     return <div>Loading...</div>;
@@ -307,6 +334,17 @@ export default function PayrollPage() {
                           <div className="flex-1 text-right">
                             <span className="text-sm font-medium text-gray-900">{day.hours.toFixed(2)}h</span>
                           </div>
+                        </div>
+                        {/* Method badges */}
+                        <div className="flex gap-2 mt-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getMethodColorClass(day.clockInMethod)}`}>
+                            {getMethodIcon(day.clockInMethod)} IN
+                          </span>
+                          {day.clockOutMethod && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getMethodColorClass(day.clockOutMethod)}`}>
+                              {getMethodIcon(day.clockOutMethod)} OUT
+                            </span>
+                          )}
                         </div>
                         {(day.clockInLat || day.clockOutLat) && (
                           <div className="flex gap-4 mt-2 text-xs text-gray-500">

@@ -34,7 +34,7 @@ export type Database = {
           reward_value: number | null;
           reward_description: string;
           diary_enabled: boolean;
-          owner_pin: string;
+          owner_pin: string; // 6-digit Console PIN for owner access (staff PINs remain 4 digits)
           created_at: string;
           updated_at: string;
         };

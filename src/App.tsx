@@ -35,6 +35,8 @@ import CustomerLoginPortal from './pages/public/CustomerLoginPortal';
 import StaffPortal from './pages/staff/StaffPortal';
 import StaffClockIn from './pages/staff/StaffClockIn';
 import CustomerCheckIn from './pages/staff/CustomerCheckIn';
+import NFCClockIn from './pages/NFCClockIn';
+import QRClockIn from './pages/QRClockIn';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedSuperAdminRoute from './components/ProtectedSuperAdminRoute';
 import SuperAdminLayout from './layouts/SuperAdminLayout';
@@ -47,6 +49,7 @@ import Reports from './pages/super-admin/Reports';
 import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
 import EmailTemplates from './pages/super-admin/EmailTemplates';
+import NotificationsPage from './pages/dashboard/NotificationsPage';
 import TopRatedShops from './pages/super-admin/TopRatedShops';
 import ShopTalk from './pages/ShopTalk.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -76,12 +79,18 @@ function App() {
           
           <Route path="/xtra/:staffIdentifier" element={<TabletInterfaceByName />} />
 
-          <Route path="/staff-portal/:shopId" element={<StaffPortal />} />
+          <Route path="/staff-portal/:shopSlug" element={<StaffPortal />} />
 
           {/* New staff-facing pages */}
           <Route path="/staff/:shopId/clock-in" element={<StaffClockIn />} />
           <Route path="/staff/:shopId/check-in-customer" element={<CustomerCheckIn />} />
           <Route path="/staff/:shopId/check-in-customer/:employeeId" element={<CustomerCheckIn />} />
+          
+          {/* NFC Clock-In (public route, no auth required) */}
+          <Route path="/nfc-clock" element={<NFCClockIn />} />
+          
+          {/* QR Code Clock-In (public route, no auth required) */}
+          <Route path="/qr-clock" element={<QRClockIn />} />
 
           {/* Short check-in routes */}
           <Route path="/c/:shopId" element={<CheckInPage />} />
@@ -122,6 +131,7 @@ function App() {
             <Route path="customers/:customerId" element={<CustomerDetail />} />
             <Route path="staff" element={<StaffPage />} />
             <Route path="payroll" element={<PayrollPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="staff-requests" element={<StaffRequestsPage />} />
             <Route path="staff-locations" element={<StaffLocationsPage />} />
             <Route path="remote-workers" element={<RemoteWorkers />} />

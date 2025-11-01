@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, CheckCircle, UserCheck, ClipboardList, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star, Receipt } from 'lucide-react';
+import { Home, Users, CheckCircle, UserCheck, ClipboardList, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star, Receipt, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
@@ -168,6 +168,9 @@ export default function DashboardLayout() {
     
     // Payroll Reports (available to all shops)
     { to: `/dashboard/${shopId}/payroll`, icon: Receipt, label: 'Payroll Report', feature: undefined },
+    
+    // Security Notifications
+    { to: `/dashboard/${shopId}/notifications`, icon: Bell, label: 'Notifications', feature: undefined },
     
     // Diary (if enabled) - HIDDEN FOR NOW
     // ...(shop.diary_enabled ? [

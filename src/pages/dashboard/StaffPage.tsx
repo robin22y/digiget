@@ -5,8 +5,10 @@ import { UserPlus, Clock, Users as UsersIcon, Trash2, ExternalLink, Copy, KeyRou
 import { useShop } from '../../contexts/ShopContext';
 
 interface Shop {
+  id: string;
   plan_type: 'basic' | 'pro';
   shop_name: string;
+  slug?: string | null;
 }
 
 interface Employee {
@@ -19,6 +21,7 @@ interface Employee {
   role: string;
   active: boolean;
   photo_url: string | null;
+  pin?: string;
   pin_expires_at?: string | null;
 }
 
@@ -40,6 +43,7 @@ export default function StaffPage() {
   const [generatedPin, setGeneratedPin] = useState('');
   const [newEmployeeName, setNewEmployeeName] = useState('');
   const [reissuingPinFor, setReissuingPinFor] = useState<string | null>(null);
+  const [shopData, setShopData] = useState<Shop | null>(null);
 
   useEffect(() => {
     if (!shopLoading && paramShopId) {
@@ -49,6 +53,7 @@ export default function StaffPage() {
       }
     }
     if (shopId && shop) {
+      loadShop();
       if (shop.plan_type === 'pro') {
         loadEmployees();
         loadWeeklyStats();
@@ -59,6 +64,23 @@ export default function StaffPage() {
       }
     }
   }, [shopId, shop, paramShopId, hasAccess, shopLoading, navigate]);
+
+  const loadShop = async () => {
+    if (!shopId) return;
+    try {
+      const { data, error } = await supabase
+        .from('shops')
+        .select('id, shop_name, slug')
+        .eq('id', shopId)
+        .single();
+      if (error) throw error;
+      if (data) {
+        setShopData(data as Shop);
+      }
+    } catch (error) {
+      console.error('Error loading shop:', error);
+    }
+  };
 
   const loadEmployees = async () => {
     if (!shopId) return;
@@ -238,33 +260,71 @@ export default function StaffPage() {
             <span className="font-medium">Active Staff: {employees.length}</span>
           </div>
         </div>
-        <div className="border-t pt-4">
-          <p className="text-sm font-medium text-gray-700 mb-2">Staff Portal Link (for all staff):</p>
-          <div className="flex gap-2">
-            <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono truncate">
-              {`${window.location.origin}/staff-portal/${shopId}`}
+        <div className="border-t pt-4 space-y-4">
+          {/* Staff Access Link (Quick Clock In/Out) */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Staff Access Link (Quick Clock In/Out):</p>
+            <div className="flex gap-2">
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono truncate">
+                {`${window.location.origin}/staff/${shopId}/clock-in`}
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/staff/${shopId}/clock-in`);
+                  alert('Staff access link copied to clipboard!');
+                }}
+                className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                title="Copy link"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              <a
+                href={`/staff/${shopId}/clock-in`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
+                title="Open access link"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/staff-portal/${shopId}`);
-                alert('Staff portal link copied to clipboard!');
-              }}
-              className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-              title="Copy link"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-            <a
-              href={`/staff-portal/${shopId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
-              title="Open portal"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
+            <p className="text-xs text-gray-500 mt-2">Quick access for clock in/out. Shows working time and clock out button when clocked in.</p>
           </div>
-          <p className="text-xs text-gray-500 mt-2">Staff members use their PIN to log in to this portal.</p>
+
+          {/* Staff Portal Link (Full Portal) */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Staff Portal Link (Full Portal):</p>
+            <div className="flex gap-2">
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono truncate">
+                {shopData?.slug 
+                  ? `${window.location.origin}/staff-portal/${shopData.slug}`
+                  : `${window.location.origin}/staff-portal/${shopId}`}
+              </div>
+              <button
+                onClick={() => {
+                  const link = shopData?.slug 
+                    ? `${window.location.origin}/staff-portal/${shopData.slug}`
+                    : `${window.location.origin}/staff-portal/${shopId}`;
+                  navigator.clipboard.writeText(link);
+                  alert('Staff portal link copied to clipboard!');
+                }}
+                className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                title="Copy link"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              <a
+                href={shopData?.slug ? `/staff-portal/${shopData.slug}` : `/staff-portal/${shopId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
+                title="Open portal"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Full portal with customer management, tasks, and more. Shows working time and clock out button when clocked in. Both links stay in sync.</p>
+          </div>
         </div>
         <Link
           to={`/dashboard/${shopId}/payroll`}
