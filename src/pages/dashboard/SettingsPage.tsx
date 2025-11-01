@@ -751,6 +751,9 @@ export default function SettingsPage() {
                           const trialEnd = new Date(shop.trial_ends_at);
                           const now = new Date();
                           const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                          if (daysLeft <= 0) {
+                            return 'Trial ended';
+                          }
                           return `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`;
                         })()}
                       </p>
@@ -782,6 +785,9 @@ export default function SettingsPage() {
                       const trialEnd = new Date(shop.trial_ends_at);
                       const now = new Date();
                       const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                      if (daysLeft <= 0) {
+                        return `Your 14-day free trial has ended. Your subscription will be £29.99/month starting ${trialEnd.toLocaleDateString()}.`;
+                      }
                       return `You have ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining in your 14-day free trial. After the trial ends on ${trialEnd.toLocaleDateString()}, your subscription will be £29.99/month.`;
                     })()}
                   </p>
