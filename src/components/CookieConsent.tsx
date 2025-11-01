@@ -15,6 +15,12 @@ export default function CookieConsent() {
   });
 
   useEffect(() => {
+    // Don't show cookie consent on login/signup pages
+    const currentPath = window.location.pathname;
+    if (currentPath === '/login' || currentPath === '/signup') {
+      return;
+    }
+
     // Check if user has already made a choice
     const consent = localStorage.getItem('digiget_cookie_consent');
     if (!consent) {
