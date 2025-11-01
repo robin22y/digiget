@@ -13,7 +13,8 @@ interface Shop {
   business_category: string;
   plan_type: 'basic' | 'pro';
   subscription_status: string;
-  trial_ends_at: string;
+  trial_ends_at: string | null;
+  subscription_started_at: string | null;
   loyalty_enabled: boolean;
   points_type: 'per_visit' | 'per_spend';
   points_needed: number;
@@ -733,32 +734,74 @@ export default function SettingsPage() {
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Current Plan</p>
+                    <p className="text-sm text-gray-600">Subscription Plan</p>
                     <p className="text-lg font-semibold text-gray-900">
-                      Active
+                      £29.99/month
                     </p>
                     <p className="text-sm text-gray-600">
-                      Free Trial
+                      {shop.subscription_status === 'trial' ? 'Free Trial' : 'Active Subscription'}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Status</p>
                     <p className="text-lg font-semibold text-gray-900 capitalize">{shop.subscription_status}</p>
-                    {shop.subscription_status === 'trial' && (
+                    {shop.subscription_status === 'trial' && shop.trial_ends_at && (
                       <p className="text-sm text-gray-600">
-                        Trial ends: {new Date(shop.trial_ends_at).toLocaleDateString()}
+                        {(() => {
+                          const trialEnd = new Date(shop.trial_ends_at);
+                          const now = new Date();
+                          const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                          return `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`;
+                        })()}
+                      </p>
+                    )}
+                    {shop.subscription_status === 'active' && shop.subscription_started_at && (
+                      <p className="text-sm text-gray-600">
+                        {(() => {
+                          const subscriptionStart = new Date(shop.subscription_started_at);
+                          const nextPayment = new Date(subscriptionStart);
+                          nextPayment.setMonth(nextPayment.getMonth() + 1);
+                          // Find the next payment date (next month same day)
+                          const now = new Date();
+                          while (nextPayment <= now) {
+                            nextPayment.setMonth(nextPayment.getMonth() + 1);
+                          }
+                          return `Next payment: ${nextPayment.toLocaleDateString()}`;
+                        })()}
                       </p>
                     )}
                   </div>
                 </div>
               </div>
 
-              {shop.subscription_status === 'trial' && (
+              {shop.subscription_status === 'trial' && shop.trial_ends_at && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h3 className="font-semibold text-green-900 mb-1">Free Trial Active</h3>
                   <p className="text-green-800 text-sm">
-                    Your 14-day free trial ends on{' '}
-                    {new Date(shop.trial_ends_at).toLocaleDateString()}. No payment required until then.
+                    {(() => {
+                      const trialEnd = new Date(shop.trial_ends_at);
+                      const now = new Date();
+                      const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                      return `You have ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining in your 14-day free trial. After the trial ends on ${trialEnd.toLocaleDateString()}, your subscription will be £29.99/month.`;
+                    })()}
+                  </p>
+                </div>
+              )}
+
+              {shop.subscription_status === 'active' && shop.subscription_started_at && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-1">Active Subscription</h3>
+                  <p className="text-blue-800 text-sm">
+                    {(() => {
+                      const subscriptionStart = new Date(shop.subscription_started_at);
+                      const nextPayment = new Date(subscriptionStart);
+                      nextPayment.setMonth(nextPayment.getMonth() + 1);
+                      const now = new Date();
+                      while (nextPayment <= now) {
+                        nextPayment.setMonth(nextPayment.getMonth() + 1);
+                      }
+                      return `Your next payment of £29.99 is due on ${nextPayment.toLocaleDateString()}.`;
+                    })()}
                   </p>
                 </div>
               )}
