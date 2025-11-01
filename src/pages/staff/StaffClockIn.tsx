@@ -444,18 +444,14 @@ export default function StaffClockIn() {
         throw updateError;
       }
 
+      // Show success message (use variables calculated earlier)
+      setSuccessMessage(`✓ ${employee.first_name} clocked out. Worked ${hoursWorked.toFixed(1)}h today.`);
+      
       // Reset state for shared device mode - clear employee to return to PIN entry
       setCurrentClockEntry(null);
       setEmployee(null); // Clear employee state for shared device mode
       setLocationName(null);
       setElapsedTime('');
-      
-      // Calculate hours worked for success message
-      const clockInTime = new Date(currentClockEntry.clock_in_time);
-      const hoursWorked = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
-      
-      // Show success message
-      setSuccessMessage(`✓ ${employee.first_name} clocked out. Worked ${hoursWorked.toFixed(1)}h today.`);
       setError('');
       setPin('');
       
