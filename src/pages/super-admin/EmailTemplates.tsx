@@ -34,9 +34,17 @@ export default function EmailTemplates() {
 
       if (error) throw error;
 
-      setTemplates(data || []);
-      if (data && data.length > 0 && !selectedTemplate) {
-        setSelectedTemplate(data[0]);
+      // Parse variables from JSONB and ensure it's always an array
+      const parsedTemplates = (data || []).map((template: any) => ({
+        ...template,
+        variables: Array.isArray(template.variables) 
+          ? template.variables 
+          : (typeof template.variables === 'string' ? JSON.parse(template.variables) : [])
+      }));
+
+      setTemplates(parsedTemplates);
+      if (parsedTemplates && parsedTemplates.length > 0 && !selectedTemplate) {
+        setSelectedTemplate(parsedTemplates[0]);
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: `Failed to load templates: ${error.message}` });
@@ -90,8 +98,12 @@ export default function EmailTemplates() {
       let htmlBody = selectedTemplate.html_body;
       let textBody = selectedTemplate.text_body || '';
 
-      // Replace variables
-      selectedTemplate.variables.forEach((variable) => {
+      // Replace variables - ensure variables is an array
+      const variables = Array.isArray(selectedTemplate.variables) 
+        ? selectedTemplate.variables 
+        : [];
+      
+      variables.forEach((variable: string) => {
         const value = testData[variable as keyof typeof testData] || `[${variable}]`;
         const regex = new RegExp(`{{\\s*${variable}\\s*}}`, 'g');
         subject = subject.replace(regex, String(value));
@@ -143,7 +155,11 @@ export default function EmailTemplates() {
     };
 
     let html = selectedTemplate.html_body;
-    selectedTemplate.variables.forEach((variable) => {
+    const variables = Array.isArray(selectedTemplate.variables) 
+      ? selectedTemplate.variables 
+      : [];
+    
+    variables.forEach((variable: string) => {
       const value = testData[variable as keyof typeof testData] || `[${variable}]`;
       const regex = new RegExp(`{{\\s*${variable}\\s*}}`, 'g');
       html = html.replace(regex, String(value));
@@ -267,7 +283,11 @@ export default function EmailTemplates() {
                         rows={20}
                         placeholder="HTML email content"
                       />
-                      <span className="help-text">Available variables: {selectedTemplate.variables.join(', ')}</span>
+                      <span className="help-text">
+                        Available variables: {Array.isArray(selectedTemplate.variables) 
+                          ? selectedTemplate.variables.join(', ') 
+                          : 'None'}
+                      </span>
                     </div>
 
                     <div className="form-group">
@@ -284,9 +304,13 @@ export default function EmailTemplates() {
                     <div className="alert alert-info">
                       <strong>Available Variables:</strong>
                       <ul className="list-disc list-inside mt-2">
-                        {selectedTemplate.variables.map((variable) => (
-                          <li key={variable}><code>{`{{${variable}}}`}</code></li>
-                        ))}
+                        {Array.isArray(selectedTemplate.variables) && selectedTemplate.variables.length > 0 ? (
+                          selectedTemplate.variables.map((variable: string) => (
+                            <li key={variable}><code>{`{{${variable}}}`}</code></li>
+                          ))
+                        ) : (
+                          <li>No variables defined</li>
+                        )}
                       </ul>
                     </div>
                   </>
