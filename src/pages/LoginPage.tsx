@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,7 +18,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (location.state?.message) {
       setError(''); // Clear any existing error
-      // Note: You might want to add a success message state instead
+      setSuccessMessage(location.state.message);
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
     }
   }, [location]);
 
@@ -129,6 +132,12 @@ export default function LoginPage() {
           </h1>
           <p className="text-gray-600 text-lg">Sign in to your DigiGet account</p>
         </div>
+
+        {successMessage && (
+          <div className="bg-green-50 text-green-700 p-3 rounded-lg mb-4 border border-green-200">
+            {successMessage}
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">
