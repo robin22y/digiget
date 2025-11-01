@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Save, CheckCircle } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
+import ShopLocationSetup from '../../components/ShopLocationSetup';
 
 interface Shop {
   id: string;
