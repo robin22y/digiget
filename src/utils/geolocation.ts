@@ -66,18 +66,25 @@ export async function getAreaName(latitude: number, longitude: number): Promise<
   try {
     // Use zoom level 18 for street/road level accuracy
     // Add user agent header as required by Nominatim
+    // Note: Nominatim may block CORS requests from browsers - this will fail gracefully
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
       {
         headers: {
-          'User-Agent': 'DigiGet-Location/1.0'
-        }
+          'User-Agent': 'DigiGet-Location/1.0',
+          'Accept-Language': 'en-GB,en'
+        },
+        // Add mode: 'no-cors' would prevent reading response, so we'll catch the error instead
       }
-    );
+    ).catch((fetchError) => {
+      // CORS or network error - return coordinates as fallback
+      console.warn('Reverse geocoding failed (CORS/network):', fetchError);
+      return null;
+    });
     
-    if (!response.ok) {
-      console.error('Reverse geocoding failed:', response.status);
-      return 'Location unavailable';
+    if (!response || !response.ok) {
+      // If request failed, return coordinates as fallback
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
     
     const data = await response.json();
@@ -166,8 +173,10 @@ export async function getAreaName(latitude: number, longitude: number): Promise<
     }
     
     return 'Location unavailable';
-  } catch (error) {
-    console.error('Error getting area name:', error);
-    return 'Location unavailable';
+  } catch (error: any) {
+    // CORS errors, network errors, or parsing errors - return coordinates as fallback
+    console.warn('Error getting area name:', error?.message || error);
+    // Return formatted coordinates as fallback
+    return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   }
 }

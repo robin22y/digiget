@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase';
 import { handleStaffClock } from '../../lib/clockService';
 import { Clock, CheckCircle, X, AlertCircle } from 'lucide-react';
 import { getCurrentPosition, calculateDistance, getAreaName } from '../../utils/geolocation';
-import { useShop } from '../../contexts/ShopContext';
 import GPSConsentModal from '../../components/GPSConsentModal';
 
 interface Employee {
@@ -37,7 +36,6 @@ interface CurrentlyWorking {
 
 export default function StaffClockIn() {
   const { shopId: paramShopId } = useParams<{ shopId: string }>();
-  const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const navigate = useNavigate();
   const [pin, setPin] = useState('');
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -53,18 +51,9 @@ export default function StaffClockIn() {
   const [successMessage, setSuccessMessage] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Validate access if shopId comes from URL params
-  useEffect(() => {
-    if (paramShopId && !shopLoading) {
-      if (!hasAccess(paramShopId)) {
-        navigate('/dashboard');
-        return;
-      }
-    }
-  }, [paramShopId, hasAccess, shopLoading, navigate]);
-
-  // Use currentShop.id (from context) or validated paramShopId
-  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+  // This is a PUBLIC page - no authentication required
+  // Use shopId from URL params directly
+  const shopId = paramShopId;
 
   useEffect(() => {
     if (shopId) {
