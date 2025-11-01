@@ -1,33 +1,81 @@
--- Create email_templates table for managing email templates
--- Run this in your Supabase SQL editor
+-- Safe migration: Add missing columns if table exists, create table if it doesn't
+-- Use this if you want to preserve existing data
 
--- Drop existing table if it exists (removes any incorrect schema)
-DROP TABLE IF EXISTS email_templates CASCADE;
-
--- Create email_templates table
-CREATE TABLE email_templates (
+-- Create table if it doesn't exist
+CREATE TABLE IF NOT EXISTS email_templates (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   template_type TEXT NOT NULL UNIQUE,
-  -- template_type can be: 'staff_credentials', 'welcome', 'trial_expiry', 'monthly_report', etc.
   subject TEXT NOT NULL,
   html_body TEXT NOT NULL,
   text_body TEXT,
   variables JSONB DEFAULT '[]'::jsonb,
-  -- variables stores an array of variable names like ["shopName", "staffName", "pin", "portalUrl"]
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_by TEXT
 );
 
--- Add RLS policies
+-- Add missing columns if they don't exist
+DO $$ 
+BEGIN
+  -- Add template_type if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'template_type') THEN
+    ALTER TABLE email_templates ADD COLUMN template_type TEXT;
+    ALTER TABLE email_templates ADD CONSTRAINT email_templates_template_type_unique UNIQUE (template_type);
+  END IF;
+
+  -- Add subject if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'subject') THEN
+    ALTER TABLE email_templates ADD COLUMN subject TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  -- Add html_body if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'html_body') THEN
+    ALTER TABLE email_templates ADD COLUMN html_body TEXT NOT NULL DEFAULT '';
+  END IF;
+
+  -- Add text_body if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'text_body') THEN
+    ALTER TABLE email_templates ADD COLUMN text_body TEXT;
+  END IF;
+
+  -- Add variables if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'variables') THEN
+    ALTER TABLE email_templates ADD COLUMN variables JSONB DEFAULT '[]'::jsonb;
+  END IF;
+
+  -- Add created_at if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'created_at') THEN
+    ALTER TABLE email_templates ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+  END IF;
+
+  -- Add updated_at if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'updated_at') THEN
+    ALTER TABLE email_templates ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+  END IF;
+
+  -- Add updated_by if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'email_templates' AND column_name = 'updated_by') THEN
+    ALTER TABLE email_templates ADD COLUMN updated_by TEXT;
+  END IF;
+END $$;
+
+-- Add RLS policies (drop and recreate to avoid conflicts)
+DROP POLICY IF EXISTS "Super admins can manage email templates" ON email_templates;
 ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 
--- Policy: Super admins can do everything
 CREATE POLICY "Super admins can manage email templates" ON email_templates
   FOR ALL
   USING (auth.jwt() ->> 'email' LIKE '%@digiget.uk' OR auth.jwt() ->> 'role' = 'super');
 
--- Insert default staff credentials template
+-- Insert default staff credentials template (only if it doesn't exist)
 INSERT INTO email_templates (template_type, subject, html_body, text_body, variables)
 VALUES (
   'staff_credentials',
