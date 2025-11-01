@@ -43,6 +43,7 @@ import AllDeals from './pages/super-admin/AllDeals';
 import Reports from './pages/super-admin/Reports';
 import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
+import EmailTemplates from './pages/super-admin/EmailTemplates';
 import TopRatedShops from './pages/super-admin/TopRatedShops';
 import ShopTalk from './pages/ShopTalk.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -146,6 +147,7 @@ function App() {
             <Route path="top-rated-shops" element={<TopRatedShops />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notices" element={<Notices />} />
+            <Route path="email-templates" element={<EmailTemplates />} />
             <Route path="settings" element={<SuperAdminSettings />} />
           </Route>
 
