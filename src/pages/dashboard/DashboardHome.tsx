@@ -87,13 +87,12 @@ export default function DashboardHome() {
           .eq('shop_id', shopId)
           .gte('clock_in_time', today.toISOString());
 
-        if (clockEntries) {
-          staffHours = clockEntries
-            .filter(e => e.hours_worked)
-            .reduce((sum, e) => sum + (e.hours_worked || 0), 0);
+      if (clockEntries) {
+        staffHours = clockEntries
+          .filter(e => e.hours_worked)
+          .reduce((sum, e) => sum + (e.hours_worked || 0), 0);
 
-          activeStaff = clockEntries.filter(e => !e.clock_out_time).length;
-        }
+        activeStaff = clockEntries.filter(e => !e.clock_out_time).length;
       }
 
       setStats({
