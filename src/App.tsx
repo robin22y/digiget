@@ -76,7 +76,7 @@ function App() {
           
           <Route path="/xtra/:staffIdentifier" element={<TabletInterfaceByName />} />
 
-          <Route path="/:shopName/:staffName" element={<StaffPortal />} />
+          <Route path="/staff-portal/:shopId" element={<StaffPortal />} />
 
           {/* New staff-facing pages */}
           <Route path="/staff/:shopId/clock-in" element={<StaffClockIn />} />

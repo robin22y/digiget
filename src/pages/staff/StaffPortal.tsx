@@ -105,117 +105,42 @@ export default function StaffPortal() {
     return () => clearInterval(interval);
   }, [shop]);
 
-  const loadShopAndEmployee = async () => {
+  const loadShop = async () => {
+    if (!shopId) {
+      setError('Shop ID missing');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const normalizedShopName = shopName?.replace(/-/g, ' ');
-      const normalizedStaffName = staffName?.replace(/-/g, ' ');
-
-      console.log('Looking for:', { shop: normalizedShopName, staff: normalizedStaffName });
-
-      // Find all shops matching the name (case-insensitive, flexible matching)
-      // Try exact match first, then partial match
-      let { data: shops, error: shopError } = await supabase
+      const { data: shopData, error: shopError } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
-        .ilike('shop_name', normalizedShopName || '');
-
-      // If no exact match, try partial match
-      if ((!shops || shops.length === 0) && normalizedShopName) {
-        const { data: partialShops, error: partialError } = await supabase
-          .from('shops')
-          .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
-          .ilike('shop_name', `%${normalizedShopName}%`);
-        
-        if (!partialError && partialShops && partialShops.length > 0) {
-          shops = partialShops;
-          shopError = null;
-        }
-      }
+        .eq('id', shopId)
+        .single();
 
       if (shopError) {
         console.error('Shop lookup error:', shopError);
         throw shopError;
       }
 
-      if (!shops || shops.length === 0) {
-        console.log('No shop found matching:', normalizedShopName);
-        
-        // Get a list of available shops to help with debugging
-        const { data: allShops } = await supabase
-          .from('shops')
-          .select('shop_name')
-          .limit(10);
-        
-        const availableShops = allShops?.map(s => s.shop_name).join(', ') || 'none';
-        console.log('Available shops:', availableShops);
-        
-        setError(
-          `Shop "${normalizedShopName}" not found. ` +
-          `Available shops: ${availableShops}. ` +
-          `Make sure the shop name in the URL matches the shop name in the database (case-insensitive).`
-        );
-        setLoading(false);
-        return;
-      }
-
-      console.log('Found shops:', shops);
-
-      // Get all shop IDs
-      const shopIds = shops.map(s => s.id);
-
-      // Find active employees matching the name in any of these shops
-      const { data: employees, error: employeeError } = await supabase
-        .from('employees')
-        .select('*')
-        .in('shop_id', shopIds)
-        .ilike('first_name', normalizedStaffName || '')
-        .eq('active', true);
-
-      if (employeeError) {
-        console.error('Employee lookup error:', employeeError);
-        throw employeeError;
-      }
-
-      if (!employees || employees.length === 0) {
-        console.log('No active employee found for:', { shopIds, staffName: normalizedStaffName });
-        setError(`No active staff member "${normalizedStaffName}" found at "${normalizedShopName}"`);
-        setLoading(false);
-        return;
-      }
-
-      console.log('Found employees:', employees);
-
-      // Take the first match and find its shop
-      const employeeData = employees[0];
-      const shopData = shops.find(s => s.id === employeeData.shop_id);
-
       if (!shopData) {
-        setError('Shop data not found');
+        setError('Shop not found');
         setLoading(false);
         return;
       }
-
-      setEmployee(employeeData);
-      console.log('Loaded employee:', employeeData.first_name, 'for shop:', shopData.shop_name);
-
-      // Get full shop data including auto_logout_hours
-      const { data: fullShopData } = await supabase
-        .from('shops')
-        .select('auto_logout_hours, owner_name, open_time, close_time')
-        .eq('id', shopData.id)
-        .single();
 
       // Set shop with all data
       setShop({
         ...shopData,
-        owner_name: fullShopData?.owner_name || shopData.owner_name,
-        auto_logout_hours: fullShopData?.auto_logout_hours || 13,
-        open_time: fullShopData?.open_time || null,
-        close_time: fullShopData?.close_time || null,
+        owner_name: shopData.owner_name || undefined,
+        auto_logout_hours: shopData.auto_logout_hours || 13,
+        open_time: shopData.open_time || null,
+        close_time: shopData.close_time || null,
       });
     } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Failed to load staff portal');
+      console.error('Error loading shop:', err);
+      setError('Failed to load shop');
     } finally {
       setLoading(false);
     }
@@ -225,33 +150,47 @@ export default function StaffPortal() {
     e.preventDefault();
     setError('');
 
-    if (!employee) return;
+    if (!shop || !shopId || !pin.trim()) {
+      setError('Please enter your PIN');
+      return;
+    }
 
-    // Refresh employee data from database to get latest PIN
     try {
-      const { data: freshEmployee, error: refreshError } = await supabase
+      // Find employee by PIN and shop
+      const { data: employeeData, error: employeeError } = await supabase
         .from('employees')
         .select('*')
-        .eq('id', employee.id)
+        .eq('shop_id', shopId)
+        .eq('pin', pin.trim())
+        .eq('active', true)
         .maybeSingle();
 
-      if (refreshError) throw refreshError;
+      if (employeeError) {
+        console.error('Employee lookup error:', employeeError);
+        throw employeeError;
+      }
 
-      if (!freshEmployee) {
-        setError('Employee not found');
+      if (!employeeData) {
+        setError('Invalid PIN. Please check your PIN and try again.');
+        setPin('');
         return;
       }
 
-      // Update the employee state with fresh data
-      setEmployee(freshEmployee);
+      // Check if PIN has expired
+      if (employeeData.pin_expires_at) {
+        const expiryDate = new Date(employeeData.pin_expires_at);
+        const now = new Date();
+        if (expiryDate < now) {
+          setError('Your PIN has expired. Please contact your manager for a new PIN.');
+          setPin('');
+          return;
+        }
+      }
 
-      if (freshEmployee.pin === pin) {
-        await checkCurrentClockEntry();
-        setView('home');
-        setPin('');
-      } else {
-        setError('Incorrect PIN');
-        setPin('');
+      setEmployee(employeeData);
+      await checkCurrentClockEntry();
+      setView('home');
+      setPin('');
       }
     } catch (err) {
       console.error('Error verifying PIN:', err);
@@ -357,33 +296,35 @@ export default function StaffPortal() {
     );
   }
 
-  if (!shop || !employee) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!shop) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Portal Not Available</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">{error || 'Shop not found'}</p>
         </div>
       </div>
     );
   }
 
-  if (view === 'auth') {
+  if (view === 'auth' || !employee) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-24 h-24 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-              {employee.photo_url ? (
-                <img src={employee.photo_url} alt={employee.first_name} className="w-24 h-24 rounded-full object-cover" />
-              ) : (
-                <span className="text-3xl font-bold text-blue-600">
-                  {employee.first_name[0]}{employee.last_name?.[0]}
-                </span>
-              )}
+              <Users className="w-12 h-12 text-blue-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Welcome, {employee.first_name}!
+              Staff Portal
             </h2>
             <p className="text-gray-600 mt-1">{shop.shop_name}</p>
           </div>
@@ -391,16 +332,16 @@ export default function StaffPortal() {
           <form onSubmit={handlePinSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter your 4-digit PIN
+                Enter your PIN
               </label>
               <input
                 type="password"
                 inputMode="numeric"
-                maxLength={4}
+                maxLength={10}
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                 className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="••••"
+                placeholder="Enter PIN"
                 autoFocus
               />
             </div>
@@ -413,7 +354,7 @@ export default function StaffPortal() {
 
             <button
               type="submit"
-              disabled={pin.length !== 4}
+              disabled={!pin.trim()}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               Sign In
