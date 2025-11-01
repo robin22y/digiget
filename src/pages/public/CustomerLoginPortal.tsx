@@ -317,10 +317,12 @@ export default function CustomerLoginPortal() {
             {/* Header */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back!</h1>
-                  <p className="text-gray-600">{shop.shop_name}</p>
-                </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  {customer?.name ? `Hello ${customer.name}!` : 'Hello!'}
+                </h1>
+                <p className="text-gray-600">{shop.shop_name}</p>
+              </div>
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"

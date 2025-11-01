@@ -10,31 +10,29 @@ export default function Footer() {
           
           {/* Brand Column */}
           <div>
-            <div className="text-2xl font-bold text-white mb-2">DigiGet</div>
+            <h4 className="text-white font-semibold mb-2">DigiGet</h4>
             <p className="text-sm text-gray-400 leading-relaxed">
-              Built for UK barber shops
+              Time tracking and loyalty for barber shops
             </p>
           </div>
 
           {/* Product Column */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Product</h3>
+            <h4 className="text-white font-semibold mb-4">Product</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
+              <li><a href="#demo" className="hover:text-white transition-colors">Features</a></li>
               <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-              <li><button onClick={() => {
-                const element = document.getElementById('demo-video');
-                if (element) element.scrollIntoView({ behavior: 'smooth' });
-              }} className="hover:text-white transition-colors text-left">Demo</button></li>
+              <li><a href="/signup" className="hover:text-white transition-colors">Sign Up</a></li>
             </ul>
           </div>
 
           {/* Support Column */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Support</h3>
+            <h4 className="text-white font-semibold mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="mailto:help@digiget.uk" className="hover:text-white transition-colors">help@digiget.uk</a></li>
-              <li><span className="text-gray-400">07XXX XXX XXX</span></li>
+              <li><a href="mailto:help@digiget.uk" className="hover:text-white transition-colors">Email Support</a></li>
+              <li><a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms" className="hover:text-white transition-colors">Terms of Service</a></li>
             </ul>
           </div>
 
@@ -54,7 +52,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 pt-8 text-center">
           <p className="text-sm text-gray-400">
-            © {currentYear} DigiGet. Built in the UK, for UK barber shops.
+            © {currentYear} DigiGet. All rights reserved.
           </p>
         </div>
 

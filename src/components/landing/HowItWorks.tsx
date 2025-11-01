@@ -4,22 +4,22 @@ export default function HowItWorks() {
     {
       number: 1,
       title: 'Sign Up',
-      description: 'Email and password. That\'s it. No credit card needed for trial.'
+      description: 'Email and password. No credit card needed.'
     },
     {
       number: 2,
-      title: 'Add Your Shop Location',
-      description: 'Type your address or tap "Use Current Location." Done.'
+      title: 'Set Shop Location',
+      description: 'Type address or use current location.'
     },
     {
       number: 3,
-      title: 'Add Your Staff',
-      description: 'Name, hourly rate, 4-digit PIN. Takes 30 seconds per person.'
+      title: 'Add Staff',
+      description: 'Name, rate, PIN for each staff member.'
     },
     {
       number: 4,
-      title: 'Start Using It',
-      description: 'Staff clock in. You check in customers. That\'s it. You\'re done.'
+      title: 'Start Using',
+      description: 'Staff clock in, you check in customers.'
     }
   ];
 
@@ -28,7 +28,7 @@ export default function HowItWorks() {
       <div className="max-w-4xl mx-auto text-center">
         
         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">
-          Set Up In 5 Minutes. Seriously.
+          Getting Started
         </h2>
 
         {/* Steps */}
@@ -55,12 +55,10 @@ export default function HowItWorks() {
           ))}
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-md border-2 border-modern-blue max-w-2xl mx-auto">
-          <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-            <span className="font-semibold">Works on any device you already own.</span> Phone, tablet, laptop - doesn't matter. 
-            Just open the browser. No app to download. No hardware to buy.
-          </p>
-        </div>
+        <p className="text-base md:text-lg text-gray-700 leading-relaxed max-w-2xl mx-auto">
+          Works on any phone, tablet, or laptop. No app to download.<br />
+          Just open your browser.
+        </p>
 
       </div>
     </section>

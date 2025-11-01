@@ -1,29 +1,40 @@
 import { Link } from 'react-router-dom';
-import { CheckCircle, Shield } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 export default function PricingSection() {
   const faqItems = [
     {
       question: 'Do I need to buy hardware?',
-      answer: 'No. Works on any phone or tablet you already have. Most shops use a cheap tablet (£50 Amazon Fire) at the counter, but your phone works fine to start.'
+      answer: 'No. Works on any phone or tablet you already have. Many shops use a tablet at the counter, but your phone works fine.'
     },
     {
       question: 'What about tax calculations?',
-      answer: 'We calculate gross pay (hours × rate). You export to CSV and send to your accountant or import into Xero/QuickBooks for tax calculations. We don\'t touch tax - that keeps your cost low and liability zero.'
+      answer: 'We calculate gross pay (hours × hourly rate). You export to CSV and send to your accountant for tax calculations. We don\'t handle tax to keep things simple and your cost low.'
     },
     {
-      question: 'Do customers need to download an app?',
-      answer: 'No. You type their phone number when they come in. They get points automatically. If they want to check their balance, they can visit a simple webpage - no app needed.'
+      question: 'Do customers need an app?',
+      answer: 'No. You type their phone number when they visit. They get points automatically. If they want to check their balance, they can visit a simple webpage - no app download needed.'
+    },
+    {
+      question: 'How does GPS verification work?',
+      answer: 'When staff clock in, we check if they\'re within 50 meters of your shop. This is optional - you can also use QR code or NFC tag for physical verification instead.'
+    },
+    {
+      question: 'Can I try it before paying?',
+      answer: 'Yes. 14-day free trial, no credit card required. If it doesn\'t work for you, just don\'t subscribe. No charge.'
+    },
+    {
+      question: 'What if I need help?',
+      answer: 'Email us at <a href="mailto:help@digiget.uk">help@digiget.uk</a> and we\'ll respond within 24 hours (usually much faster).'
     }
   ];
 
   const features = [
     'Unlimited staff',
     'Unlimited customers',
-    'GPS-verified clock in/out',
+    'Staff time tracking with GPS',
     'Customer loyalty points',
-    'Payroll reports (export to CSV)',
-    'Deals & flash offers',
+    'Payroll reports (CSV export)',
     'Works on any device',
     'Email support'
   ];
@@ -33,7 +44,7 @@ export default function PricingSection() {
       <div className="max-w-4xl mx-auto">
         
         <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-          One Price. Everything Included.
+          Simple Pricing
         </h2>
 
         {/* Pricing Card */}
@@ -42,7 +53,7 @@ export default function PricingSection() {
           {/* Founding Member Badge */}
           <div className="absolute -top-5 left-1/2 -translate-x-1/2">
             <div className="bg-modern-orange text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
-              🎉 Founding Member Rate
+              Founding Member Rate
             </div>
           </div>
 
@@ -57,8 +68,7 @@ export default function PricingSection() {
               <span className="text-2xl md:text-3xl text-gray-600">/month</span>
             </div>
             <p className="text-base md:text-lg text-gray-600">
-              First 20 shops only - locks in forever<br />
-              <span className="text-sm text-gray-500">After that: £39/month</span>
+              First 20 shops lock in this rate forever
             </p>
           </div>
 
@@ -78,28 +88,25 @@ export default function PricingSection() {
               to="/signup"
               className="inline-block bg-modern-green text-white px-12 py-4 rounded-lg text-xl font-bold hover:bg-green-600 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
             >
-              Start Your 14-Day Free Trial
+              Start 14-Day Free Trial
             </Link>
           </div>
 
           {/* Guarantee */}
-          <div className="flex items-start gap-3 bg-white/80 rounded-lg p-4 border-2 border-modern-green/30">
-            <Shield className="w-6 h-6 text-modern-green flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">30-day money-back guarantee.</span> If you're not saving at least 2 hours a week, full refund.
-            </p>
-          </div>
+          <p className="text-center text-sm text-gray-600">
+            No credit card required. Cancel anytime.
+          </p>
         </div>
 
         {/* FAQ */}
-        <div className="space-y-6">
+        <div className="space-y-6 mt-12">
           <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            Common Questions
+            Questions
           </h3>
           {faqItems.map((item, index) => (
             <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
               <h4 className="font-bold text-gray-900 mb-2">{item.question}</h4>
-              <p className="text-gray-700 leading-relaxed">{item.answer}</p>
+              <p className="text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: item.answer }} />
             </div>
           ))}
         </div>

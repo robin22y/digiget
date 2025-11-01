@@ -101,6 +101,10 @@ export default function SignupPage() {
       const baseSlug = generateSlug(signupData.shopName!);
       const uniqueSlug = await generateUniqueSlug(baseSlug);
 
+      // Generate unique short code for the shop
+      const { generateUniqueShortCode } = await import('../lib/shortCode');
+      const shortCode = await generateUniqueShortCode();
+
       // Create shop data
       const shopData: any = {
         user_id: userId,
@@ -118,6 +122,7 @@ export default function SignupPage() {
         reward_description: signupData.rewardDescription!,
         diary_enabled: ['hair_salon', 'beauty_salon', 'health_wellness'].includes(signupData.businessCategory!),
         slug: uniqueSlug,
+        short_code: shortCode,
       };
 
       // Try inserting with QR code column first, fallback without it if column doesn't exist

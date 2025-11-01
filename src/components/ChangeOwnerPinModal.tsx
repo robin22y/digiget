@@ -138,18 +138,18 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Lock className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6 my-auto">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
               {isFirstTime ? 'Create Your PIN' : step === 'verify' ? 'Verify Current PIN' : 'Set New PIN'}
             </h2>
           </div>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
             disabled={loading}
           >
             <X className="w-5 h-5" />
@@ -158,12 +158,12 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
 
         {step === 'verify' && !isFirstTime ? (
           <>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
               Enter your current 6-digit owner PIN to continue
             </p>
 
             {/* Verify PIN Display */}
-            <div className="flex justify-center gap-3 mb-6">
+            <div className="flex justify-center gap-2 sm:gap-3 mb-4 sm:mb-6">
               {[0, 1, 2, 3, 4, 5].map((index) => (
                 <input
                   key={index}
@@ -173,7 +173,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                   maxLength={1}
                   value={verifyPin[index] || ''}
                   readOnly
-                  className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                   style={{
                     borderColor: verifyPin[index] ? '#3B82F6' : '#D1D5DB',
                   }}
@@ -189,13 +189,13 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
             )}
 
             {/* Number Pad */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3 sm:mb-4">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
                 <button
                   key={digit}
                   onClick={() => handleVerifyPinPad(digit.toString())}
                   disabled={loading || verifyPin.length >= 6}
-                  className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
                 >
                   {digit}
                 </button>
@@ -203,14 +203,14 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               <button
                 onClick={() => handleVerifyPinPad('0')}
                 disabled={loading || verifyPin.length >= 6}
-                className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
               >
                 0
               </button>
               <button
                 onClick={handleVerifyBackspace}
                 disabled={loading || verifyPin.length === 0}
-                className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
               >
                 ⌫
               </button>
@@ -228,18 +228,18 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
           </>
         ) : (
           <>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
               {isFirstTime 
                 ? 'Create a 6-digit PIN to protect your shop settings. Make sure it\'s something memorable but secure.'
                 : 'Enter your new 6-digit PIN. Make sure it\'s something memorable but secure.'}
             </p>
 
             {/* New PIN Display */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-3 sm:mb-4">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                 New PIN (6 digits)
               </label>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-2 sm:gap-3">
                 {[0, 1, 2, 3, 4, 5].map((index) => (
                   <input
                     key={index}
@@ -258,7 +258,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                         handleNewPinBackspace();
                       }
                     }}
-                    className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                     style={{
                       borderColor: newPin[index] ? '#3B82F6' : '#D1D5DB',
                     }}
@@ -288,11 +288,11 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
             </div>
 
             {/* Confirm PIN Display */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-3 sm:mb-4">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                 Confirm New PIN
               </label>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-2 sm:gap-3">
                 {[0, 1, 2, 3, 4, 5].map((index) => (
                   <input
                     key={index}
@@ -312,7 +312,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                         }
                       }
                     }}
-                    className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                    className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                     style={{
                       borderColor: confirmNewPin[index] 
                         ? (newPin === confirmNewPin ? '#10B981' : '#EF4444')
@@ -337,13 +337,13 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
             </div>
 
             {/* Number Pad for New PIN */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3 sm:mb-4">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
                 <button
                   key={digit}
                   onClick={() => handleNewPinPad(digit.toString())}
                   disabled={loading || (newPin.length >= 6 && confirmNewPin.length >= 6)}
-                  className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
                   type="button"
                 >
                   {digit}
@@ -352,7 +352,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               <button
                 onClick={() => handleNewPinPad('0')}
                 disabled={loading || (newPin.length >= 6 && confirmNewPin.length >= 6)}
-                className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
                 type="button"
               >
                 0
@@ -360,7 +360,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               <button
                 onClick={handleNewPinBackspace}
                 disabled={loading || (confirmNewPin.length === 0 && newPin.length === 0)}
-                className="py-4 px-6 text-xl font-semibold bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
                 type="button"
               >
                 ⌫
@@ -374,7 +374,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               {!isFirstTime && step !== 'verify' && (
                 <button
                   onClick={() => {
@@ -383,8 +383,9 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                     setConfirmNewPin('');
                     setError('');
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base min-h-[44px]"
                   disabled={loading}
+                  type="button"
                 >
                   Back
                 </button>
@@ -392,7 +393,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               <button
                 onClick={handleSetNewPin}
                 disabled={loading || newPin.length !== 6 || confirmNewPin.length !== 6 || !validateOwnerPIN(newPin) || newPin !== confirmNewPin || isWeakOwnerPIN(newPin)}
-                className={`${!isFirstTime && step !== 'verify' ? 'flex-1' : 'w-full'} px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`${!isFirstTime && step !== 'verify' ? 'flex-1' : 'w-full'} px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px]`}
                 title={
                   loading ? 'Saving...' :
                   newPin.length !== 6 ? 'Enter 6-digit PIN' :
@@ -402,6 +403,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                   isWeakOwnerPIN(newPin) ? 'PIN is too weak' :
                   'Click to save PIN'
                 }
+                type="button"
               >
                 {loading ? 'Saving...' : isFirstTime ? 'Create PIN' : 'Change PIN'}
               </button>

@@ -62,101 +62,90 @@ export function calculateDistance(
 }
 
 // Get area name from coordinates using reverse geocoding with road/street level accuracy
-// Note: Nominatim API blocks direct browser requests due to CORS policy
-// This function will gracefully fall back to coordinates if the API is unavailable
 export async function getAreaName(latitude: number, longitude: number): Promise<string> {
-  // Immediate fallback to coordinates (Nominatim doesn't allow direct browser access)
-  // To use reverse geocoding, we would need a backend proxy endpoint
-  return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-
-  // NOTE: The code below is disabled because Nominatim blocks browser requests
-  // If you want to use reverse geocoding, create a Supabase Edge Function proxy:
-  // 1. Create: supabase/functions/reverse-geocode/index.ts
-  // 2. Call Nominatim from server-side (no CORS issues)
-  // 3. Call your function instead of Nominatim directly
-  
-  /*
   try {
-    // This would require a backend proxy due to CORS restrictions
     const response = await fetch(
-      `/api/reverse-geocode?lat=${latitude}&lon=${longitude}`,
-      { method: 'GET' }
+      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`,
+      {
+        headers: {
+          'User-Agent': 'DigiGet Location Service',
+        },
+      }
     );
     
-    if (!response || !response.ok) {
+    if (!response.ok) {
+      // Fallback to coordinates if API fails
       return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
     
     const data = await response.json();
     
-    if (data.address) {
+    if (data && data.address) {
       const addr = data.address;
       
-      // Get road/street name (most specific location identifier)
-      const road = addr.road || addr.street || addr.footway || addr.path || addr.pedestrian || addr.cycleway;
+      // Prioritize road/street name (most specific location identifier)
+      const road = addr.road || addr.street || addr.footway || addr.path || addr.pedestrian || addr.cycleway || addr.amenity;
       
       // Get house number if available (most precise)
       const houseNumber = addr.house_number || addr.house_name;
       
       // Get area identifiers (from most specific to least)
-      const suburb = addr.suburb || addr.neighbourhood || addr.village;
-      const cityDistrict = addr.city_district || addr.borough;
+      const suburb = addr.suburb || addr.neighbourhood || addr.village || addr.quarter;
+      const cityDistrict = addr.city_district || addr.borough || addr.district;
       const city = addr.city || addr.town || addr.municipality;
-      const county = addr.county;
-      const postcode = addr.postcode;
       
-      // Build location string starting with most specific
+      // Build location string prioritizing street/road name
       const parts: string[] = [];
       
-      // Add house number + road name if available (most precise)
+      // Priority 1: House number + road name (most precise)
       if (houseNumber && road) {
         parts.push(`${houseNumber} ${road}`);
-      } else if (road) {
+      } 
+      // Priority 2: Just road name
+      else if (road) {
         parts.push(road);
       }
       
-      // Add suburb/neighbourhood if available and different
+      // Priority 3: Add suburb/neighbourhood if road not available or as additional context
       if (suburb && suburb !== road) {
-        parts.push(suburb);
+        // Only add if we don't already have a road name, or if it's meaningful
+        if (!road || parts.length === 0) {
+          parts.push(suburb);
+        }
       }
       
-      // Add city/district if available and not already included
-      if (cityDistrict && cityDistrict !== road && cityDistrict !== suburb) {
-        parts.push(cityDistrict);
+      // Priority 4: Add city/district if no road/suburb
+      if (parts.length === 0) {
+        if (cityDistrict) {
+          parts.push(cityDistrict);
+        } else if (city) {
+          parts.push(city);
+        }
       }
       
-      // Add city if available and not already included
-      if (city && !parts.some(part => 
-        part.toLowerCase().includes(city.toLowerCase()) || 
-        city.toLowerCase().includes(part.toLowerCase())
-      )) {
-        parts.push(city);
-      }
-      
-      // If we have parts, return joined string
+      // If we have meaningful parts, return them
       if (parts.length > 0) {
         return parts.join(', ');
       }
       
-      // Fallback: try display_name parsing for UK addresses
+      // Fallback: Parse display_name to extract street name
       if (data.display_name) {
         const displayParts = data.display_name.split(',').map(s => s.trim());
         
         // For UK addresses, typically: "Road Name, Area, City, County, Postcode, Country"
-        // Extract first 2-3 meaningful parts (road and area)
+        // Extract first meaningful part (usually the road name)
         const meaningfulParts: string[] = [];
-        const skipTerms = ['england', 'united kingdom', 'uk', 'gb', 'liverpool', 'london'];
+        const skipTerms = ['england', 'united kingdom', 'uk', 'gb'];
         
-        for (let i = 0; i < Math.min(displayParts.length, 4); i++) {
+        for (let i = 0; i < Math.min(displayParts.length, 3); i++) {
           const part = displayParts[i];
           if (part && part.length >= 3) {
             const partLower = part.toLowerCase();
-            // Skip if it's a country/region or already included
-            if (!skipTerms.some(term => partLower.includes(term)) && 
-                !meaningfulParts.some(existing => existing.toLowerCase() === partLower)) {
+            // Skip if it's a country/region
+            if (!skipTerms.some(term => partLower.includes(term))) {
               meaningfulParts.push(part);
-              // Stop after getting road name and area (typically first 2 parts)
-              if (meaningfulParts.length >= 2 && part.match(/^[A-Za-z\s]+$/)) {
+              // Stop after getting road name (typically first part)
+              if (meaningfulParts.length >= 1) {
                 break;
               }
             }
@@ -167,15 +156,22 @@ export async function getAreaName(latitude: number, longitude: number): Promise<
           return meaningfulParts.join(', ');
         }
       }
-      
-      // Last resort: return city or county
-      return city || county || 'Location unavailable';
     }
     
-    return 'Location unavailable';
+    // If no address data, try display_name as last resort
+    if (data.display_name) {
+      const displayParts = data.display_name.split(',').map(s => s.trim());
+      if (displayParts.length > 0) {
+        // Return first part which is usually the street/road name
+        return displayParts[0];
+      }
+    }
+    
+    // Ultimate fallback: return formatted coordinates
+    return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   } catch (error: any) {
+    console.warn('Reverse geocoding failed:', error);
     // Return formatted coordinates as fallback
     return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   }
-  */
 }

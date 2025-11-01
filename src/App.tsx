@@ -39,6 +39,7 @@ import StaffClockIn from './pages/staff/StaffClockIn';
 import CustomerCheckIn from './pages/staff/CustomerCheckIn';
 import NFCClockIn from './pages/NFCClockIn';
 import QRClockIn from './pages/QRClockIn';
+import ShortUrlRedirect from './pages/ShortUrlRedirect';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedSuperAdminRoute from './components/ProtectedSuperAdminRoute';
 import SuperAdminLayout from './layouts/SuperAdminLayout';
@@ -94,6 +95,10 @@ function App() {
           
           {/* QR Code Clock-In (public route, no auth required) */}
           <Route path="/qr-clock" element={<QRClockIn />} />
+
+          {/* Short URL routes (short codes) */}
+          <Route path="/s/:code" element={<ShortUrlRedirect redirectType="clock-in" />} />
+          <Route path="/p/:code" element={<ShortUrlRedirect redirectType="portal" />} />
 
           {/* Short check-in routes */}
           <Route path="/c/:shopId" element={<CheckInPage />} />

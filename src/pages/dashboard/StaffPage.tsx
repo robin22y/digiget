@@ -4,12 +4,15 @@ import { supabase } from '../../lib/supabase';
 import { UserPlus, Clock, Users as UsersIcon, Trash2, ExternalLink, Copy, KeyRound, Pencil, Lock } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import { useOwnerPinProtection } from '../../hooks/useOwnerPinProtection';
+import { useDestructiveAction } from '../../hooks/useDestructiveAction';
+import { PINConfirmationModal } from '../../components/PINConfirmationModal';
 
 interface Shop {
   id: string;
   plan_type: 'basic' | 'pro';
   shop_name: string;
   slug?: string | null;
+  short_code?: string | null;
 }
 
 interface Employee {
@@ -43,6 +46,15 @@ export default function StaffPage() {
     onCancel: () => navigate('/dashboard'),
   });
 
+  // Destructive action confirmation
+  const { 
+    confirmDestructiveAction, 
+    modalConfig, 
+    isModalOpen, 
+    handleConfirm, 
+    handleCancel 
+  } = useDestructiveAction();
+
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -52,6 +64,7 @@ export default function StaffPage() {
   const [newEmployeeName, setNewEmployeeName] = useState('');
   const [reissuingPinFor, setReissuingPinFor] = useState<string | null>(null);
   const [shopData, setShopData] = useState<Shop | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     if (!shopLoading && paramShopId) {
@@ -78,7 +91,7 @@ export default function StaffPage() {
     try {
       const { data, error } = await supabase
         .from('shops')
-        .select('id, shop_name, slug')
+        .select('id, shop_name, slug, short_code')
         .eq('id', shopId)
         .single();
       if (error) throw error;
@@ -156,19 +169,31 @@ export default function StaffPage() {
     setShowModal(true);
   };
 
-  const handleDeleteEmployee = async (employeeId: string) => {
-    if (!confirm('Are you sure you want to deactivate this employee?')) return;
+  const handleDeleteEmployee = async (employee: Employee) => {
+    // Get employee details for better confirmation message
+    const confirmed = await confirmDestructiveAction({
+      title: `Deactivate ${employee.first_name} ${employee.last_name || ''}?`,
+      message: `This will deactivate this staff member. They will no longer be able to clock in or access the staff portal. You can reactivate them later if needed.`,
+      warningText: 'The staff member will lose access immediately',
+      actionType: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase
         .from('employees')
         .update({ active: false })
-        .eq('id', employeeId);
+        .eq('id', employee.id);
 
       if (error) throw error;
+      
+      setMessage({ type: 'success', text: `${employee.first_name} has been deactivated` });
+      setTimeout(() => setMessage(null), 3000);
       loadEmployees();
     } catch (error: any) {
-      alert(error.message);
+      setMessage({ type: 'error', text: error.message || 'Failed to deactivate employee' });
+      setTimeout(() => setMessage(null), 3000);
     }
   };
 
@@ -281,6 +306,24 @@ export default function StaffPage() {
       return (
         <>
           <PinProtectionModal />
+          <PINConfirmationModal
+            isOpen={isModalOpen}
+            title={modalConfig?.title || ''}
+            message={modalConfig?.message || ''}
+            warningText={modalConfig?.warningText}
+            actionType={modalConfig?.actionType}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+          {message && (
+            <div className={`mb-4 p-3 rounded-lg ${
+              message.type === 'success' 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              {message.text}
+            </div>
+          )}
           <div className="w-full max-w-full overflow-x-hidden">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Staff Management</h1>
@@ -307,11 +350,16 @@ export default function StaffPage() {
             <p className="text-sm font-medium text-gray-700 mb-2">Staff Access Link (Quick Clock In/Out):</p>
             <div className="flex gap-2">
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono truncate">
-                {`${window.location.origin}/staff/${shopId}/clock-in`}
+                {shopData?.short_code 
+                  ? `${window.location.origin}/s/${shopData.short_code}`
+                  : `${window.location.origin}/staff/${shopId}/clock-in`}
               </div>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/staff/${shopId}/clock-in`);
+                  const link = shopData?.short_code 
+                    ? `${window.location.origin}/s/${shopData.short_code}`
+                    : `${window.location.origin}/staff/${shopId}/clock-in`;
+                  navigator.clipboard.writeText(link);
                   alert('Staff access link copied to clipboard!');
                 }}
                 className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -320,7 +368,7 @@ export default function StaffPage() {
                 <Copy className="w-4 h-4" />
               </button>
               <a
-                href={`/staff/${shopId}/clock-in`}
+                href={shopData?.short_code ? `/s/${shopData.short_code}` : `/staff/${shopId}/clock-in`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
@@ -329,7 +377,11 @@ export default function StaffPage() {
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Quick access for clock in/out. Shows working time and clock out button when clocked in.</p>
+            <p className="text-xs text-gray-500 mt-2">
+              {shopData?.short_code 
+                ? `Short URL: digiget.uk/s/${shopData.short_code} - Easy to share and remember!`
+                : 'Quick access for clock in/out. Shows working time and clock out button when clocked in.'}
+            </p>
           </div>
 
           {/* Staff Portal Link (Full Portal) */}
@@ -337,15 +389,19 @@ export default function StaffPage() {
             <p className="text-sm font-medium text-gray-700 mb-2">Staff Portal Link (Full Portal):</p>
             <div className="flex gap-2">
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono truncate">
-                {shopData?.slug 
-                  ? `${window.location.origin}/staff-portal/${shopData.slug}`
-                  : `${window.location.origin}/staff-portal/${shopId}`}
+                {shopData?.short_code 
+                  ? `${window.location.origin}/p/${shopData.short_code}`
+                  : shopData?.slug 
+                    ? `${window.location.origin}/staff-portal/${shopData.slug}`
+                    : `${window.location.origin}/staff-portal/${shopId}`}
               </div>
               <button
                 onClick={() => {
-                  const link = shopData?.slug 
-                    ? `${window.location.origin}/staff-portal/${shopData.slug}`
-                    : `${window.location.origin}/staff-portal/${shopId}`;
+                  const link = shopData?.short_code 
+                    ? `${window.location.origin}/p/${shopData.short_code}`
+                    : shopData?.slug 
+                      ? `${window.location.origin}/staff-portal/${shopData.slug}`
+                      : `${window.location.origin}/staff-portal/${shopId}`;
                   navigator.clipboard.writeText(link);
                   alert('Staff portal link copied to clipboard!');
                 }}
@@ -355,7 +411,11 @@ export default function StaffPage() {
                 <Copy className="w-4 h-4" />
               </button>
               <a
-                href={shopData?.slug ? `/staff-portal/${shopData.slug}` : `/staff-portal/${shopId}`}
+                href={shopData?.short_code 
+                  ? `/p/${shopData.short_code}` 
+                  : shopData?.slug 
+                    ? `/staff-portal/${shopData.slug}` 
+                    : `/staff-portal/${shopId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
@@ -364,7 +424,11 @@ export default function StaffPage() {
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Full portal with customer management, tasks, and more. Shows working time and clock out button when clocked in. Both links stay in sync.</p>
+            <p className="text-xs text-gray-500 mt-2">
+              {shopData?.short_code 
+                ? `Short URL: digiget.uk/p/${shopData.short_code} - Full portal with customer management, tasks, and more.`
+                : 'Full portal with customer management, tasks, and more. Shows working time and clock out button when clocked in. Both links stay in sync.'}
+            </p>
           </div>
         </div>
         <Link
@@ -457,7 +521,7 @@ export default function StaffPage() {
                       <Pencil className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => handleDeleteEmployee(employee.id)}
+                      onClick={() => handleDeleteEmployee(employee)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Deactivate employee"
                     >

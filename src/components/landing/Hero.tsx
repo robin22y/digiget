@@ -15,15 +15,14 @@ export default function Hero() {
 
             {/* Main Headline */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 leading-tight mb-6">
-              Stop Doing Payroll From Paper.<br />
-              Stop Losing Regulars.
+              Track Staff Hours.<br />
+              Reward Regular Customers.
             </h1>
 
             {/* Subtitle */}
             <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-2xl mx-auto lg:mx-0">
-              Track your staff properly. Keep customers coming back.
-              <br className="hidden sm:block" />
-              No hardware. No installation. <span className="font-semibold">£29/month.</span>
+              Simple time tracking and loyalty program for barber shops.<br />
+              Works on any phone or tablet. £29/month.
             </p>
 
             {/* CTA Buttons */}
@@ -32,28 +31,29 @@ export default function Hero() {
                 to="/signup"
                 className="inline-flex items-center justify-center bg-modern-green text-white px-8 py-4 rounded-lg text-lg font-bold hover:bg-green-600 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02] h-14"
               >
-                Start 14-Day Free Trial
+                Start Free Trial
               </Link>
-              <button
-                onClick={() => {
-                  const element = document.getElementById('demo-video');
-                  if (element) element.scrollIntoView({ behavior: 'smooth' });
-                }}
+              <Link
+                to="#demo"
                 className="inline-flex items-center justify-center bg-white text-modern-blue border-2 border-modern-blue px-8 py-4 rounded-lg text-lg font-bold hover:bg-modern-blue/5 transition-all duration-200 shadow-md hover:shadow-lg h-14"
               >
-                Watch 90-Second Demo
-              </button>
+                See How It Works
+              </Link>
             </div>
 
-            {/* Trust Line */}
-            <div className="flex flex-wrap justify-center lg:justify-start gap-4 text-sm text-gray-600">
+            {/* Trial Info */}
+            <div className="text-sm text-gray-600 space-y-1">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
+                <span>14-day free trial</span>
+              </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
                 <span>No credit card required</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-modern-green flex-shrink-0" />
-                <span>Founding Member rate: £29/month (first 20 shops)</span>
+                <span>First 20 shops: £29/month forever</span>
               </div>
             </div>
           </div>

@@ -4,39 +4,45 @@ export default function SolutionSection() {
   const features = [
     {
       number: '01',
-      title: 'Staff Clock In With GPS Proof',
-      description: 'Your staff clock in with a 4-digit PIN. GPS confirms they\'re actually at your shop - not at home, not at the pub. You see exactly when they arrived and left. No more "forgot to clock out" excuses.',
+      title: 'Staff Time Tracking',
+      description: 'Staff clock in with a 4-digit PIN. Optional GPS verification confirms they\'re at your shop. See who\'s working right now.',
       bullets: [
-        'GPS verification - must be within 50m of shop',
-        'Simple PIN entry - 5 seconds to clock in',
-        'See who\'s working right now at a glance',
-        'End of week: export hours to CSV, done'
+        'Simple PIN entry (~5 seconds)',
+        'Optional GPS verification (50m radius)',
+        'See who\'s currently clocked in',
+        'Export hours to CSV for payroll'
       ],
-      reversed: false
+      reversed: false,
+      image: '/screenshots/clock-in.png',
+      imageAlt: 'Staff clock-in'
     },
     {
       number: '02',
-      title: 'Customers Check In, Get Points Automatically',
-      description: 'Customer walks in. You type their phone number on your tablet. Boom - they get a point. 10 visits = free haircut. They can see their balance on their phone. No cards to lose. No stamps to fake. Just works.',
+      title: 'Customer Loyalty Program',
+      description: 'Type customer\'s phone number when they visit. They automatically get a point. Set how many points = reward.',
       bullets: [
-        'Type phone number, customer gets point (5 seconds)',
-        'They see: "9 points - 1 more for free haircut!"',
-        'Brings regulars back (they don\'t want to lose points)',
-        'Automatic - no apps for customers to download'
+        'Quick check-in (type phone number)',
+        'Customers see their point balance',
+        'Customize rewards (10 visits = free cut, etc)',
+        'No apps for customers to download'
       ],
-      reversed: true
+      reversed: true,
+      image: '/screenshots/customer-checkin.png',
+      imageAlt: 'Customer check-in'
     },
     {
       number: '03',
-      title: 'Payroll In 10 Minutes, Not 3 Hours',
-      description: 'End of week. Click "Payroll Report." See exactly who worked what hours. Export to CSV. Send to your accountant. Done. No calculator. No checking paper. No arguments about hours. Just facts.',
+      title: 'Simple Payroll Reports',
+      description: 'View hours worked by each staff member. Export to CSV. Send to your accountant or import into Xero/QuickBooks.',
       bullets: [
-        'Automatic hour tracking (no manual entry)',
-        'Gross pay calculated instantly',
-        'Export to CSV for your accountant',
-        'Saves 2-3 hours every single week'
+        'Automatic hour calculation',
+        'Gross pay shown (hours × rate)',
+        'Export to CSV',
+        'Week/month views'
       ],
-      reversed: false
+      reversed: false,
+      image: '/screenshots/payroll.png',
+      imageAlt: 'Payroll report'
     }
   ];
 
@@ -46,11 +52,8 @@ export default function SolutionSection() {
         
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Here's How DigiGet Fixes It
+            How DigiGet Helps
           </h2>
-          <p className="text-xl text-gray-600">
-            Two problems. One solution. Works on any phone or tablet.
-          </p>
         </div>
 
         {/* Features */}
@@ -83,20 +86,31 @@ export default function SolutionSection() {
                 </ul>
               </div>
 
-              {/* Image Placeholder */}
+              {/* Image */}
               <div className={`bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 shadow-lg border-2 border-gray-200 ${feature.reversed ? 'md:order-1' : ''}`}>
-                <div className="bg-white rounded-lg p-6 text-center">
-                  <div className="text-4xl mb-4">
-                    {index === 0 && '⏰'}
-                    {index === 1 && '📱'}
-                    {index === 2 && '📊'}
-                  </div>
-                  <p className="text-sm text-gray-500 italic">
-                    {index === 0 && 'Staff clock-in screenshot'}
-                    {index === 1 && 'Customer check-in screenshot'}
-                    {index === 2 && 'Payroll report screenshot'}
-                  </p>
-                </div>
+                <img 
+                  src={feature.image} 
+                  alt={feature.imageAlt}
+                  className="w-full h-auto rounded-lg shadow-md"
+                  onError={(e) => {
+                    // Fallback if image doesn't exist
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = `
+                        <div class="bg-white rounded-lg p-6 text-center">
+                          <div class="text-4xl mb-4">
+                            ${index === 0 ? '⏰' : index === 1 ? '📱' : '📊'}
+                          </div>
+                          <p class="text-sm text-gray-500 italic">
+                            ${feature.imageAlt}
+                          </p>
+                        </div>
+                      `;
+                    }
+                  }}
+                />
               </div>
             </div>
           ))}

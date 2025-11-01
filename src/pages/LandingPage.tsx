@@ -19,7 +19,6 @@ export default function LandingPage() {
         <SolutionSection />
         <HowItWorks />
         <PricingSection />
-        <SocialProofSection />
         <FinalCTA />
       </main>
       <Footer />

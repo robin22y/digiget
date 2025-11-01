@@ -2,23 +2,23 @@ export default function ProblemSection() {
   const problems = [
     {
       icon: "📝",
-      title: "Paper Timesheets Are Hell",
-      description: "You spend 3 hours every Sunday calculating hours from scrappy paper. Half the time the writing's illegible. Your barbers \"forget\" to clock out. You're doing maths instead of running your shop."
+      title: "Manual Payroll Takes Hours",
+      description: "Tracking staff hours on paper or spreadsheets is time-consuming and error-prone. Hard to know who worked when."
     },
     {
-      icon: "🏠",
-      title: "\"I'm Here\" - But Are They?",
-      description: "John texts \"clocked in\" at 9am. He actually rolled up at 9:30. No way to prove it. You're paying for hours he didn't work. Happens every week."
+      icon: "📍",
+      title: "Can't Verify Staff Location",
+      description: "Staff says they clocked in, but were they actually at the shop? No way to verify without being there yourself."
     },
     {
       icon: "💳",
-      title: "Customers Go Elsewhere",
-      description: "Mike's been coming for 2 years. Then Turkish place down the road offers \"10th cut free.\" You lose him. You had no loyalty program. He's gone."
+      title: "Losing Customers to Competitors",
+      description: "Other shops offer loyalty rewards. You don't. Customers go where they get something back for being regulars."
     },
     {
       icon: "🎫",
-      title: "Paper Punch Cards Don't Work",
-      description: "Customers lose them. They're easy to fake. You can't track who's close to a reward. No way to send them a reminder when they're due back. It's 2025 - there's got to be a better way."
+      title: "Paper Punch Cards Are Messy",
+      description: "Customers lose them. They're easy to fake. Hard to track who's close to earning a reward."
     }
   ];
 
@@ -27,7 +27,7 @@ export default function ProblemSection() {
       <div className="max-w-6xl mx-auto">
         
         <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-          Sound Familiar?
+          Common Barber Shop Problems
         </h2>
 
         {/* Problem Grid */}

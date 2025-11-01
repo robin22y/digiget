@@ -233,8 +233,8 @@ export default function CustomerArea() {
       if (customerData) {
         setIsRepeatCustomer(true);
         const greeting = customerData.name
-          ? `Welcome back ${customerData.name}! 👋`
-          : 'Welcome back! 👋';
+          ? `Hello ${customerData.name}! 👋`
+          : 'Hello! 👋';
         setWelcomeMessage(greeting);
         setCustomer(customerData);
         setName(customerData.name || '');
@@ -499,8 +499,8 @@ export default function CustomerArea() {
         // Repeat customer
         setIsRepeatCustomer(true);
         const greeting = customerData.name 
-          ? `Welcome back ${customerData.name}! 👋`
-          : 'Welcome back! 👋';
+          ? `Hello ${customerData.name}! 👋`
+          : 'Hello! 👋';
         setWelcomeMessage(greeting);
         
         setCustomer(customerData);
@@ -572,7 +572,7 @@ export default function CustomerArea() {
         if (error) throw error;
         customerData = data;
       } else {
-        // Create new customer
+        // Create new customer with 1 welcome point
         const { data, error } = await supabase
           .from('customers')
           .insert({
@@ -581,8 +581,8 @@ export default function CustomerArea() {
             name: name.trim() || null,
             email: email.trim() || null,
             address: address.trim() || null,
-            current_points: 0,
-            lifetime_points: 0,
+            current_points: 1, // Award 1 welcome point on creation
+            lifetime_points: 1, // Track lifetime points
             total_visits: 0,
             rewards_redeemed: 0,
             tier: 'New', // Always allocate 'New' on creation
@@ -592,6 +592,23 @@ export default function CustomerArea() {
 
         if (error) throw error;
         customerData = data;
+
+        // Create loyalty transaction record for the welcome point
+        try {
+          await supabase
+            .from('loyalty_transactions')
+            .insert({
+              shop_id: shopId,
+              customer_id: data.id,
+              transaction_type: 'earned',
+              points: 1,
+              description: 'Welcome point - New customer',
+              created_at: new Date().toISOString(),
+            });
+        } catch (txError) {
+          // If transaction record fails, log but don't fail customer creation
+          console.warn('Failed to create loyalty transaction for welcome point:', txError);
+        }
       }
 
       setCustomer(customerData);
