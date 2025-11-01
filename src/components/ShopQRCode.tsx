@@ -21,8 +21,8 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   const [generatingBranded, setGeneratingBranded] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // Use shorter URL for QR codes: /c/:shopId
-  const defaultCheckInUrl = `${window.location.origin}/c/${shopId}`;
+  // QR code links to customer login portal
+  const defaultCheckInUrl = `${window.location.origin}/customer/${shopId}/login`;
 
   // Load or generate QR URL
   useEffect(() => {
@@ -233,7 +233,7 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Check-In QR Code</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Customers can scan this QR code to go directly to your check-in page. 
+            Customers can scan this QR code to access their customer portal to view points and account. 
             Print or download to display at your shop.
           </p>
         </div>
@@ -348,7 +348,7 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
                       </head>
                       <body>
                         <h1>${shopName}</h1>
-                        <p>Check-In QR Code - Scan to check in instantly</p>
+                        <p>Customer Portal QR Code - Scan to view your account</p>
                         <div class="qr-container">${printContent}</div>
                         <p style="margin-top: 30px; font-size: 12px; color: #9ca3af;">
                           Powered by DigiGet - digiget.uk
@@ -427,7 +427,7 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
             <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
               <li>Download or print this QR code</li>
               <li>Display it at your shop entrance or counter</li>
-              <li>Customers scan it to open your check-in page instantly</li>
+              <li>Customers scan it to access their portal to view points and account</li>
               <li>No app download required - works with any QR scanner</li>
             </ul>
           </div>

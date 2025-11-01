@@ -276,7 +276,7 @@ export default function ManageShops() {
 
       // Generate and save QR URL
       if (newShopData) {
-        const qrUrl = `${window.location.origin}/c/${newShopData.id}`;
+        const qrUrl = `${window.location.origin}/customer/${newShopData.id}/login`;
         await supabase
           .from('shops')
           .update({ qr_url: qrUrl })
