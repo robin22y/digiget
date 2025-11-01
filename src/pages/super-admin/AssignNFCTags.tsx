@@ -25,26 +25,58 @@ export default function AssignNFCTags() {
   const loadShops = async () => {
     setLoading(true);
     try {
+      // Try to load with NFC columns first
       const { data, error } = await supabase
         .from('shops')
         .select('id, shop_name, owner_name, owner_email, nfc_tag_id, nfc_tag_active')
         .order('shop_name', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        // If it's a column error, try without NFC columns and show migration message
+        if (error.message?.includes('nfc_tag_id') || error.message?.includes('does not exist') || error.code === '42703') {
+          console.warn('NFC columns not found, loading without them. Migration needs to be run.');
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('shops')
+            .select('id, shop_name, owner_name, owner_email')
+            .order('shop_name', { ascending: true });
+
+          if (fallbackError) throw fallbackError;
+
+          // Map to include null NFC fields so the UI still works
+          const shopsWithNulls = (fallbackData || []).map(shop => ({
+            ...shop,
+            nfc_tag_id: null,
+            nfc_tag_active: false
+          }));
+
+          setShops(shopsWithNulls);
+          setTagIds({});
+          setMessage({ 
+            type: 'error', 
+            text: 'NFC columns not found in database. Please run the migration: supabase/migrations/20250204000002_ensure_nfc_columns_exist.sql' 
+          });
+          return;
+        }
+        throw error;
+      }
 
       setShops(data || []);
       
       // Pre-fill existing tag IDs
       const existingTags: Record<string, string> = {};
-      (data || []).forEach(shop => {
+      (data || []).forEach((shop: any) => {
         if (shop.nfc_tag_id) {
           existingTags[shop.id] = shop.nfc_tag_id;
         }
       });
       setTagIds(existingTags);
+      setMessage(null); // Clear any previous error messages
     } catch (error: any) {
       console.error('Error loading shops:', error);
-      setMessage({ type: 'error', text: `Failed to load shops: ${error.message}` });
+      setMessage({ 
+        type: 'error', 
+        text: `Failed to load shops: ${error.message}. If this is about missing columns, please run the NFC migration first.` 
+      });
     } finally {
       setLoading(false);
     }
@@ -83,6 +115,29 @@ export default function AssignNFCTags() {
     setMessage(null);
 
     try {
+      // Check if NFC columns exist before proceeding
+      const { data: columnTest } = await supabase
+        .from('shops')
+        .select('nfc_tag_id')
+        .limit(0);
+
+      if (!columnTest && columnTest !== null) {
+        // Try to detect if column exists by checking error
+        const { error: testError } = await supabase
+          .from('shops')
+          .select('nfc_tag_id')
+          .limit(1);
+
+        if (testError?.message?.includes('does not exist') || testError?.code === '42703') {
+          setMessage({ 
+            type: 'error', 
+            text: 'NFC columns not found. Please run migration: supabase/migrations/20250203000002_add_nfc_clock_in_system.sql' 
+          });
+          setSaving(prev => ({ ...prev, [shopId]: false }));
+          return;
+        }
+      }
+
       // Check if tag ID is already assigned to another shop
       const { data: existing, error: checkError } = await supabase
         .from('shops')
@@ -92,6 +147,15 @@ export default function AssignNFCTags() {
         .maybeSingle();
 
       if (checkError && checkError.code !== 'PGRST116') {
+        // If it's a column error, show helpful message
+        if (checkError.message?.includes('does not exist') || checkError.code === '42703') {
+          setMessage({ 
+            type: 'error', 
+            text: 'NFC columns not found. Please run migration: supabase/migrations/20250203000002_add_nfc_clock_in_system.sql' 
+          });
+          setSaving(prev => ({ ...prev, [shopId]: false }));
+          return;
+        }
         throw checkError;
       }
 
@@ -104,14 +168,29 @@ export default function AssignNFCTags() {
         return;
       }
 
-      // Assign tag to shop
+      // Assign tag to shop - build update object dynamically
+      const updateData: any = {
+        nfc_tag_id: tagId,
+        nfc_tag_active: true
+      };
+
+      // Only include nfc_enabled if column exists
+      try {
+        const { error: testNfcEnabled } = await supabase
+          .from('shops')
+          .select('nfc_enabled')
+          .limit(0);
+        
+        if (!testNfcEnabled || testNfcEnabled.code !== '42703') {
+          updateData.nfc_enabled = true;
+        }
+      } catch {
+        // Column might not exist, skip it
+      }
+
       const { error: updateError } = await supabase
         .from('shops')
-        .update({
-          nfc_tag_id: tagId,
-          nfc_tag_active: true,
-          nfc_enabled: true
-        })
+        .update(updateData)
         .eq('id', shopId);
 
       if (updateError) {
@@ -148,13 +227,29 @@ export default function AssignNFCTags() {
     setMessage(null);
 
     try {
+      // Build update object dynamically
+      const removeData: any = {
+        nfc_tag_id: null,
+        nfc_tag_active: false
+      };
+
+      // Only include nfc_enabled if column exists
+      try {
+        const { error: testNfcEnabled } = await supabase
+          .from('shops')
+          .select('nfc_enabled')
+          .limit(0);
+        
+        if (!testNfcEnabled || testNfcEnabled.code !== '42703') {
+          removeData.nfc_enabled = false;
+        }
+      } catch {
+        // Column might not exist, skip it
+      }
+
       const { error } = await supabase
         .from('shops')
-        .update({
-          nfc_tag_id: null,
-          nfc_tag_active: false,
-          nfc_enabled: false
-        })
+        .update(removeData)
         .eq('id', shopId);
 
       if (error) throw error;
@@ -232,7 +327,73 @@ export default function AssignNFCTags() {
         {/* Message */}
         {message && (
           <div className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-error'} mb-6`}>
-            {message.text}
+            <div className="flex items-start justify-between">
+              <div className="flex-1">{message.text}</div>
+              {message.type === 'error' && message.text.includes('migration') && (
+                <button
+                  onClick={() => {
+                    const migrationPath = 'supabase/migrations/20250204000002_ensure_nfc_columns_exist.sql';
+                    navigator.clipboard.writeText(`Please run this migration in Supabase SQL Editor:\n\n${migrationPath}\n\nOr copy the contents of the file and run it.`);
+                    alert('Migration file path copied to clipboard! Open it and run the SQL in Supabase SQL Editor.');
+                  }}
+                  className="ml-4 text-sm underline text-blue-600 hover:text-blue-700"
+                >
+                  Copy Migration Info
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Migration Required Alert */}
+        {message?.text?.includes('migration') && shops.length > 0 && (
+          <div className="alert alert-warning mb-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold mb-2">Migration Required</h3>
+                <p className="text-sm mb-3">
+                  NFC columns are not present in your database. Please run the migration to enable NFC tag assignment.
+                </p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded font-mono text-xs mb-3 break-all">
+                  supabase/migrations/20250204000002_ensure_nfc_columns_exist.sql
+                </div>
+                <p className="text-sm mb-2">
+                  <strong>Steps:</strong>
+                </p>
+                <ol className="text-sm list-decimal list-inside space-y-1 mb-3">
+                  <li>Open Supabase Dashboard → SQL Editor</li>
+                  <li>Open the migration file: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">supabase/migrations/20250204000002_ensure_nfc_columns_exist.sql</code></li>
+                  <li>Copy and paste the SQL contents</li>
+                  <li>Run the SQL in Supabase SQL Editor</li>
+                  <li>Refresh this page</li>
+                </ol>
+                <button
+                  onClick={async () => {
+                    try {
+                      // Try to read the migration file content
+                      const response = await fetch('/supabase/migrations/20250204000002_ensure_nfc_columns_exist.sql');
+                      if (response.ok) {
+                        const content = await response.text();
+                        await navigator.clipboard.writeText(content);
+                        alert('Migration SQL copied to clipboard! Paste it in Supabase SQL Editor and run it.');
+                      } else {
+                        // Fallback: copy file path
+                        await navigator.clipboard.writeText('supabase/migrations/20250204000002_ensure_nfc_columns_exist.sql');
+                        alert('Migration file path copied. Please open the file and copy its contents.');
+                      }
+                    } catch {
+                      // Fallback
+                      await navigator.clipboard.writeText('supabase/migrations/20250204000002_ensure_nfc_columns_exist.sql');
+                      alert('Migration file path copied. Please open the file manually.');
+                    }
+                  }}
+                  className="btn btn-secondary btn-sm"
+                >
+                  Copy Migration SQL
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
