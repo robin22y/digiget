@@ -271,7 +271,7 @@ export default function EmailTemplates() {
                         className="input"
                         placeholder="Email subject line"
                       />
-                      <span className="help-text">Use {{variableName}} for dynamic content</span>
+                      <span className="help-text">Use {'{{'}variableName{'}}'} for dynamic content</span>
                     </div>
 
                     <div className="form-group">
