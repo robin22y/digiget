@@ -106,8 +106,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-md w-full animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4 relative z-50">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-md w-full animate-fade-in relative z-50">
         {/* Logo/Icon */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-center">
@@ -127,7 +127,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 relative z-10" noValidate>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Email Address
@@ -159,7 +159,8 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-modern btn-modern-primary"
+            className="w-full btn-modern btn-modern-primary relative z-10 touch-manipulation"
+            style={{ minHeight: '44px', WebkitTapHighlightColor: 'transparent' }}
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>

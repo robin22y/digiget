@@ -204,8 +204,8 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4 relative z-50">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 max-w-md w-full relative z-50">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-modern-blue to-modern-indigo bg-clip-text text-transparent">
             Your Details
@@ -282,7 +282,8 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-modern btn-modern-primary"
+              className="w-full btn-modern btn-modern-primary relative z-10 touch-manipulation"
+              style={{ minHeight: '44px', WebkitTapHighlightColor: 'transparent' }}
             >
               {loading ? 'Creating Account...' : 'Create Account & Start Free Trial'}
             </button>

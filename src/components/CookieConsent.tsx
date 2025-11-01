@@ -239,6 +239,7 @@ export default function CookieConsent() {
       <div 
         className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 animate-fade-in"
         onClick={handleRejectNonEssential}
+        style={{ pointerEvents: 'auto' }}
       />
     </>
   );

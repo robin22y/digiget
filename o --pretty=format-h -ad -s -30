@@ -1,0 +1,20 @@
+6c547fe 2025-11-01 01:41:01 +0000 Fix ThemeToggle import path in Navigation.tsx to resolve build error
+05f7364 2025-11-01 01:38:39 +0000 Make all form backgrounds grey: update inputs, textareas, and selects to use bg-gray-200
+6ca3174 2025-11-01 01:36:45 +0000 Fix white text color in Settings page radio button labels - add explicit text-black with dark mode support
+85866be 2025-11-01 01:25:57 +0000 Fix shadow-modern reference in FeaturesSection
+aac70f4 2025-11-01 01:25:28 +0000 Revert to Apple style design: restore rounded-modern and shadow-modern, keep glass effect removed
+2d5d6e0 2025-11-01 01:19:49 +0000 Switch from Apple style to Google Material Design: smaller border radius, Material shadows, Roboto font
+c7235d2 2025-11-01 01:16:35 +0000 Enable dark mode with ThemeToggle across all layouts and landing page
+474b3ca 2025-11-01 01:13:45 +0000 Make all text black across the site for maximum readability
+d4e9240 2025-11-01 00:56:32 +0000 Redesign with modern styling and fix all text color readability issues
+ba087cd 2025-11-01 00:08:53 +0000 Fix AddressAutocomplete import in ShopLocationSetup
+51dea93 2025-11-01 00:06:05 +0000 Remove unnecessary firestore-seed.json
+3fe7d3f 2025-11-01 00:04:36 +0000 Add dark mode documentation
+68e6ffb 2025-11-01 00:02:39 +0000 Fix dark mode support with global CSS overrides and layout improvements
+2fefa0d 2025-10-31 23:43:13 +0000 Add documentation for test email and exit tracking
+5ac3609 2025-10-31 23:40:47 +0000 Add test email functionality to super admin panel and employee exit tracking
+8601c87 2025-10-31 23:22:34 +0000 Add automatic location setup and dark mode support
+dd45ef5 2025-10-31 23:07:49 +0000 Add email automation system and PWA support
+843702e 2025-10-31 21:27:03 +0000 Remove staff console duplicate, simplify signup, add trial extension and test shop features
+9e6df45 2025-10-31 18:33:42 +0000 Remove duplicate parseTodayTime function in StaffPortal
+4872c76 2025-10-31 18:31:52 +0000 Fix parseTodayTime scope issue in StaffPortal - move function to module level
