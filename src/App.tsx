@@ -4,6 +4,8 @@ import { ShopProvider } from './contexts/ShopContext';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import CreateSuperAdmin from './pages/CreateSuperAdmin';
 import DashboardLayout from './layouts/DashboardLayout';
 import DashboardHome from './pages/dashboard/DashboardHome';
@@ -61,6 +63,8 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/create-super-admin" element={<CreateSuperAdmin />} />
 
           <Route path="/:shopId/balance" element={<CustomerBalance />} />

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -10,7 +10,16 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn } = useAuth();
+
+  // Show success message if redirected from password reset
+  useEffect(() => {
+    if (location.state?.message) {
+      setError(''); // Clear any existing error
+      // Note: You might want to add a success message state instead
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,9 +152,17 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Password
+              </label>
+              <Link 
+                to="/forgot-password" 
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               required
