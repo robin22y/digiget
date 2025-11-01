@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, CheckCircle, UserCheck, ClipboardList, Calendar, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star } from 'lucide-react';
+import { Home, Users, CheckCircle, UserCheck, ClipboardList, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star, Receipt } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
@@ -167,10 +167,15 @@ export default function DashboardLayout() {
       (isOwnerOrAdmin || isFeatureEnabled('fixTimeEntries', user)) && { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries', feature: 'fixTimeEntries' as const },
     ].filter(Boolean) as any[] : []),
     
-    // Diary (if enabled)
-    ...(shop.diary_enabled ? [
-      { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary', feature: undefined },
+    // Payroll Reports (Pro plan only)
+    ...(shop.plan_type === 'pro' ? [
+      { to: `/dashboard/${shopId}/payroll`, icon: Receipt, label: 'Payroll Report', feature: undefined },
     ] : []),
+    
+    // Diary (if enabled) - HIDDEN FOR NOW
+    // ...(shop.diary_enabled ? [
+    //   { to: `/dashboard/${shopId}/diary`, icon: Calendar, label: 'Diary', feature: undefined },
+    // ] : []),
     
     // Deals (Pro plan only, visible to admins/owners regardless of feature flag)
     ...(shop.plan_type === 'pro' && isFeatureEnabled('dealsOffers', user) ? [

@@ -247,7 +247,7 @@ export default function StaffPage() {
           <span className="font-medium">Active Staff: {employees.length}</span>
         </div>
         <Link
-          to={`/dashboard/${shopId}/staff/payroll`}
+          to={`/dashboard/${shopId}/payroll`}
           className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center"
         >
           <Clock className="w-4 h-4 mr-1" />

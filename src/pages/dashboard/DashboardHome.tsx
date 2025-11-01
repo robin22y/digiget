@@ -399,7 +399,7 @@ export default function DashboardHome() {
                 </Link>
               )}
               <Link
-                to={`/dashboard/${shopId}/staff/payroll`}
+                to={`/dashboard/${shopId}/payroll`}
                 className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl text-white hover:from-emerald-700 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
               >
                 <div className="font-bold text-lg flex items-center gap-2">

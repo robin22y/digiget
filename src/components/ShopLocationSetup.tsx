@@ -233,27 +233,57 @@ export default function ShopLocationSetup({
       {/* OPTION 1: Current Location */}
       {method === 'current' && (
         <div className="method-content">
-          <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-4 rounded-r-lg">
-            <p className="font-semibold mb-2">Step 1:</p>
-            <p className="text-sm mb-2">Make sure you're at your shop right now</p>
-            <p className="font-semibold mb-2">Step 2:</p>
-            <p className="text-sm mb-2">Click the button below</p>
-            <p className="font-semibold mb-2">Step 3:</p>
-            <p className="text-sm">Allow location access when prompted</p>
-          </div>
-          
-          <button
-            onClick={handleUseCurrentLocation}
-            disabled={loading}
-            className="w-full btn btn-primary py-4 text-lg"
-          >
-            {loading ? 'Getting location...' : '📍 Use My Current Location'}
-          </button>
-
-          {error && (
-            <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
-              {error}
+          {location ? (
+            <div className="bg-green-50 border-l-4 border-green-600 p-4 mb-4 rounded-r-lg">
+              <p className="font-semibold mb-2 text-green-800">✓ Location Captured</p>
+              <p className="text-sm text-green-700 mb-4">
+                {address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
+              </p>
+              <button
+                onClick={() => {
+                  setLocation(null);
+                  setAddress('');
+                  setError('');
+                }}
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Reset & Try Again
+              </button>
             </div>
+          ) : (
+            <>
+              <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-4 rounded-r-lg">
+                <p className="font-semibold mb-2">Step 1:</p>
+                <p className="text-sm mb-2">Make sure you're at your shop right now</p>
+                <p className="font-semibold mb-2">Step 2:</p>
+                <p className="text-sm mb-2">Click the button below</p>
+                <p className="font-semibold mb-2">Step 3:</p>
+                <p className="text-sm">Allow location access when prompted</p>
+              </div>
+              
+              <button
+                onClick={handleUseCurrentLocation}
+                disabled={loading}
+                className="w-full btn btn-primary py-4 text-lg"
+              >
+                {loading ? 'Getting location...' : '📍 Use My Current Location'}
+              </button>
+
+              {error && (
+                <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                  {error}
+                  <button
+                    onClick={() => {
+                      setError('');
+                      setLoading(false);
+                    }}
+                    className="block mt-2 text-sm text-red-600 hover:text-red-700 hover:underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

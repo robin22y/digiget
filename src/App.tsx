@@ -119,7 +119,7 @@ function App() {
             <Route path="customers" element={<CustomersPage />} />
             <Route path="customers/:customerId" element={<CustomerDetail />} />
             <Route path="staff" element={<StaffPage />} />
-            <Route path="staff/payroll" element={<PayrollPage />} />
+            <Route path="payroll" element={<PayrollPage />} />
             <Route path="staff-requests" element={<StaffRequestsPage />} />
             <Route path="staff-locations" element={<StaffLocationsPage />} />
             <Route path="remote-workers" element={<RemoteWorkers />} />
