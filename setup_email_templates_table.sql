@@ -239,6 +239,142 @@ DigiGet Team',
   '["shopName", "ownerName"]'::jsonb
 ) ON CONFLICT (template_type) DO NOTHING;
 
+-- Insert password reset email template
+INSERT INTO email_templates (template_type, subject, html_body, text_body, variables)
+VALUES (
+  'password_reset',
+  'Reset your DigiGet password',
+  '<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: #2563EB; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+    <h1 style="margin: 0;">Reset Your Password</h1>
+  </div>
+  
+  <div style="background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+    <p><strong>Hi there,</strong></p>
+    
+    <p>We received a request to reset your DigiGet password.</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{resetUrl}}" 
+         style="background: #2563EB; color: white; padding: 14px 28px; 
+                text-decoration: none; border-radius: 6px; display: inline-block; 
+                font-weight: bold;">
+        Reset Password
+      </a>
+    </div>
+    
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 14px;">
+        <strong>⚠️ Security:</strong> This link expires in 1 hour. If you didn''t request this, ignore this email.
+      </p>
+    </div>
+    
+    <p style="color: #6b7280; font-size: 14px;">
+      If the button doesn''t work, copy and paste this link:<br>
+      <a href="{{resetUrl}}" style="color: #2563EB; word-break: break-all;">{{resetUrl}}</a>
+    </p>
+    
+    <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
+      This is an automated message. Please do not reply to this email.
+    </p>
+  </div>
+</body>
+</html>',
+  'Reset Your Password
+
+Hi there,
+
+We received a request to reset your DigiGet password.
+
+Click this link to reset your password:
+{{resetUrl}}
+
+⚠️ Security: This link expires in 1 hour. If you didn''t request this, ignore this email.
+
+This is an automated message. Please do not reply to this email.',
+  '["resetUrl"]'::jsonb
+) ON CONFLICT (template_type) DO NOTHING;
+
+-- Insert trial expiry reminder email template
+INSERT INTO email_templates (template_type, subject, html_body, text_body, variables)
+VALUES (
+  'trial_expiry',
+  'Your DigiGet trial ends in {{daysLeft}} day{{daysLeftPlural}}',
+  '<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+    <h1 style="margin: 0;">⚠️ Your Trial Ends Soon</h1>
+  </div>
+  
+  <div style="background: #fef3c7; padding: 20px; border: 1px solid #fcd34d; border-top: none; border-radius: 0 0 8px 8px;">
+    <p><strong>Hi there,</strong></p>
+    
+    <p>Your DigiGet trial for <strong>{{shopName}}</strong> ends in <strong>{{daysLeft}} day{{daysLeftPlural}}</strong>.</p>
+    
+    <div style="background: white; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 4px;">
+      <p style="margin: 0;"><strong>Trial End Date:</strong> {{trialEndDate}}</p>
+    </div>
+    
+    <p><strong>What happens next?</strong></p>
+    <ul>
+      <li>After {{trialEndDate}}, your account will be paused</li>
+      <li>You won''t be able to check in customers or manage staff</li>
+      <li>Your data is safe and will be restored when you subscribe</li>
+    </ul>
+    
+    <p><strong>Continue enjoying DigiGet:</strong></p>
+    <ul>
+      <li>💰 Basic Plan: <strong>FREE</strong> forever (limited features)</li>
+      <li>🚀 Pro Plan: <strong>£9.99/month</strong> (all features)</li>
+    </ul>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="https://digiget.uk/dashboard" 
+         style="background: #2563EB; color: white; padding: 14px 28px; 
+                text-decoration: none; border-radius: 6px; display: inline-block; 
+                font-weight: bold; font-size: 16px;">
+        Choose Your Plan →
+      </a>
+    </div>
+    
+    <p style="color: #92400e; font-size: 14px;">
+      💡 <strong>No card required</strong> for Basic Plan. Upgrade anytime!
+    </p>
+    
+    <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
+      Questions? Reply to this email or visit <a href="https://digiget.uk">digiget.uk</a>
+    </p>
+  </div>
+</body>
+</html>',
+  'Your Trial Ends Soon
+
+Hi there,
+
+Your DigiGet trial for {{shopName}} ends in {{daysLeft}} day{{daysLeftPlural}}.
+
+Trial End Date: {{trialEndDate}}
+
+What happens next?
+- After {{trialEndDate}}, your account will be paused
+- You won''t be able to check in customers or manage staff
+- Your data is safe and will be restored when you subscribe
+
+Continue enjoying DigiGet:
+- 💰 Basic Plan: FREE forever (limited features)
+- 🚀 Pro Plan: £9.99/month (all features)
+
+Choose Your Plan: https://digiget.uk/dashboard
+
+💡 No card required for Basic Plan. Upgrade anytime!
+
+Questions? Reply to this email or visit digiget.uk',
+  '["shopName", "trialEndDate", "daysLeft", "daysLeftPlural"]'::jsonb
+) ON CONFLICT (template_type) DO NOTHING;
+
 -- Add index
 CREATE INDEX IF NOT EXISTS idx_email_templates_type ON email_templates(template_type);
 
