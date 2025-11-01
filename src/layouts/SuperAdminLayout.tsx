@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Store, FileText, Bell, Settings, LogOut, Download, QrCode, Zap, Menu, X, Star, BookOpen, Mail } from 'lucide-react';
+import { Home, Store, FileText, Bell, Settings, LogOut, Download, QrCode, Zap, Menu, X, Star, BookOpen, Mail, Radio } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -29,6 +29,7 @@ export default function SuperAdminLayout() {
     { to: '/super-admin/dashboard', icon: Home, label: 'Dashboard', end: true },
     { to: '/super-admin/shops', icon: Store, label: 'Manage Shops', end: false },
     { to: '/super-admin/qr-management', icon: QrCode, label: 'QR Management', end: true },
+    { to: '/super-admin/assign-nfc-tags', icon: Radio, label: 'Assign NFC Tags', end: true },
     { to: '/super-admin/all-deals', icon: Zap, label: 'All Deals', end: true },
     { to: '/super-admin/top-rated-shops', icon: Star, label: 'Top Rated', end: true },
     { to: '/super-admin/reports', icon: FileText, label: 'Reports', end: true },

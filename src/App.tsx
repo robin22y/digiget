@@ -49,6 +49,7 @@ import Reports from './pages/super-admin/Reports';
 import Notices from './pages/super-admin/Notices';
 import SuperAdminSettings from './pages/super-admin/Settings';
 import EmailTemplates from './pages/super-admin/EmailTemplates';
+import AssignNFCTags from './pages/super-admin/AssignNFCTags';
 import NotificationsPage from './pages/dashboard/NotificationsPage';
 import TopRatedShops from './pages/super-admin/TopRatedShops';
 import ShopTalk from './pages/ShopTalk.jsx';
@@ -164,6 +165,7 @@ function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="notices" element={<Notices />} />
             <Route path="email-templates" element={<EmailTemplates />} />
+            <Route path="assign-nfc-tags" element={<AssignNFCTags />} />
             <Route path="settings" element={<SuperAdminSettings />} />
           </Route>
 

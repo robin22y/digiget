@@ -262,6 +262,12 @@ input[type="radio"] {
   min-height: 56px;
 }
 
+.btn-sm {
+  padding: 8px 16px;
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+}
+
 /* Navigation */
 .nav {
   background: var(--color-background);
