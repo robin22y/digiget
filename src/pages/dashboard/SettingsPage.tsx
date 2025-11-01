@@ -28,7 +28,7 @@ export default function SettingsPage() {
   const { shopId: paramShopId } = useParams();
   const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'features' | 'subscription'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'subscription'>('business');
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -179,7 +179,9 @@ export default function SettingsPage() {
         .update({
           shop_name: shopName,
           owner_name: ownerName,
-          business_category: businessCategory
+          business_category: businessCategory,
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
         })
         .eq('id', shopId);
 
@@ -219,34 +221,6 @@ export default function SettingsPage() {
       if (error) throw error;
 
       setMessage({ type: 'success', text: 'Loyalty settings saved successfully' });
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveFeatureSettings = async () => {
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const { error } = await supabase
-        .from('shops')
-        .update({
-          diary_enabled: diaryEnabled,
-          auto_logout_hours: autoLogoutHours,
-          latitude: latitude ? parseFloat(latitude) : null,
-          longitude: longitude ? parseFloat(longitude) : null,
-          open_time: openTime || null,
-          close_time: closeTime || null,
-        })
-        .eq('id', shopId);
-
-      if (error) throw error;
-
-      setMessage({ type: 'success', text: 'Feature settings saved successfully. Refresh the page to see changes.' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
@@ -309,12 +283,6 @@ export default function SettingsPage() {
               Loyalty
             </button>
             <button
-              onClick={() => setActiveTab('features')}
-              className={`tab ${activeTab === 'features' ? 'active' : ''}`}
-            >
-              Features
-            </button>
-            <button
               onClick={() => setActiveTab('subscription')}
               className={`tab ${activeTab === 'subscription' ? 'active' : ''}`}
             >
@@ -365,6 +333,52 @@ export default function SettingsPage() {
                   <option value="hair_salon">Hair Salon / Barbershop</option>
                 </select>
                 <span className="help-text">Currently only available for Hair Salons / Barbershops</span>
+              </div>
+
+              <div className="form-group mt-6">
+                <h3 className="text-lg font-semibold mb-3">Shop Location (Geofencing)</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Set your shop's location to enable geofencing. Staff members will need approval to clock in from more than 100 meters away.
+                </p>
+                
+                {(latitude && longitude) ? (
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                    <p className="font-semibold mb-2">Current Location:</p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Coordinates: {latitude}, {longitude}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setLatitude('');
+                        setLongitude('');
+                      }}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      Change Location
+                    </button>
+                  </div>
+                ) : (
+                  <ShopLocationSetup
+                    onLocationSet={async (locationData) => {
+                      setLatitude(locationData.latitude.toString());
+                      setLongitude(locationData.longitude.toString());
+                      // Save immediately when location is set
+                      await supabase
+                        .from('shops')
+                        .update({
+                          latitude: locationData.latitude,
+                          longitude: locationData.longitude,
+                        })
+                        .eq('id', shopId);
+                      
+                      setMessage({
+                        type: 'success',
+                        text: 'Shop location saved successfully!',
+                      });
+                      setTimeout(() => setMessage(null), 3000);
+                    }}
+                  />
+                )}
               </div>
 
               <button
