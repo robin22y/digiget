@@ -1,3 +1,5 @@
+@import './styles/globals.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,63 +20,11 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Modern design system */
+/* Base styles - now in globals.css */
 @layer base {
   body {
-    @apply bg-system-bg text-system-label;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* EMERGENCY VISIBILITY FIX - Ensure all form elements are visible */
-  input:not([type="radio"]):not([type="checkbox"]), 
-  textarea, 
-  select {
-    border: 1px solid #D1D5DB !important;
-    color: #111827 !important;
-    background: #FFFFFF !important;
-  }
-
-  input:focus:not([type="radio"]):not([type="checkbox"]), 
-  textarea:focus, 
-  select:focus {
-    outline: none !important;
-    border-color: #3B82F6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-  }
-
-  input::placeholder,
-  textarea::placeholder {
-    color: #9CA3AF !important;
-    opacity: 1 !important;
-  }
-
-  input:disabled,
-  textarea:disabled,
-  select:disabled {
-    background: #F3F4F6 !important;
-    color: #6B7280 !important;
-    cursor: not-allowed !important;
-  }
-
-  label {
-    color: #111827 !important;
-    font-weight: 600 !important;
-  }
-
-  .text-muted,
-  small,
-  .help-text {
-    color: #6B7280 !important;
-  }
-
-  /* Radio and checkbox labels */
-  input[type="radio"] + span,
-  input[type="checkbox"] + span,
-  label:has(input[type="radio"]),
-  label:has(input[type="checkbox"]) {
-    color: #111827 !important;
+    background-color: var(--color-background-secondary);
+    color: var(--color-text-primary);
   }
 }
 

@@ -289,114 +289,88 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-full overflow-x-hidden">
-      <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Settings</h1>
+    <div className="page">
+      <div className="container">
+        <h1 className="mb-4">Settings</h1>
 
-      <div className="bg-white rounded-lg shadow mb-6 max-w-full">
-        <div className="border-b border-gray-200 overflow-x-auto">
-          <nav className="flex -mb-px min-w-max md:min-w-0">
+        <div className="card">
+          {/* Tabs */}
+          <div className="tabs">
             <button
               onClick={() => setActiveTab('business')}
-                  className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'business'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-400'
-              }`}
-              style={activeTab === 'business' ? {} : { color: '#4B5563' }}
+              className={`tab ${activeTab === 'business' ? 'active' : ''}`}
             >
               Business
             </button>
             <button
               onClick={() => setActiveTab('loyalty')}
-                  className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'loyalty'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-400'
-              }`}
-              style={activeTab === 'loyalty' ? {} : { color: '#4B5563' }}
+              className={`tab ${activeTab === 'loyalty' ? 'active' : ''}`}
             >
               Loyalty
             </button>
             <button
               onClick={() => setActiveTab('features')}
-                  className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'features'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-400'
-              }`}
-              style={activeTab === 'features' ? {} : { color: '#4B5563' }}
+              className={`tab ${activeTab === 'features' ? 'active' : ''}`}
             >
               Features
             </button>
             <button
               onClick={() => setActiveTab('subscription')}
-                  className={`px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'subscription'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-400'
-              }`}
-              style={activeTab === 'subscription' ? {} : { color: '#4B5563' }}
+              className={`tab ${activeTab === 'subscription' ? 'active' : ''}`}
             >
               Subscription
             </button>
-          </nav>
-        </div>
+          </div>
 
-        <div className="p-4 md:p-6">
           {message && (
-            <div
-              className={`mb-4 p-4 rounded-lg ${
-                message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-              }`}
-            >
+            <div className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-error'}`}>
               {message.text}
             </div>
           )}
 
           {activeTab === 'business' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Business Settings</h2>
+            <div>
+              <h2 className="mb-3">Business Settings</h2>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Shop Name</label>
+              <div className="form-group">
+                <label className="label">Shop Name</label>
                 <input
                   type="text"
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  style={{ borderColor: '#D1D5DB', color: '#111827', backgroundColor: '#FFFFFF' }}
+                  className="input"
+                  placeholder="Enter your shop name"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Owner Name</label>
+              <div className="form-group">
+                <label className="label">Owner Name</label>
                 <input
                   type="text"
                   value={ownerName}
                   onChange={(e) => setOwnerName(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  style={{ borderColor: '#D1D5DB', color: '#111827', backgroundColor: '#FFFFFF' }}
+                  className="input"
+                  placeholder="Enter owner name"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Business Category</label>
+              <div className="form-group">
+                <label className="label">Business Category</label>
                 <select
                   value={businessCategory}
                   onChange={(e) => setBusinessCategory(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 appearance-none"
+                  className="input"
                   disabled
-                  style={{ borderColor: '#D1D5DB', color: '#111827', backgroundColor: '#FFFFFF' }}
                 >
                   <option value="hair_salon">Hair Salon / Barbershop</option>
                 </select>
-                <p className="text-xs text-gray-600 mt-1" style={{ color: '#6B7280' }}>Currently only available for Hair Salons / Barbershops</p>
+                <span className="help-text">Currently only available for Hair Salons / Barbershops</span>
               </div>
 
               <button
                 onClick={saveBusinessSettings}
                 disabled={saving}
-                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
+                className="btn btn-primary"
               >
                 <Save className="w-5 h-5 mr-2" />
                 {saving ? 'Saving...' : 'Save Changes'}
@@ -405,119 +379,125 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'loyalty' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Loyalty Program Settings</h2>
+            <div>
+              <h2 className="mb-3">Loyalty Program Settings</h2>
 
-              <div className="flex items-center gap-2">
+              <div className="checkbox-wrapper">
                 <input
                   type="checkbox"
+                  id="loyalty-enabled"
                   checked={loyaltyEnabled}
                   onChange={(e) => setLoyaltyEnabled(e.target.checked)}
-                  className="w-5 h-5 cursor-pointer"
-                  style={{ accentColor: '#3B82F6' }}
                 />
-                <label className="text-sm font-semibold text-gray-900 cursor-pointer" style={{ color: '#111827' }}>Loyalty program enabled</label>
+                <label htmlFor="loyalty-enabled" className="checkbox-label">
+                  Loyalty program enabled
+                </label>
               </div>
 
               {loyaltyEnabled && (
                 <>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-3" style={{ color: '#111827' }}>Points System</label>
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={pointsType === 'per_visit'}
-                          onChange={() => setPointsType('per_visit')}
-                          className="w-5 h-5 cursor-pointer"
-                          style={{ accentColor: '#3B82F6' }}
-                        />
-                        <span className="text-gray-900 font-medium" style={{ color: '#111827' }}>Per visit (customer gets 1 point per visit)</span>
+                  <div className="form-group mt-4">
+                    <label className="label">Points System</label>
+                    
+                    <div className="radio-wrapper">
+                      <input
+                        type="radio"
+                        id="points-per-visit"
+                        name="points-system"
+                        checked={pointsType === 'per_visit'}
+                        onChange={() => setPointsType('per_visit')}
+                      />
+                      <label htmlFor="points-per-visit" className="radio-label">
+                        Per visit (customer gets 1 point per visit)
                       </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={pointsType === 'per_spend'}
-                          onChange={() => setPointsType('per_spend')}
-                          className="w-5 h-5 cursor-pointer"
-                          style={{ accentColor: '#3B82F6' }}
-                        />
-                        <span className="text-gray-900 font-medium" style={{ color: '#111827' }}>Per £ spent (customer gets 1 point per £ spent)</span>
+                    </div>
+                    
+                    <div className="radio-wrapper">
+                      <input
+                        type="radio"
+                        id="points-per-pound"
+                        name="points-system"
+                        checked={pointsType === 'per_spend'}
+                        onChange={() => setPointsType('per_spend')}
+                      />
+                      <label htmlFor="points-per-pound" className="radio-label">
+                        Per £ spent (customer gets 1 point per £ spent)
                       </label>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2" style={{ color: '#111827' }}>
-                      Points needed for reward
-                    </label>
+                  <div className="form-group">
+                    <label className="label">Points needed for reward</label>
                     <input
                       type="number"
                       min="1"
                       value={pointsNeeded}
                       onChange={(e) => setPointsNeeded(parseInt(e.target.value) || 1)}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      style={{ borderColor: '#D1D5DB', color: '#111827', backgroundColor: '#FFFFFF' }}
+                      className="input"
                     />
-                    <p className="text-sm mt-2" style={{ color: '#6B7280' }}>Common values: 5, 6, 8, 10</p>
+                    <span className="help-text">Common values: 5, 6, 8, 10</span>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2" style={{ color: '#111827' }}>
-                      Days between points
-                    </label>
+                  <div className="form-group">
+                    <label className="label">Days between points</label>
                     <input
                       type="number"
                       min="0"
                       value={daysBetweenPoints}
                       onChange={(e) => setDaysBetweenPoints(parseInt(e.target.value) || 0)}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      style={{ borderColor: '#D1D5DB', color: '#111827', backgroundColor: '#FFFFFF' }}
+                      className="input"
                     />
-                    <p className="text-sm mt-2" style={{ color: '#6B7280' }}>
+                    <span className="help-text">
                       Minimum days a customer must wait before earning the next point. Default: 7 days. Set to 0 to allow daily points.
-                    </p>
+                    </span>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-3" style={{ color: '#111827' }}>Reward Type</label>
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={rewardType === 'free_product'}
-                          onChange={() => setRewardType('free_product')}
-                          className="w-5 h-5 cursor-pointer"
-                          style={{ accentColor: '#3B82F6' }}
-                        />
-                        <span className="text-gray-900 font-medium" style={{ color: '#111827' }}>Free product/service</span>
+                  <div className="form-group">
+                    <label className="label">Reward Type</label>
+                    
+                    <div className="radio-wrapper">
+                      <input
+                        type="radio"
+                        id="free-service"
+                        name="reward-type"
+                        checked={rewardType === 'free_product'}
+                        onChange={() => setRewardType('free_product')}
+                      />
+                      <label htmlFor="free-service" className="radio-label">
+                        Free product/service
                       </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={rewardType === 'fixed_discount'}
-                          onChange={() => setRewardType('fixed_discount')}
-                          className="w-5 h-5 cursor-pointer"
-                          style={{ accentColor: '#3B82F6' }}
-                        />
-                        <span className="text-gray-900 font-medium" style={{ color: '#111827' }}>Fixed amount off (£)</span>
+                    </div>
+                    
+                    <div className="radio-wrapper">
+                      <input
+                        type="radio"
+                        id="percentage-discount"
+                        name="reward-type"
+                        checked={rewardType === 'percentage_discount'}
+                        onChange={() => setRewardType('percentage_discount')}
+                      />
+                      <label htmlFor="percentage-discount" className="radio-label">
+                        Percentage discount (%)
                       </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={rewardType === 'percentage_discount'}
-                          onChange={() => setRewardType('percentage_discount')}
-                          className="w-5 h-5 cursor-pointer"
-                          style={{ accentColor: '#3B82F6' }}
-                        />
-                        <span className="text-gray-900 font-medium" style={{ color: '#111827' }}>Percentage discount (%)</span>
+                    </div>
+                    
+                    <div className="radio-wrapper">
+                      <input
+                        type="radio"
+                        id="fixed-discount"
+                        name="reward-type"
+                        checked={rewardType === 'fixed_discount'}
+                        onChange={() => setRewardType('fixed_discount')}
+                      />
+                      <label htmlFor="fixed-discount" className="radio-label">
+                        Fixed amount off (£)
                       </label>
                     </div>
                   </div>
 
                   {(rewardType === 'fixed_discount' || rewardType === 'percentage_discount') && (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2" style={{ color: '#111827' }}>
+                    <div className="form-group">
+                      <label className="label">
                         {rewardType === 'fixed_discount' ? 'Discount Amount (£)' : 'Discount Percentage (%)'}
                       </label>
                       <input
@@ -526,108 +506,93 @@ export default function SettingsPage() {
                         min="0"
                         value={rewardValue}
                         onChange={(e) => setRewardValue(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        className="input"
                         placeholder={rewardType === 'fixed_discount' ? '10.00' : '20'}
-                        style={{ borderColor: '#D1D5DB', color: '#111827', backgroundColor: '#FFFFFF' }}
                       />
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2" style={{ color: '#111827' }}>
-                      Reward Description
-                    </label>
+                  <div className="form-group">
+                    <label className="label">Reward Description</label>
                     <textarea
                       value={rewardDescription}
                       onChange={(e) => setRewardDescription(e.target.value)}
                       placeholder="e.g., Free coffee, £10 off, 20% discount"
                       rows={3}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 resize-y"
-                      style={{ borderColor: '#D1D5DB', color: '#111827', backgroundColor: '#FFFFFF' }}
+                      className="input"
                     />
-                    <p className="text-sm mt-2" style={{ color: '#6B7280' }}>What customer sees when reward is ready</p>
+                    <span className="help-text">What customer sees when reward is ready</span>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-medium text-blue-900 mb-2">Current Program Summary</h3>
-                    <p className="text-blue-800 text-sm">
-                      Customers get 1 point per {pointsType === 'per_visit' ? 'visit' : '£ spent'}.
-                      After {pointsNeeded} {pointsType === 'per_visit' ? 'visits' : 'points'}, they get {rewardDescription || 'a reward'}.
-                    </p>
+                  <div className="alert alert-info">
+                    <strong>Current Program Summary</strong><br />
+                    Customers get 1 point per {pointsType === 'per_visit' ? 'visit' : '£ spent'}. After {pointsNeeded} {pointsType === 'per_visit' ? 'visits' : 'points'}, they get {rewardDescription || 'a reward'}.
                   </div>
                 </>
               )}
 
                   {/* Customer Tier Classification */}
                   <div className="border-t border-gray-200 pt-6 mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Tier Classification</h3>
-                    <p className="text-sm text-gray-600 mb-4">
+                    <h3 className="mb-4">Customer Tier Classification</h3>
+                    <p className="text-muted mb-4">
                       Automatically upgrade customers to tiers based on their lifetime points. Manual tier assignments will override auto-upgrade.
                     </p>
 
-                    <div className="flex items-center mb-4">
+                    <div className="checkbox-wrapper">
                       <input
                         type="checkbox"
+                        id="tier-auto-upgrade"
                         checked={tierAutoUpgradeEnabled}
                         onChange={(e) => setTierAutoUpgradeEnabled(e.target.checked)}
-                        className="mr-2"
                       />
-                      <label className="text-sm font-medium text-gray-700">Enable automatic tier upgrades</label>
+                      <label htmlFor="tier-auto-upgrade" className="checkbox-label">Enable automatic tier upgrades</label>
                     </div>
 
                     {tierAutoUpgradeEnabled && (
-                      <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            🌟 VIP Tier Threshold (lifetime points)
-                          </label>
+                      <div className="card mt-4">
+                        <div className="form-group">
+                          <label className="label">🌟 VIP Tier Threshold (lifetime points)</label>
                           <input
                             type="number"
                             min="0"
                             value={tierVipThreshold}
                             onChange={(e) => setTierVipThreshold(e.target.value)}
                             placeholder="e.g., 50"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="input"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Customers with this many lifetime points or more will be VIP</p>
+                          <span className="help-text">Customers with this many lifetime points or more will be VIP</span>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            🔥 Super Star Tier Threshold (lifetime points)
-                          </label>
+                        <div className="form-group">
+                          <label className="label">🔥 Super Star Tier Threshold (lifetime points)</label>
                           <input
                             type="number"
                             min="0"
                             value={tierSuperStarThreshold}
                             onChange={(e) => setTierSuperStarThreshold(e.target.value)}
                             placeholder="e.g., 200"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="input"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Customers with this many lifetime points or more will be Super Star</p>
+                          <span className="help-text">Customers with this many lifetime points or more will be Super Star</span>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            👑 Royal Tier Threshold (lifetime points)
-                          </label>
+                        <div className="form-group">
+                          <label className="label">👑 Royal Tier Threshold (lifetime points)</label>
                           <input
                             type="number"
                             min="0"
                             value={tierRoyalThreshold}
                             onChange={(e) => setTierRoyalThreshold(e.target.value)}
                             placeholder="e.g., 500"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="input"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Customers with this many lifetime points or more will be Royal</p>
+                          <span className="help-text">Customers with this many lifetime points or more will be Royal</span>
                         </div>
 
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                          <p className="text-xs text-blue-800">
-                            <strong>Note:</strong> Thresholds should be in ascending order (VIP &lt; Super Star &lt; Royal). 
-                            Customers will be assigned the highest tier they qualify for. 
-                            Manual tier assignments always override automatic upgrades.
-                          </p>
+                        <div className="alert alert-info">
+                          <strong>Note:</strong> Thresholds should be in ascending order (VIP &lt; Super Star &lt; Royal). 
+                          Customers will be assigned the highest tier they qualify for. 
+                          Manual tier assignments always override automatic upgrades.
                         </div>
                       </div>
                     )}
@@ -636,7 +601,7 @@ export default function SettingsPage() {
               <button
                 onClick={saveLoyaltySettings}
                 disabled={saving}
-                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
+                className="btn btn-primary"
               >
                 <Save className="w-5 h-5 mr-2" />
                 {saving ? 'Saving...' : 'Save Changes'}
