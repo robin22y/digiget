@@ -1106,6 +1106,7 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      </div>
 
       {/* Lock Button - Show when unlocked */}
       <div className="fixed bottom-6 right-6">
