@@ -90,19 +90,19 @@ export default function LoginPage() {
 
       if (isSuperAdmin) {
         // Redirect super admin to super admin dashboard
-        // Use window.location for mobile browsers to ensure clean redirect
         console.log('Redirecting super admin to dashboard');
         
         // Wait a bit more to ensure auth state is fully updated
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // Use replace to avoid back button issues, and full navigation for mobile
-        if (window.location.pathname === '/super-admin/dashboard') {
-          // Already on dashboard, just reload
-          window.location.reload();
-        } else {
-          // Navigate with replace to prevent loop
+        // Use window.location.href for a hard redirect to ensure clean state
+        // This bypasses React Router and ensures auth state is fresh
+        try {
           window.location.href = '/super-admin/dashboard';
+        } catch (error) {
+          console.error('Redirect error:', error);
+          // Fallback to navigate
+          navigate('/super-admin/dashboard', { replace: true });
         }
         return;
       }

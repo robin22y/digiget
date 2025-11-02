@@ -47,21 +47,16 @@ export function InstallPrompt({ shopName }: InstallPromptProps) {
     // Listen for beforeinstallprompt event
     const handler = (e: Event) => {
       try {
-        // Prevent default browser install prompt
-        e.preventDefault();
         const promptEvent = e as any; // beforeinstallprompt event
         
-        // Verify the event is still valid and not intercepted by extensions
-        if (!promptEvent) {
-          return;
+        // Verify the event is valid before preventing default
+        if (!promptEvent || typeof promptEvent.prompt !== 'function') {
+          return; // Not a valid install prompt
         }
 
-        // Check if prompt function exists and is callable
-        if (typeof promptEvent.prompt !== 'function') {
-          // Some extensions may modify the event, just ignore it
-          return;
-        }
-
+        // Prevent default browser install prompt
+        e.preventDefault();
+        
         // Verify the event hasn't been consumed by checking if it's still cancelable
         if (!e.cancelable) {
           return;
@@ -86,9 +81,15 @@ export function InstallPrompt({ shopName }: InstallPromptProps) {
         }, 30000); // Show after 30 seconds
       } catch (error: any) {
         // Silently handle errors from browser extensions interfering
-        // Don't log if it's the specific message channel error
-        if (error?.message?.includes('message channel') || error?.message?.includes('asynchronous response')) {
-          // This is expected when extensions interfere - ignore silently
+        // Don't log if it's the specific message channel error or preventDefault warning
+        if (error?.message?.includes('message channel') || 
+            error?.message?.includes('asynchronous response') ||
+            error?.message?.includes('preventDefault')) {
+          // This is expected when extensions interfere or preventDefault is called - ignore silently
+          return;
+        }
+        // Suppress console warnings about preventDefault
+        if (error?.message?.includes('beforeinstallprompt')) {
           return;
         }
         console.debug('Install prompt handler error:', error);
