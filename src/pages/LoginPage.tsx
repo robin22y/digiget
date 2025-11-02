@@ -12,7 +12,7 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
 
   // Show success message if redirected from password reset
   useEffect(() => {
@@ -53,34 +53,57 @@ export default function LoginPage() {
         return;
       }
 
-      // Get the current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Wait for auth state to update (important for mobile browsers)
+      // Get the current user after signIn completes
+      let currentUser = user;
+      
+      // If user not immediately available, wait a bit and check again
+      if (!currentUser) {
+        // Wait for auth state to propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const { data: { user: fetchedUser } } = await supabase.auth.getUser();
+        currentUser = fetchedUser;
+      }
+
+      if (!currentUser) {
         setError('Unable to verify user. Please try again.');
         return;
       }
 
       // Check if user is super admin
       // Check email ending with @digiget.uk (case-insensitive)
-      const emailLower = user.email?.toLowerCase() || '';
+      const emailLower = currentUser.email?.toLowerCase() || '';
       const isSuperAdminByEmail = emailLower.endsWith('@digiget.uk');
-      const isSuperAdminByMetadata = user.user_metadata?.role === 'super' || 
-                                     user.user_metadata?.is_super_admin === true;
+      const isSuperAdminByMetadata = currentUser.user_metadata?.role === 'super' || 
+                                     currentUser.user_metadata?.is_super_admin === true;
       const isSuperAdmin = isSuperAdminByEmail || isSuperAdminByMetadata;
 
       console.log('Login check:', {
-        email: user.email,
+        email: currentUser.email,
         emailLower,
         isSuperAdminByEmail,
         isSuperAdminByMetadata,
-        user_metadata: user.user_metadata,
+        user_metadata: currentUser.user_metadata,
         isSuperAdmin
       });
 
       if (isSuperAdmin) {
         // Redirect super admin to super admin dashboard
+        // Use window.location for mobile browsers to ensure clean redirect
         console.log('Redirecting super admin to dashboard');
-        navigate('/super-admin/dashboard');
+        
+        // Wait a bit more to ensure auth state is fully updated
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Use replace to avoid back button issues, and full navigation for mobile
+        if (window.location.pathname === '/super-admin/dashboard') {
+          // Already on dashboard, just reload
+          window.location.reload();
+        } else {
+          // Navigate with replace to prevent loop
+          window.location.href = '/super-admin/dashboard';
+        }
         return;
       }
 
@@ -105,7 +128,9 @@ export default function LoginPage() {
       }
 
       if (shops && shops.length > 0) {
-        navigate(`/dashboard/${shops[0].id}`);
+        // Wait a bit for auth state to update before redirecting
+        await new Promise(resolve => setTimeout(resolve, 100));
+        navigate(`/dashboard/${shops[0].id}`, { replace: true });
       } else {
         setError('No shop found. Please sign up first.');
       }
