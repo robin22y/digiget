@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Search, Plus, Filter, Eye, Power, PowerOff, Trash2, Calendar, X } from 'lucide-react';
+import { Search, Plus, Filter, Eye, Power, PowerOff, Trash2, Calendar, X, Copy, ExternalLink, QrCode, CheckCircle } from 'lucide-react';
+import { QRCode } from 'react-qr-code';
 
 interface Shop {
   id: string;
@@ -15,6 +16,10 @@ interface Shop {
   updated_at: string;
   trial_ends_at?: string;
   is_test_shop?: boolean;
+  qr_url?: string | null;
+  qr_code_active?: boolean;
+  nfc_tag_id?: string | null;
+  nfc_tag_active?: boolean;
 }
 
 export default function ManageShops() {
@@ -29,6 +34,7 @@ export default function ManageShops() {
   const [selectedShops, setSelectedShops] = useState<Set<string>>(new Set());
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [trialDays, setTrialDays] = useState(14);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   
   // New shop form state
   const [newShop, setNewShop] = useState({
@@ -50,18 +56,18 @@ export default function ManageShops() {
 
   const loadShops = async () => {
     try {
-      // Try with all columns first
+      // Try with all columns including QR and NFC
       let { data, error } = await supabase
         .from('shops')
-        .select('id, shop_name, owner_name, owner_email, postcode, business_category, subscription_status, trial_ends_at, is_test_shop, created_at, updated_at')
+        .select('id, shop_name, owner_name, owner_email, postcode, business_category, subscription_status, trial_ends_at, is_test_shop, created_at, updated_at, qr_url, qr_code_active, nfc_tag_id, nfc_tag_active')
         .order('created_at', { ascending: false });
 
-      // If postcode or business_category columns don't exist, try without them
+      // If some columns don't exist, try fallback
       if (error && (error.message?.includes('column') || error.code === '42703')) {
         console.warn('Some columns missing, trying fallback query');
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('shops')
-          .select('id, shop_name, owner_name, owner_email, subscription_status, trial_ends_at, is_test_shop, created_at, updated_at')
+          .select('id, shop_name, owner_name, owner_email, subscription_status, trial_ends_at, is_test_shop, created_at, updated_at, qr_url, qr_code_active, nfc_tag_id, nfc_tag_active')
           .order('created_at', { ascending: false });
           
         if (!fallbackError) {
@@ -70,14 +76,28 @@ export default function ManageShops() {
             ...shop,
             postcode: null,
             business_category: null,
-            updated_at: shop.updated_at || shop.created_at
+            updated_at: shop.updated_at || shop.created_at,
+            qr_url: shop.qr_url || `${window.location.origin}/customer/${shop.id}/login`,
+            qr_code_active: shop.qr_code_active || false,
+            nfc_tag_id: shop.nfc_tag_id || null,
+            nfc_tag_active: shop.nfc_tag_active || false
           }));
           setShops(shopsWithDefaults);
           return;
         }
         throw error;
       }
-      setShops(data || []);
+      
+      // Ensure all shops have QR URLs
+      const shopsWithDefaults = (data || []).map(shop => ({
+        ...shop,
+        qr_url: shop.qr_url || `${window.location.origin}/customer/${shop.id}/login`,
+        qr_code_active: shop.qr_code_active || false,
+        nfc_tag_id: shop.nfc_tag_id || null,
+        nfc_tag_active: shop.nfc_tag_active || false
+      }));
+      
+      setShops(shopsWithDefaults);
     } catch (error) {
       console.error('Error loading shops:', error);
     } finally {
@@ -404,6 +424,8 @@ export default function ManageShops() {
                 <th className="text-left py-2 font-semibold text-gray-900">Postcode</th>
                 <th className="text-left py-2 font-semibold text-gray-900">Type</th>
                 <th className="text-left py-2 font-semibold text-gray-900">Status</th>
+                <th className="text-left py-2 font-semibold text-gray-900">QR Code</th>
+                <th className="text-left py-2 font-semibold text-gray-900">NFC Tag</th>
                 <th className="text-left py-2 font-semibold text-gray-900">Created</th>
                 <th className="text-left py-2 font-semibold text-gray-900">Last Activity</th>
                 <th className="text-right py-2 font-semibold text-gray-900">Actions</th>
@@ -446,6 +468,109 @@ export default function ManageShops() {
                     >
                       {shop.subscription_status}
                     </span>
+                  </td>
+                  <td className="py-2">
+                    {shop.qr_url ? (
+                      <div className="flex flex-col gap-2 min-w-[200px]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 bg-white p-1 border border-gray-200 rounded">
+                            <QRCode
+                              value={shop.qr_url}
+                              size={40}
+                              style={{ height: 'auto', maxWidth: '100%', width: '100%' }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-gray-600 break-all font-mono">
+                              {shop.qr_url}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(shop.qr_url || '');
+                                  setCopiedUrl(shop.id);
+                                  setTimeout(() => setCopiedUrl(null), 2000);
+                                }}
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                title="Copy QR URL"
+                              >
+                                {copiedUrl === shop.id ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                              <a
+                                href={shop.qr_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                title="Open QR URL"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`text-xs ${shop.qr_code_active ? 'text-green-600' : 'text-gray-400'}`}>
+                            {shop.qr_code_active ? '✓ Active' : '○ Inactive'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">No QR</span>
+                    )}
+                  </td>
+                  <td className="py-2">
+                    {shop.nfc_tag_id ? (
+                      <div className="flex flex-col gap-2 min-w-[280px]">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                          <div className="text-xs font-semibold text-blue-900 mb-1">Tag ID:</div>
+                          <code className="text-sm font-mono text-blue-700">{shop.nfc_tag_id}</code>
+                        </div>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                          <div className="text-xs font-semibold text-green-900 mb-1">NFC URL:</div>
+                          <a
+                            href={`${window.location.origin}/nfc-clock?tag=${shop.nfc_tag_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-green-700 hover:text-green-800 hover:underline font-mono text-xs break-all block"
+                          >
+                            {window.location.origin}/nfc-clock?tag={shop.nfc_tag_id}
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const nfcUrl = `${window.location.origin}/nfc-clock?tag=${shop.nfc_tag_id}`;
+                              navigator.clipboard.writeText(nfcUrl);
+                              setCopiedUrl(shop.id);
+                              setTimeout(() => setCopiedUrl(null), 2000);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium"
+                            title="Copy NFC URL"
+                          >
+                            {copiedUrl === shop.id ? (
+                              <>
+                                <CheckCircle className="w-3 h-3" />
+                                <span>Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Copy URL</span>
+                              </>
+                            )}
+                          </button>
+                          <span className={`text-xs ${shop.nfc_tag_active ? 'text-green-600' : 'text-gray-400'}`}>
+                            {shop.nfc_tag_active ? '✓ Active' : '○ Inactive'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">No NFC Tag</span>
+                    )}
                   </td>
                   <td className="py-2 text-gray-600">{new Date(shop.created_at).toLocaleDateString()}</td>
                   <td className="py-2 text-gray-600">{shop.updated_at ? new Date(shop.updated_at).toLocaleDateString() : '-'}</td>
