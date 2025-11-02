@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase';
+
 export interface GeoLocation {
   latitude: number;
   longitude: number;
@@ -65,19 +67,21 @@ export function calculateDistance(
 export async function getAreaName(latitude: number, longitude: number): Promise<string> {
   try {
     // Use Supabase Edge Function to proxy Nominatim requests (avoids CORS issues)
-    const { createClient } = await import('../lib/supabase');
-    const supabase = createClient();
-    
     const { data, error } = await supabase.functions.invoke('reverse-geocode', {
       body: { latitude, longitude }
     });
     
-    if (error || !data) {
-      console.warn('Reverse geocoding failed, using coordinates:', error);
+    if (error) {
+      console.warn('Reverse geocoding edge function error, using coordinates:', error);
       return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
     
-    // Check if response has error
+    if (!data) {
+      console.warn('Reverse geocoding returned no data, using coordinates');
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    }
+    
+    // Check if response has error field
     if (data.error) {
       // If fallback provided, use it, otherwise use coordinates
       return data.fallback || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
