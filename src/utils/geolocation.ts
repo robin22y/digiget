@@ -5,32 +5,137 @@ export interface GeoLocation {
   longitude: number;
 }
 
-export async function getCurrentPosition(): Promise<GeoLocation | null> {
-  return new Promise((resolve) => {
+export interface LocationResult {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  timestamp: number;
+}
+
+export interface LocationError {
+  code: number;
+  message: string;
+}
+
+/**
+ * Get user's current location with high accuracy
+ * Returns promise that resolves with location or rejects with error
+ */
+export async function getCurrentLocation(): Promise<LocationResult> {
+  return new Promise((resolve, reject) => {
+    // Check if geolocation is supported
     if (!navigator.geolocation) {
-      console.warn('Geolocation not supported');
-      resolve(null);
+      reject({
+        code: 0,
+        message: 'Geolocation is not supported by your browser. Please use a modern browser or enable location services.'
+      });
       return;
     }
 
+    // Options for high accuracy
+    const options: PositionOptions = {
+      enableHighAccuracy: true,  // Use GPS if available
+      timeout: 15000,            // Wait up to 15 seconds
+      maximumAge: 0              // Don't use cached position
+    };
+
+    // Get current position
     navigator.geolocation.getCurrentPosition(
+      // Success callback
       (position) => {
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy, // Accuracy in meters
+          timestamp: position.timestamp
         });
       },
+      // Error callback
       (error) => {
-        console.warn('Geolocation error:', error.message);
-        resolve(null);
+        let message = 'Failed to get location. ';
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message += 'You denied location access. Please enable location permissions in your browser settings.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message += 'Location information is unavailable. Make sure GPS/location services are enabled.';
+            break;
+          case error.TIMEOUT:
+            message += 'Location request timed out. Please try again.';
+            break;
+          default:
+            message += 'An unknown error occurred.';
+        }
+        
+        reject({
+          code: error.code,
+          message: message
+        });
       },
-      {
-        enableHighAccuracy: true, // Use GPS for maximum accuracy
-        timeout: 15000, // Increased timeout for better GPS lock
-        maximumAge: 60000, // Accept cached position up to 1 minute old
-      }
+      options
     );
   });
+}
+
+/**
+ * Get location with multiple attempts for better accuracy
+ * Takes the best (most accurate) reading from multiple attempts
+ */
+export async function getAccurateLocation(attempts: number = 3): Promise<LocationResult> {
+  const results: LocationResult[] = [];
+  
+  // Try multiple times
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const location = await getCurrentLocation();
+      results.push(location);
+      
+      // If we get very accurate reading (within 20m), use it immediately
+      if (location.accuracy <= 20) {
+        return location;
+      }
+      
+      // Wait a bit between attempts for GPS to stabilize
+      if (i < attempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    } catch (error) {
+      // If all attempts fail, throw the last error
+      if (i === attempts - 1) {
+        throw error;
+      }
+      // Otherwise continue trying
+    }
+  }
+  
+  // Return the most accurate reading
+  if (results.length === 0) {
+    throw {
+      code: -1,
+      message: 'Failed to get location after multiple attempts.'
+    };
+  }
+  
+  return results.reduce((best, current) => 
+    current.accuracy < best.accuracy ? current : best
+  );
+}
+
+/**
+ * Legacy function for backward compatibility
+ */
+export async function getCurrentPosition(): Promise<GeoLocation | null> {
+  try {
+    const location = await getCurrentLocation();
+    return {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+  } catch (error) {
+    console.warn('Geolocation error:', error);
+    return null;
+  }
 }
 
 export function formatLocation(lat: number | null, lng: number | null): string {
@@ -43,13 +148,17 @@ export function getGoogleMapsLink(lat: number | null, lng: number | null): strin
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
 
+/**
+ * Calculate distance between two GPS points using Haversine formula
+ * Returns distance in meters
+ */
 export function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371e3;
+  const R = 6371e3; // Earth's radius in meters
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
   const Δφ = ((lat2 - lat1) * Math.PI) / 180;
@@ -60,7 +169,41 @@ export function calculateDistance(
     Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c;
+  return R * c; // Distance in meters
+}
+
+/**
+ * Format distance for display
+ */
+export function formatDistance(meters: number): string {
+  if (meters < 1000) {
+    return `${Math.round(meters)}m`;
+  }
+  return `${(meters / 1000).toFixed(1)}km`;
+}
+
+/**
+ * Check if location is within allowed radius
+ */
+export function isWithinRadius(
+  currentLat: number,
+  currentLng: number,
+  targetLat: number,
+  targetLng: number,
+  radiusMeters: number
+): boolean {
+  const distance = calculateDistance(currentLat, currentLng, targetLat, targetLng);
+  return distance <= radiusMeters;
+}
+
+/**
+ * Get accuracy level string
+ */
+export function getAccuracyLevel(accuracy: number): 'excellent' | 'good' | 'fair' | 'poor' {
+  if (accuracy <= 20) return 'excellent';
+  if (accuracy <= 50) return 'good';
+  if (accuracy <= 100) return 'fair';
+  return 'poor';
 }
 
 // Get area name from coordinates using reverse geocoding with road/street level accuracy

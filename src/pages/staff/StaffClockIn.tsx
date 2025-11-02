@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { handleStaffClock } from '../../lib/clockService';
 import { Clock, CheckCircle, X, AlertCircle } from 'lucide-react';
-import { getCurrentPosition, calculateDistance, getAreaName } from '../../utils/geolocation';
+import { getCurrentPosition, getCurrentLocation, calculateDistance, getAreaName, formatDistance, isWithinRadius } from '../../utils/geolocation';
 import GPSConsentModal from '../../components/GPSConsentModal';
 
 interface Employee {
@@ -42,7 +42,7 @@ export default function StaffClockIn() {
   const [currentClockEntry, setCurrentClockEntry] = useState<ClockEntry | null>(null);
   const [currentlyWorking, setCurrentlyWorking] = useState<CurrentlyWorking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+          const [error, setError] = useState('');
   const [shop, setShop] = useState<any>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState('');
@@ -298,27 +298,79 @@ export default function StaffClockIn() {
         return;
       }
 
-      // Get GPS location
-      const location = await getCurrentPosition();
+      // Get GPS location with high accuracy
+      let location: { latitude: number; longitude: number } | null = null;
+      let locationError = '';
+      
+      if (shop.latitude && shop.longitude) {
+        try {
+          // Use improved location function with accuracy info
+          const locationResult = await getCurrentLocation();
+          location = {
+            latitude: locationResult.latitude,
+            longitude: locationResult.longitude
+          };
 
-      // Verify within shop radius (50m) - for all shops
-      if (location && shop.latitude && shop.longitude) {
-        const distance = calculateDistance(
-          location.latitude,
-          location.longitude,
-          shop.latitude,
-          shop.longitude
-        );
+          // Calculate distance from shop
+          const distance = calculateDistance(
+            locationResult.latitude,
+            locationResult.longitude,
+            shop.latitude,
+            shop.longitude
+          );
 
-        if (distance > 50) {
-          setError(`You must be within 50m of the shop to clock in. You are ${Math.round(distance)}m away.`);
+          // Allowed radius (50m default)
+          const allowedRadius = 50;
+
+          // Check if within allowed radius
+          if (!isWithinRadius(locationResult.latitude, locationResult.longitude, shop.latitude, shop.longitude, allowedRadius)) {
+            setError(
+              `You must be within ${allowedRadius}m of the shop to clock in. ` +
+              `You are ${formatDistance(distance)} away. ` +
+              `Please move closer to the shop and try again.`
+            );
+            setIsLoading(false);
+            return;
+          }
+
+          // If accuracy is poor, warn but allow (for indoor GPS issues)
+          if (locationResult.accuracy > 100) {
+            console.warn(`GPS accuracy is ${Math.round(locationResult.accuracy)}m - may affect verification`);
+          }
+
+          // Get location name for display
+          try {
+            const areaName = await getAreaName(locationResult.latitude, locationResult.longitude);
+            setLocationName(areaName);
+          } catch (nameError) {
+            // Non-critical - location name lookup failed but GPS verification passed
+            console.warn('Failed to get location name:', nameError);
+          }
+
+        } catch (err: any) {
+          console.error('GPS verification error:', err);
+          locationError = err.message || 'Failed to verify location';
+          
+          // Show helpful error message
+          let errorMsg = 'Location verification failed. ';
+          
+          if (err.code === 1) { // PERMISSION_DENIED
+            errorMsg += 'Please enable location permissions in your browser settings and try again.';
+          } else if (err.code === 2) { // POSITION_UNAVAILABLE
+            errorMsg += 'Make sure GPS/location services are enabled on your device.';
+          } else if (err.code === 3) { // TIMEOUT
+            errorMsg += 'Location request timed out. Please wait a moment and try again.';
+          } else {
+            errorMsg += locationError;
+          }
+          
+          // Format error message (keep as string for simplicity)
+          const tipsText = '\n\nTips:\n• Enable location services\n• Move near a window for better GPS signal\n• Wait 10-15 seconds for GPS to stabilize\n• Contact your manager if you\'re at the shop but can\'t clock in';
+          
+          setError(errorMsg + tipsText);
           setIsLoading(false);
           return;
         }
-
-        // Get location name
-        const areaName = await getAreaName(location.latitude, location.longitude);
-        setLocationName(areaName);
       }
 
       // Check if shop requires NFC (and NFC is active) but GPS fallback is disabled

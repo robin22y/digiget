@@ -47,20 +47,15 @@ export function DeleteAccountModal({
       }
 
       // Send deletion confirmation email BEFORE deleting (optional)
+      // Note: Email functionality will be added later via edge function
+      // For now, deletion proceeds without email notification
       try {
-        // Note: Email template should be configured in send-email edge function
-        await supabase.functions.invoke('send-email', {
-          body: {
-            to: shop.owner_email,
-            template: 'account_deleted',
-            data: {
-              shop_name: shop.shop_name
-            }
-          }
-        });
+        // TODO: Implement email sending via edge function when available
+        // This will send a deletion confirmation email to the shop owner
+        console.log('Account deletion processed - email notification will be added later');
       } catch (emailErr) {
         // Email sending is not critical - continue with deletion
-        console.warn('Failed to send deletion email (non-critical):', emailErr);
+        console.warn('Email notification skipped (will be implemented later)');
       }
 
       // Delete all related data (cascade via RLS and foreign keys)

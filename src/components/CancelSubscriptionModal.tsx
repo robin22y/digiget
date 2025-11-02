@@ -73,22 +73,15 @@ export function CancelSubscriptionModal({
       if (updateError) throw updateError;
 
       // Send cancellation email (optional - don't block if it fails)
+      // Note: Email functionality will be added later via edge function
+      // For now, cancellation proceeds without email notification
       try {
-        // Note: Email template should be configured in send-email edge function
-        // For now, silently fail if email sending doesn't work
-        await supabase.functions.invoke('send-email', {
-          body: {
-            to: shop.owner_email,
-            template: 'subscription_cancelled',
-            data: {
-              shop_name: shop.shop_name,
-              end_date: getEndDate()
-            }
-          }
-        });
+        // TODO: Implement email sending via edge function when available
+        // This will send a cancellation confirmation email to the shop owner
+        console.log('Cancellation processed - email notification will be added later');
       } catch (emailErr) {
         // Email sending is not critical - continue with cancellation
-        console.warn('Failed to send cancellation email (non-critical):', emailErr);
+        console.warn('Email notification skipped (will be implemented later)');
       }
 
       // Redirect to cancellation confirmation page

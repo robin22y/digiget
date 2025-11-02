@@ -75,56 +75,75 @@ export default function ShopLocationSetup({
   const [method, setMethod] = useState<'current' | 'search' | 'map'>('current');
   const [error, setError] = useState('');
   const [radius, setRadius] = useState(50);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // OPTION 1: Use Current Location
+  // OPTION 1: Use Current Location with improved accuracy
   async function handleUseCurrentLocation() {
     setLoading(true);
+    setIsGettingLocation(true);
     setError('');
+    setLocationAccuracy(null);
 
-    if (!navigator.geolocation) {
-      setError('Geolocation not supported by your browser');
-      setLoading(false);
-      return;
-    }
+    try {
+      // Import the improved geolocation functions
+      const { getAccurateLocation, getAccuracyLevel } = await import('../utils/geolocation');
+      
+      // Get accurate location (tries 3 times, takes best reading)
+      const result = await getAccurateLocation(3);
+      
+      const lat = result.latitude;
+      const lng = result.longitude;
+      const accuracy = result.accuracy;
+      const accuracyLevel = getAccuracyLevel(accuracy);
+      setLocationAccuracy(accuracy);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        try {
-          // Reverse geocode to get address
-          const addr = await reverseGeocode(lat, lng);
-          setLocation({ lat, lng });
-          setAddress(addr);
-          setError('');
-        } catch (err) {
-          setError('Could not get address for this location');
-          setLocation({ lat, lng });
-          setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-        } finally {
-          setLoading(false);
-        }
-      },
-      (err) => {
-        console.error('Geolocation error:', err);
-        let errorMessage = 'Could not get your location. ';
-        if (err.code === err.PERMISSION_DENIED) {
-          errorMessage += 'Please enable location access in your browser settings.';
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          errorMessage += 'Location information is unavailable.';
+      try {
+        // Reverse geocode to get address
+        const addr = await reverseGeocode(lat, lng);
+        setLocation({ lat, lng });
+        setAddress(addr);
+        setError('');
+        
+        // Show accuracy feedback
+        if (accuracy <= 20) {
+          // Excellent - no warning needed
+          setError(''); // Clear any previous errors
+        } else if (accuracy <= 50) {
+          setError(''); // Good accuracy, no error needed
         } else {
-          errorMessage += 'Please try again.';
+          setError(`⚠️ Location found but accuracy is ${Math.round(accuracy)}m. Try moving to a window or outside for better GPS signal.`);
         }
-        setError(errorMessage);
+      } catch (err) {
+        setLocation({ lat, lng });
+        setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        
+        if (accuracy > 50) {
+          setError(`⚠️ Location found but accuracy is ${Math.round(accuracy)}m. Address lookup failed. Try moving to a window or outside for better GPS signal.`);
+        } else {
+          setError('Could not get address for this location, but coordinates are saved.');
+        }
+      } finally {
         setLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+        setIsGettingLocation(false);
       }
-    );
+    } catch (err: any) {
+      console.error('Geolocation error:', err);
+      let errorMessage = err.message || 'Could not get your location. ';
+      
+      if (err.code === 1) { // PERMISSION_DENIED
+        errorMessage += 'Please enable location permissions in your browser settings.';
+      } else if (err.code === 2) { // POSITION_UNAVAILABLE
+        errorMessage += 'Make sure GPS/location services are enabled on your device.';
+      } else if (err.code === 3) { // TIMEOUT
+        errorMessage += 'Location request timed out. Please try again.';
+      }
+      
+      setError(errorMessage);
+      setLoading(false);
+      setIsGettingLocation(false);
+      setLocationAccuracy(null);
+    }
   }
 
   // OPTION 2: Search Address
@@ -205,8 +224,9 @@ export default function ShopLocationSetup({
               : 'text-gray-600 hover:text-gray-900'
           }`}
           onClick={() => setMethod('current')}
+          disabled={isGettingLocation}
         >
-          📍 Use My Location
+          {isGettingLocation ? '📍 Getting Location...' : '📍 Use My Location'}
         </button>
         <button
           className={`flex-1 px-4 py-3 font-semibold transition-all ${
@@ -236,14 +256,37 @@ export default function ShopLocationSetup({
           {location ? (
             <div className="bg-green-50 border-l-4 border-green-600 p-4 mb-4 rounded-r-lg">
               <p className="font-semibold mb-2 text-green-800">✓ Location Captured</p>
-              <p className="text-sm text-green-700 mb-4">
+              <p className="text-sm text-green-700 mb-2">
                 {address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
               </p>
+              {locationAccuracy !== null && (
+                <p className="text-xs mb-3">
+                  <span className={`font-medium ${
+                    locationAccuracy <= 20 ? 'text-green-700' :
+                    locationAccuracy <= 50 ? 'text-blue-700' :
+                    locationAccuracy <= 100 ? 'text-orange-700' :
+                    'text-red-700'
+                  }`}>
+                    Accuracy: ±{Math.round(locationAccuracy)}m
+                    {locationAccuracy <= 20 ? ' (Excellent)' :
+                     locationAccuracy <= 50 ? ' (Good)' :
+                     locationAccuracy <= 100 ? ' (Fair)' :
+                     ' (Poor - try moving to a window or outside)'}
+                  </span>
+                </p>
+              )}
+              {loading && (
+                <div className="mt-2 text-xs text-blue-700">
+                  <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+                  Getting accurate location (this may take 10-15 seconds)...
+                </div>
+              )}
               <button
                 onClick={() => {
                   setLocation(null);
                   setAddress('');
                   setError('');
+                  setLocationAccuracy(null);
                 }}
                 className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
               >
@@ -258,24 +301,78 @@ export default function ShopLocationSetup({
                 <p className="font-semibold mb-2">Step 2:</p>
                 <p className="text-sm mb-2">Click the button below</p>
                 <p className="font-semibold mb-2">Step 3:</p>
-                <p className="text-sm">Allow location access when prompted</p>
+                <p className="text-sm mb-2">Allow location access when prompted</p>
+                <p className="text-xs text-gray-600 mt-2">
+                  💡 <strong>Tip:</strong> For best accuracy, try near a window or outside. This may take 10-15 seconds.
+                </p>
               </div>
               
               <button
                 onClick={handleUseCurrentLocation}
-                disabled={loading}
-                className="w-full btn btn-primary py-4 text-lg"
+                disabled={loading || isGettingLocation}
+                className="w-full btn btn-primary py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Getting location...' : '📍 Use My Current Location'}
+                {loading || isGettingLocation ? (
+                  <>
+                    <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                    Getting accurate location... (10-15 seconds)
+                  </>
+                ) : (
+                  '📍 Use My Current Location'
+                )}
               </button>
+              
+              {(loading || isGettingLocation) && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm font-medium text-blue-900 mb-2">
+                    Getting accurate location...
+                  </p>
+                  <p className="text-xs text-blue-700 mb-0">
+                    • This may take 10-15 seconds for best accuracy<br />
+                    • Please keep your device still<br />
+                    • For best results, move near a window or outside<br />
+                    • GPS is improving accuracy with multiple readings
+                  </p>
+                </div>
+              )}
 
               {error && (
-                <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
-                  {error}
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                  <p className="font-semibold mb-2">⚠️ {error}</p>
+                  
+                  {(error.includes('denied') || error.includes('permission')) && (
+                    <details className="mt-2 text-xs">
+                      <summary className="cursor-pointer text-red-600 hover:text-red-700 mb-1">
+                        How to enable location access:
+                      </summary>
+                      <ul className="mt-2 space-y-1 text-red-600">
+                        <li><strong>iPhone:</strong> Settings → Privacy & Security → Location Services → Safari/Chrome → While Using</li>
+                        <li><strong>Android:</strong> Settings → Apps → Chrome/Browser → Permissions → Location → Allow</li>
+                        <li><strong>Desktop:</strong> Click lock icon in browser address bar → Allow location</li>
+                      </ul>
+                    </details>
+                  )}
+                  
+                  {(error.includes('unavailable') || error.includes('GPS')) && (
+                    <details className="mt-2 text-xs">
+                      <summary className="cursor-pointer text-red-600 hover:text-red-700 mb-1">
+                        Troubleshooting tips:
+                      </summary>
+                      <ul className="mt-2 space-y-1 text-red-600">
+                        <li>Make sure GPS/location services are enabled in device settings</li>
+                        <li>Try moving near a window or going outside</li>
+                        <li>Wait 10-15 seconds for GPS to stabilize</li>
+                        <li>Make sure airplane mode is OFF</li>
+                        <li>Try refreshing the page and allowing location again</li>
+                      </ul>
+                    </details>
+                  )}
+                  
                   <button
                     onClick={() => {
                       setError('');
                       setLoading(false);
+                      setIsGettingLocation(false);
                     }}
                     className="block mt-2 text-sm text-red-600 hover:text-red-700 hover:underline"
                   >
@@ -358,11 +455,28 @@ export default function ShopLocationSetup({
           </h3>
           <div className="space-y-2 mb-4">
             <p>
-              <strong>Address:</strong> {address}
+              <strong>Address:</strong> {address || 'Address not available'}
             </p>
             <p>
               <strong>Coordinates:</strong> {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
             </p>
+            {locationAccuracy !== null && (
+              <p>
+                <strong>GPS Accuracy:</strong>{' '}
+                <span className={
+                  locationAccuracy <= 20 ? 'text-green-700 font-semibold' :
+                  locationAccuracy <= 50 ? 'text-blue-700 font-semibold' :
+                  locationAccuracy <= 100 ? 'text-orange-700 font-semibold' :
+                  'text-red-700 font-semibold'
+                }>
+                  ±{Math.round(locationAccuracy)}m
+                  {locationAccuracy <= 20 ? ' (Excellent)' :
+                   locationAccuracy <= 50 ? ' (Good)' :
+                   locationAccuracy <= 100 ? ' (Fair)' :
+                   ' (Poor - consider retrying near a window)'}
+                </span>
+              </p>
+            )}
           </div>
           
           {/* Radius selector */}
