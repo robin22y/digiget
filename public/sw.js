@@ -113,7 +113,10 @@ async function syncClockIns() {
         const transaction = db.transaction(['pending_clock_entries'], 'readonly');
         const store = transaction.objectStore('pending_clock_entries');
         const index = store.index('synced');
-        const getAllRequest = index.getAll(false);
+        
+        // Use IDBKeyRange.only() to query for false values
+        const keyRange = IDBKeyRange.only(false);
+        const getAllRequest = index.getAll(keyRange);
         
         getAllRequest.onsuccess = async () => {
           const pending = getAllRequest.result || [];

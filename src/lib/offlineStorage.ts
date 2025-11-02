@@ -139,7 +139,10 @@ export async function getPendingClockEntries(): Promise<PendingClockEntry[]> {
     const transaction = database.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
     const index = store.index('synced');
-    const request = index.getAll(false);
+    
+    // Use IDBKeyRange.only() to query for false values
+    const keyRange = IDBKeyRange.only(false);
+    const request = index.getAll(keyRange);
 
     request.onsuccess = () => {
       resolve(request.result || []);
@@ -292,7 +295,10 @@ export async function getPendingCount(): Promise<number> {
     const transaction = database.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
     const index = store.index('synced');
-    const countRequest = index.count(false);
+    
+    // Use IDBKeyRange.only() to count false values
+    const keyRange = IDBKeyRange.only(false);
+    const countRequest = index.count(keyRange);
 
     countRequest.onsuccess = () => {
       resolve(countRequest.result);
@@ -314,7 +320,10 @@ export async function clearSyncedEntries(): Promise<void> {
     const transaction = database.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const index = store.index('synced');
-    const request = index.getAll(true);
+    
+    // Use IDBKeyRange.only() to query for true values
+    const keyRange = IDBKeyRange.only(true);
+    const request = index.getAll(keyRange);
 
     request.onsuccess = () => {
       const syncedEntries = request.result || [];
