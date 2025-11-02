@@ -38,7 +38,7 @@ export function ShopCustomerCheckInModal({
     try {
       const { data } = await supabase
         .from('shops')
-        .select('shop_name, points_needed, reward_description, loyalty_enabled, points_type, days_between_points')
+        .select('shop_name, points_needed, reward_description, loyalty_enabled, points_type')
         .eq('id', shopId)
         .single();
       setShop(data);
@@ -150,11 +150,34 @@ export function ShopCustomerCheckInModal({
 
       setEmployee(staffData);
 
-      // Always award a point on check-in (unless loyalty is disabled)
-      // Each check-in = 1 point, no cooldowns or restrictions
-      const canEarnPoint = shop?.loyalty_enabled !== false;
-      const newPoints = customer.current_points + (canEarnPoint ? 1 : 0);
+      // Check 30-minute cooldown for same phone number
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      
+      const { data: recentTransaction } = await supabase
+        .from('loyalty_transactions')
+        .select('created_at')
+        .eq('shop_id', shopId)
+        .eq('customer_id', customer.id)
+        .eq('transaction_type', 'point_added')
+        .gte('created_at', thirtyMinutesAgo)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentTransaction) {
+        const lastCheckInTime = new Date(recentTransaction.created_at);
+        const now = new Date();
+        const minutesSince = Math.ceil((now.getTime() - lastCheckInTime.getTime()) / (1000 * 60));
+        const remainingMinutes = 30 - minutesSince;
+        setError(`Please wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} before adding points again.`);
+        setLoading(false);
+        return;
+      }
+
+      // Award loyalty point if enabled
+      const newPoints = customer.current_points + 1;
       const newTotalVisits = customer.total_visits + 1;
+      const canEarnPoint = shop?.loyalty_enabled !== false;
 
       // Update customer
       const { data: updatedCustomer } = await supabase
@@ -188,7 +211,7 @@ export function ShopCustomerCheckInModal({
         // Don't fail if visit record fails
       }
 
-      // Create loyalty transaction - always award 1 point per check-in
+      // Create loyalty transaction if point was added
       if (canEarnPoint) {
         await supabase
           .from('loyalty_transactions')
