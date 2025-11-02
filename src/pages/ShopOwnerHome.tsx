@@ -34,10 +34,17 @@ function MenuButton({ icon, label, subtitle, locked, onClick, fullWidth }: MenuB
 }
 
 export function ShopOwnerHome() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { shopId: paramShopId } = useParams();
   const { user } = useAuth();
+  
+  // Debug: Log translation status
+  useEffect(() => {
+    console.log('ShopOwnerHome: Current language:', i18n.language);
+    console.log('ShopOwnerHome: Translation test:', t('home.todays_overview'));
+    console.log('ShopOwnerHome: i18n ready:', i18n.isInitialized);
+  }, [i18n.language, t, i18n.isInitialized]);
   const [shop, setShop] = useState<any>(null);
   const [todayStats, setTodayStats] = useState({
     customers: 0,
