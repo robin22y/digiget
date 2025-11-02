@@ -34,8 +34,15 @@ i18n
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false
+    },
+    detection: {
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage']
     }
   });
+
+// Log for debugging
+console.log('i18n initialized:', i18n.language, 'Resources:', Object.keys(resources));
 
 export default i18n;
 
