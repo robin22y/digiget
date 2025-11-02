@@ -43,10 +43,17 @@ export function InstallPrompt() {
         
         // Show our custom prompt after a delay
         timeoutRef.current = setTimeout(() => {
-          // Check if already dismissed and prompt is still valid
+          // Check if already dismissed
           const dismissed = localStorage.getItem('install-prompt-dismissed');
-          if (!dismissed && deferredPrompt) {
-            setShowPrompt(true);
+          if (!dismissed) {
+            // Use functional setState to access current deferredPrompt
+            setShowPrompt((prev) => {
+              // Check if prompt is still valid before showing
+              if (deferredPrompt) {
+                return true;
+              }
+              return prev;
+            });
           }
         }, 30000); // Show after 30 seconds
       } catch (error: any) {
@@ -67,10 +74,6 @@ export function InstallPrompt() {
       // Clear timeout on unmount
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
-      }
-      // Clear deferred prompt on unmount to prevent channel errors
-      if (deferredPrompt) {
-        setDeferredPrompt(null);
       }
     };
   }, []);
