@@ -1,0 +1,39 @@
+{
+  "common": {
+    "app_name": "ਡਿਜੀਗੇਟ",
+    "active": "ਸਰਗਰਮ",
+    "inactive": "ਨਿਸ਼ਕਿਰਿਅ",
+    "save": "ਸੁਰੱਖਿਅਤ ਕਰੋ",
+    "cancel": "ਰੱਦ ਕਰੋ",
+    "delete": "ਮਿਟਾਓ",
+    "edit": "ਸੰਪਾਦਿਤ ਕਰੋ",
+    "back": "ਵਾਪਸ",
+    "next": "ਅੱਗੇ",
+    "done": "ਹੋ ਗਿਆ",
+    "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+    "error": "ਗਲਤੀ",
+    "success": "ਸਫਲਤਾ",
+    "locked": "ਬੰਦ",
+    "unlocked": "ਖੁੱਲਾ"
+  },
+  "home": {
+    "title": "ਹੋਮ",
+    "todays_overview": "ਅੱਜ ਦਾ ਸੰਖੇਪ",
+    "customers": "ਗਾਹਕ",
+    "staff_hours": "ਸਟਾਫ ਘੰਟੇ",
+    "working": "ਕੰਮ 'ਤੇ",
+    "secure_menu": "ਸੁਰੱਖਿਅਤ ਮੀਨੂ",
+    "tap_to_unlock": "ਅਨਲੌਕ ਕਰਨ ਲਈ ਟੈਪ ਕਰੋ",
+    "currently_working": "ਇਸ ਸਮੇਂ ਕੰਮ ਕਰ ਰਹੇ ਹਨ",
+    "view_all_staff": "ਸਾਰੇ ਸਟਾਫ ਵੇਖੋ"
+  },
+  "menu": {
+    "add_staff": "ਸਟਾਫ ਜੋੜੋ",
+    "payroll_report": "ਤਨਖਾਹ ਰਿਪੋਰਟ",
+    "business_details": "ਕਾਰੋਬਾਰ ਵੇਰਵੇ",
+    "security_settings": "ਸੁਰੱਖਿਆ ਸੈਟਿੰਗਾਂ",
+    "subscription": "ਗਾਹਕੀ",
+    "loyalty_settings": "ਵਫ਼ਾਦਾਰੀ ਸੈਟਿੰਗਾਂ"
+  }
+}
+

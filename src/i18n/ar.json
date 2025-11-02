@@ -1,0 +1,31 @@
+{
+  "common": {
+    "app_name": "ديجي جيت",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "back": "رجوع",
+    "next": "التالي",
+    "done": "تم",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجح",
+    "locked": "مقفل",
+    "unlocked": "مفتوح"
+  },
+  "home": {
+    "title": "الرئيسية",
+    "todays_overview": "نظرة عامة على اليوم",
+    "customers": "العملاء",
+    "staff_hours": "ساعات الموظفين",
+    "working": "يعمل",
+    "secure_menu": "القائمة الآمنة",
+    "tap_to_unlock": "اضغط لفتح القفل",
+    "currently_working": "يعملون حاليا",
+    "view_all_staff": "عرض جميع الموظفين"
+  }
+}
+

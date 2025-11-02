@@ -1,0 +1,31 @@
+{
+  "common": {
+    "app_name": "ডিজিগেট",
+    "active": "সক্রিয়",
+    "inactive": "নিষ্ক্রিয়",
+    "save": "সংরক্ষণ করুন",
+    "cancel": "বাতিল করুন",
+    "delete": "মুছুন",
+    "edit": "সম্পাদনা করুন",
+    "back": "ফিরে যান",
+    "next": "পরবর্তী",
+    "done": "সম্পন্ন",
+    "loading": "লোড হচ্ছে...",
+    "error": "ত্রুটি",
+    "success": "সাফল্য",
+    "locked": "লক",
+    "unlocked": "আনলক"
+  },
+  "home": {
+    "title": "হোম",
+    "todays_overview": "আজকের সংক্ষিপ্ত বিবরণ",
+    "customers": "গ্রাহক",
+    "staff_hours": "কর্মী ঘন্টা",
+    "working": "কাজ করছে",
+    "secure_menu": "সুরক্ষিত মেনু",
+    "tap_to_unlock": "আনলক করতে ট্যাপ করুন",
+    "currently_working": "বর্তমানে কাজ করছে",
+    "view_all_staff": "সব কর্মী দেখুন"
+  }
+}
+

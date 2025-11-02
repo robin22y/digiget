@@ -4,12 +4,26 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import en from './en.json';
 import hi from './hi.json';
-// Additional language files will be added incrementally
+import pa from './pa.json';
+import ur from './ur.json';
+import bn from './bn.json';
+import ta from './ta.json';
+import pl from './pl.json';
+import ro from './ro.json';
+import ar from './ar.json';
+import tr from './tr.json';
 
 const resources = {
   en: { translation: en },
   hi: { translation: hi },
-  // TODO: Add more languages (pa, ur, bn, ta, pl, ro, ar, tr)
+  pa: { translation: pa },
+  ur: { translation: ur },
+  bn: { translation: bn },
+  ta: { translation: ta },
+  pl: { translation: pl },
+  ro: { translation: ro },
+  ar: { translation: ar },
+  tr: { translation: tr }
 };
 
 // RTL languages

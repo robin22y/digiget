@@ -1,0 +1,31 @@
+{
+  "common": {
+    "app_name": "DigiGet",
+    "active": "Activ",
+    "inactive": "Inactiv",
+    "save": "Salvează",
+    "cancel": "Anulează",
+    "delete": "Șterge",
+    "edit": "Editează",
+    "back": "Înapoi",
+    "next": "Următorul",
+    "done": "Terminat",
+    "loading": "Se încarcă...",
+    "error": "Eroare",
+    "success": "Succes",
+    "locked": "Blocat",
+    "unlocked": "Deblocat"
+  },
+  "home": {
+    "title": "Acasă",
+    "todays_overview": "Rezumatul zilei",
+    "customers": "Clienți",
+    "staff_hours": "Ore personal",
+    "working": "Lucrează",
+    "secure_menu": "Meniu securizat",
+    "tap_to_unlock": "Apasă pentru a debloca",
+    "currently_working": "Lucrează în prezent",
+    "view_all_staff": "Vezi tot personalul"
+  }
+}
+

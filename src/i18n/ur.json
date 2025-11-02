@@ -1,0 +1,39 @@
+{
+  "common": {
+    "app_name": "ڈیجی گیٹ",
+    "active": "فعال",
+    "inactive": "غیر فعال",
+    "save": "محفوظ کریں",
+    "cancel": "منسوخ کریں",
+    "delete": "حذف کریں",
+    "edit": "ترمیم کریں",
+    "back": "واپس",
+    "next": "اگلا",
+    "done": "ہو گیا",
+    "loading": "لوڈ ہو رہا ہے...",
+    "error": "خرابی",
+    "success": "کامیابی",
+    "locked": "بند",
+    "unlocked": "کھلا"
+  },
+  "home": {
+    "title": "ہوم",
+    "todays_overview": "آج کا جائزہ",
+    "customers": "گاہک",
+    "staff_hours": "عملے کے گھنٹے",
+    "working": "کام پر",
+    "secure_menu": "محفوظ مینو",
+    "tap_to_unlock": "غیر مقفل کرنے کے لیے ٹیپ کریں",
+    "currently_working": "فی الوقت کام کر رہے ہیں",
+    "view_all_staff": "تمام عملہ دیکھیں"
+  },
+  "menu": {
+    "add_staff": "عملہ شامل کریں",
+    "payroll_report": "تنخواہ رپورٹ",
+    "business_details": "کاروبار کی تفصیلات",
+    "security_settings": "سیکیورٹی ترتیبات",
+    "subscription": "رکنیت",
+    "loyalty_settings": "وفاداری کی ترتیبات"
+  }
+}
+

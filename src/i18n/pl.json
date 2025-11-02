@@ -1,0 +1,31 @@
+{
+  "common": {
+    "app_name": "DigiGet",
+    "active": "Aktywny",
+    "inactive": "Nieaktywny",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "done": "Gotowe",
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "success": "Sukces",
+    "locked": "Zablokowane",
+    "unlocked": "Odblokowane"
+  },
+  "home": {
+    "title": "Strona główna",
+    "todays_overview": "Dzisiejsze podsumowanie",
+    "customers": "Klienci",
+    "staff_hours": "Godziny pracowników",
+    "working": "Pracujący",
+    "secure_menu": "Zabezpieczone menu",
+    "tap_to_unlock": "Dotknij aby odblokować",
+    "currently_working": "Obecnie pracujący",
+    "view_all_staff": "Zobacz wszystkich pracowników"
+  }
+}
+

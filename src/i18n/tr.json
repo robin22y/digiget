@@ -1,0 +1,31 @@
+{
+  "common": {
+    "app_name": "DigiGet",
+    "active": "Aktif",
+    "inactive": "Pasif",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "back": "Geri",
+    "next": "İleri",
+    "done": "Tamam",
+    "loading": "Yükleniyor...",
+    "error": "Hata",
+    "success": "Başarılı",
+    "locked": "Kilitli",
+    "unlocked": "Kilitsiz"
+  },
+  "home": {
+    "title": "Ana Sayfa",
+    "todays_overview": "Bugünün Özeti",
+    "customers": "Müşteriler",
+    "staff_hours": "Personel Saatleri",
+    "working": "Çalışıyor",
+    "secure_menu": "Güvenli Menü",
+    "tap_to_unlock": "Kilidi açmak için dokunun",
+    "currently_working": "Şu anda çalışıyor",
+    "view_all_staff": "Tüm personeli görüntüle"
+  }
+}
+

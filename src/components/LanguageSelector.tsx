@@ -4,7 +4,14 @@ import { useTranslation } from 'react-i18next';
 const languages = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', flag: '🇮🇳' },
-  // Additional languages can be added incrementally
+  { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  { code: 'ur', name: 'Urdu', nativeName: 'اردو', flag: '🇵🇰' },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', flag: '🇧🇩' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'pl', name: 'Polish', nativeName: 'Polski', flag: '🇵🇱' },
+  { code: 'ro', name: 'Romanian', nativeName: 'Română', flag: '🇷🇴' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦' },
+  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' }
 ];
 
 export function LanguageSelector() {

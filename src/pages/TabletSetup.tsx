@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { authorizeDevice } from '../lib/deviceFingerprint';
+import '../styles/shop-owner.css';
 
 export function TabletSetup() {
   const { code } = useParams();
@@ -94,64 +95,62 @@ export function TabletSetup() {
 
   if (step === 'login') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center">
-          <div className="text-6xl mb-4">🔐</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('device.first_time_setup')}</h1>
-          <p className="text-gray-600 mb-6">
-            {t('device.owner_login')}
-          </p>
-
-          <form onSubmit={handleOwnerLogin} className="text-left">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('device.owner_email')}
-              </label>
-              <input
-                type="email"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="owner@example.com"
-                required
-                autoFocus
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('device.password')}
-              </label>
-              <input
-                type="password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">
-                {error}
-              </div>
-            )}
-
-            <button 
-              type="submit" 
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors disabled:opacity-50"
-              disabled={loading}
-            >
-              {loading ? t('common.loading') : t('common.next')}
-            </button>
-          </form>
-
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
-            <strong className="text-blue-900">{t('common.important')}:</strong>
-            <p className="text-sm text-blue-800 mt-2 mb-0">
-              Staff? Ask the owner to set up this tablet first.
+      <div className="setup-page">
+        <div className="container-small">
+          <div className="card text-center">
+            <div className="setup-icon">🔐</div>
+            <h1 className="mb-2">{t('device.first_time_setup')}</h1>
+            <p className="text-gray-600 mb-4">
+              {t('device.owner_login')}
             </p>
+
+            <form onSubmit={handleOwnerLogin}>
+              <div className="form-group text-left">
+                <label className="label">{t('device.owner_email')}</label>
+                <input
+                  type="email"
+                  className="input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="owner@example.com"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group text-left">
+                <label className="label">{t('device.password')}</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="alert alert-error">
+                  {error}
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                className="btn btn-primary btn-large"
+                disabled={loading}
+              >
+                {loading ? t('common.loading') : t('common.next')}
+              </button>
+            </form>
+
+            <div className="alert alert-info mt-4 text-left">
+              <strong>Staff?</strong>
+              <p className="mb-0 mt-2">
+                Ask the owner to set up this tablet first.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -159,48 +158,50 @@ export function TabletSetup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 sm:p-8 text-center">
-        <div className="text-6xl mb-4 text-green-600">✓</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('device.authorize_tablet')}</h1>
-        
-        <div className="my-6">
-          <div className="text-5xl mb-3">📱</div>
-          <p className="text-gray-600">
-            {t('device.authorize_description')}
-          </p>
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
-          <strong className="text-yellow-900 block mb-2">⚠️ {t('device.important')}</strong>
-          <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
-            <li>Counter tablet at shop</li>
-            <li>Reception device at shop</li>
-            <li className="text-yellow-600">Not for personal phone</li>
-            <li className="text-yellow-600">Not for home computer</li>
-          </ul>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">
-            {error}
+    <div className="setup-page">
+      <div className="container-small">
+        <div className="card text-center">
+          <div className="success-icon">✓</div>
+          <h1 className="mb-2">{t('device.authorize_tablet')}</h1>
+          
+          <div className="device-preview">
+            <div className="device-icon">📱</div>
+            <p className="text-gray-600">
+              Authorize this tablet as a trusted device. You won't need to enter the shop PIN on this device again.
+            </p>
           </div>
-        )}
 
-        <button
-          onClick={handleAuthorizeTablet}
-          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors disabled:opacity-50 mb-3"
-          disabled={loading}
-        >
-          {loading ? t('common.loading') : t('device.authorize')}
-        </button>
+          <div className="alert alert-warning text-left">
+            <strong>⚠️ Important:</strong>
+            <ul className="mb-0 mt-2">
+              <li>✓ Counter tablet at shop</li>
+              <li>✓ Reception device at shop</li>
+              <li>❌ Personal phone</li>
+              <li>❌ Home computer</li>
+            </ul>
+          </div>
 
-        <button
-          onClick={() => setStep('login')}
-          className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-        >
-          ← {t('common.back')}
-        </button>
+          {error && (
+            <div className="alert alert-error">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleAuthorizeTablet}
+            className="btn btn-primary btn-large"
+            disabled={loading}
+          >
+            {loading ? t('common.loading') : t('device.authorize')}
+          </button>
+
+          <button
+            onClick={() => setStep('login')}
+            className="btn btn-secondary mt-2"
+          >
+            ← {t('common.back')}
+          </button>
+        </div>
       </div>
     </div>
   );
