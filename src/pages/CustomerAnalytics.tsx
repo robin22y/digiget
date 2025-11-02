@@ -16,7 +16,18 @@ type DateRangeType = 'week' | 'month' | 'custom';
 
 export function CustomerAnalytics() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  
+  // useNavigate hook - must be inside Router context
+  let navigate: ReturnType<typeof useNavigate>;
+  try {
+    navigate = useNavigate();
+  } catch (error) {
+    console.error('useNavigate error - component must be inside Router context:', error);
+    // Fallback: use window.location for navigation
+    navigate = ((path: string) => {
+      window.location.href = path;
+    }) as any;
+  }
   const { user } = useAuth();
   const [shop, setShop] = useState<any>(null);
   const [dateRangeType, setDateRangeType] = useState<DateRangeType>('month');
