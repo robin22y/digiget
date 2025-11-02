@@ -38,13 +38,6 @@ export function ShopOwnerHome() {
   const navigate = useNavigate();
   const { shopId: paramShopId } = useParams();
   const { user } = useAuth();
-  
-  // Debug: Log translation status
-  useEffect(() => {
-    console.log('ShopOwnerHome: Current language:', i18n.language);
-    console.log('ShopOwnerHome: Translation test:', t('home.todays_overview'));
-    console.log('ShopOwnerHome: i18n ready:', i18n.isInitialized);
-  }, [i18n.language, t, i18n.isInitialized]);
   const [shop, setShop] = useState<any>(null);
   const [todayStats, setTodayStats] = useState({
     customers: 0,
@@ -57,6 +50,14 @@ export function ShopOwnerHome() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [sessionExpiry, setSessionExpiry] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Debug: Log translation status
+  useEffect(() => {
+    console.log('ShopOwnerHome: Current language:', i18n.language);
+    console.log('ShopOwnerHome: Translation test:', t('home.todays_overview'));
+    console.log('ShopOwnerHome: i18n ready:', i18n.isInitialized);
+    console.log('ShopOwnerHome: Available resources:', Object.keys(i18n.store?.resources || {}));
+  }, [i18n.language, t, i18n.isInitialized, i18n.store]);
 
   useEffect(() => {
     loadShopData();
