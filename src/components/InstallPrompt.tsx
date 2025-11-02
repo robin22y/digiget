@@ -18,8 +18,19 @@ export function InstallPrompt() {
         e.preventDefault();
         const promptEvent = e as any; // beforeinstallprompt event
         
-        // Verify the event is still valid
-        if (!promptEvent || typeof promptEvent.prompt !== 'function') {
+        // Verify the event is still valid and not intercepted by extensions
+        if (!promptEvent) {
+          return;
+        }
+
+        // Check if prompt function exists and is callable
+        if (typeof promptEvent.prompt !== 'function') {
+          // Some extensions may modify the event, just ignore it
+          return;
+        }
+
+        // Verify the event hasn't been consumed by checking if it's still cancelable
+        if (!e.cancelable) {
           return;
         }
         
@@ -32,19 +43,24 @@ export function InstallPrompt() {
         
         // Show our custom prompt after a delay
         timeoutRef.current = setTimeout(() => {
-          // Check if already dismissed
+          // Check if already dismissed and prompt is still valid
           const dismissed = localStorage.getItem('install-prompt-dismissed');
-          if (!dismissed) {
+          if (!dismissed && deferredPrompt) {
             setShowPrompt(true);
           }
         }, 30000); // Show after 30 seconds
-      } catch (error) {
+      } catch (error: any) {
         // Silently handle errors from browser extensions interfering
-        console.debug('Install prompt handler error (likely from browser extension):', error);
+        // Don't log if it's the specific message channel error
+        if (error?.message?.includes('message channel') || error?.message?.includes('asynchronous response')) {
+          // This is expected when extensions interfere - ignore silently
+          return;
+        }
+        console.debug('Install prompt handler error:', error);
       }
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('beforeinstallprompt', handler, { passive: false });
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
@@ -53,7 +69,9 @@ export function InstallPrompt() {
         clearTimeout(timeoutRef.current);
       }
       // Clear deferred prompt on unmount to prevent channel errors
-      setDeferredPrompt(null);
+      if (deferredPrompt) {
+        setDeferredPrompt(null);
+      }
     };
   }, []);
 
@@ -73,28 +91,62 @@ export function InstallPrompt() {
         return;
       }
 
+      // Check if userChoice exists (prevents channel errors)
+      if (!deferredPrompt.userChoice) {
+        // Extension may have intercepted, just show the prompt without waiting
+        try {
+          await deferredPrompt.prompt();
+        } catch (err) {
+          // Ignore errors from extensions
+        }
+        setDeferredPrompt(null);
+        setShowPrompt(false);
+        return;
+      }
+
       // Show install prompt
       await deferredPrompt.prompt();
 
-      // Wait for user choice with timeout
-      const choicePromise = deferredPrompt.userChoice;
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Install prompt timeout')), 5000)
-      );
+      // Wait for user choice with timeout - handle potential channel errors
+      let outcome = 'dismissed'; // Default to dismissed
+      try {
+        const choicePromise = deferredPrompt.userChoice;
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Install prompt timeout')), 5000)
+        );
 
-      const { outcome } = await Promise.race([choicePromise, timeoutPromise]) as any;
-      
-      console.log(`User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} install`);
+        const result = await Promise.race([choicePromise, timeoutPromise]) as any;
+        outcome = result?.outcome || 'dismissed';
+        
+        if (outcome === 'accepted') {
+          localStorage.setItem('install-prompt-dismissed', 'true');
+        }
+      } catch (choiceError: any) {
+        // Handle message channel errors silently
+        if (choiceError?.message?.includes('message channel') || 
+            choiceError?.message?.includes('asynchronous response')) {
+          // Extension interference - assume dismissed
+          outcome = 'dismissed';
+        } else if (choiceError?.message !== 'Install prompt timeout') {
+          // Log other errors
+          console.debug('User choice error:', choiceError);
+        }
+      }
 
       // Clear the prompt
       setDeferredPrompt(null);
       setShowPrompt(false);
 
-      if (outcome === 'accepted') {
-        localStorage.setItem('install-prompt-dismissed', 'true');
-      }
     } catch (error: any) {
       // Silently handle errors (often from browser extensions or user cancelling)
+      if (error?.message?.includes('message channel') || 
+          error?.message?.includes('asynchronous response')) {
+        // Extension interference - just clear and continue
+        setDeferredPrompt(null);
+        setShowPrompt(false);
+        return;
+      }
+      
       if (error?.message !== 'Install prompt timeout') {
         console.debug('Install prompt error (non-critical):', error);
       }
