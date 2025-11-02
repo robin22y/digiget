@@ -53,7 +53,12 @@ function parseTodayTime(hhmm?: string | null): Date | null {
 
 export default function StaffPortal() {
   const params = useParams();
-  const shopSlug = params.shopSlug || params.code; // Support both route patterns
+  // Get the identifier from either route pattern
+  const shopSlug = params.shopSlug || params.code;
+  
+  // Validate that we got a real value, not the literal ":code"
+  const identifier = shopSlug && shopSlug !== ':code' ? shopSlug : null;
+  
   const [view, setView] = useState<View>('auth');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -68,13 +73,13 @@ export default function StaffPortal() {
   const [currentLocationName, setCurrentLocationName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (shopSlug) {
+    if (identifier) {
       loadShop();
     } else {
-      setError('Shop code missing');
+      setError('Shop code missing. Please check the URL.');
       setLoading(false);
     }
-  }, [shopSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [identifier]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodically check for clock entry status (for sync with staff access link)
   useEffect(() => {
@@ -124,14 +129,14 @@ export default function StaffPortal() {
   };
 
   const loadShop = async () => {
-    if (!shopSlug || !shopSlug.trim()) {
-      setError('Shop slug missing');
+    if (!identifier || !identifier.trim() || identifier === ':code') {
+      setError('Shop code missing. Please check the URL.');
       setLoading(false);
       return;
     }
 
     // Trim and validate identifier
-    const trimmedIdentifier = shopSlug.trim();
+    const trimmedIdentifier = identifier.trim();
     
     if (trimmedIdentifier.length === 0) {
       setError('Invalid shop URL');
