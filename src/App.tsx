@@ -80,10 +80,8 @@ function ManifestUpdater() {
   useEffect(() => {
     const { type, shopCode } = detectPWAType(location.pathname);
     
-    // For now, use static manifest for all routes
-    // Shop-specific manifest can be added later when basic PWA is working
+    // Optionally load shop name for Apple title (cosmetic only)
     if (type === 'shop' && shopCode) {
-      // Optionally load shop name for Apple title, but use static manifest
       const loadShopName = async () => {
         try {
           const { supabase } = await import('./lib/supabase');
@@ -94,7 +92,7 @@ function ManifestUpdater() {
             .maybeSingle();
           
           if (shop?.shop_name) {
-            // Update Apple title only - keep static manifest
+            // Update Apple title only - uses single manifest
             const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]') as HTMLMetaElement;
             if (appleTitle) {
               appleTitle.content = shop.shop_name;
@@ -107,8 +105,8 @@ function ManifestUpdater() {
       loadShopName();
     }
     
-    // Always use static manifest for now
-    updateManifest('default');
+    // Always use single unified manifest
+    updateManifest('default', shopCode);
   }, [location.pathname, params.code]);
 
   return null;

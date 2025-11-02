@@ -1,11 +1,11 @@
 /**
- * Utility to manage dynamic PWA manifests based on route
+ * Utility to manage PWA manifest (single unified manifest)
  */
 
 export type PWAType = 'owner' | 'shop' | 'default';
 
 /**
- * Update manifest link and meta tags based on current route
+ * Update manifest link and meta tags (always uses single unified manifest)
  */
 export function updateManifest(type: PWAType, shopCode?: string, shopName?: string) {
   // Update manifest link
@@ -48,36 +48,15 @@ export function updateManifest(type: PWAType, shopCode?: string, shopName?: stri
     document.head.appendChild(appleIcon);
   }
 
-  switch (type) {
-    case 'owner':
-      manifestLink.href = '/owner-manifest.json';
-      themeColorMeta.content = '#2563EB';
-      appleTitle.content = 'DigiGet Owner';
-      appleIcon.href = '/icon-192.png';
-      break;
-
-    case 'shop':
-      if (shopCode) {
-        // For now, use static manifest - shop-specific can be added later
-        // Keep static manifest for basic PWA functionality
-        manifestLink.href = '/manifest.json';
-        themeColorMeta.content = '#007aff';
-        appleTitle.content = shopName || 'DigiGet Shop';
-        appleIcon.href = '/icon-192.png';
-      }
-      break;
-
-    default:
-      manifestLink.href = '/manifest.json';
-      themeColorMeta.content = '#2563EB';
-      appleTitle.content = 'DigiGet';
-      appleIcon.href = '/icon-192.png';
-      break;
-  }
+  // Always use single unified manifest
+  manifestLink.href = '/manifest.json';
+  themeColorMeta.content = '#007aff';
+  appleTitle.content = shopName || 'DigiGet';
+  appleIcon.href = '/icon-192.png';
 }
 
 /**
- * Detect PWA type from current pathname
+ * Detect PWA type from current pathname (for reference only - not used for manifest switching)
  */
 export function detectPWAType(pathname: string): { type: PWAType; shopCode?: string } {
   if (pathname.startsWith('/dashboard') || pathname.startsWith('/super-admin')) {
