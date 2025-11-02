@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Save, CheckCircle, XCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react';
 
 interface Shop {
   id: string;
@@ -17,6 +17,7 @@ export default function AssignNFCTags() {
   const [tagIds, setTagIds] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [copiedTagId, setCopiedTagId] = useState<string | null>(null);
 
   useEffect(() => {
     loadShops();
@@ -275,6 +276,21 @@ export default function AssignNFCTags() {
   const shopsWithTags = shops.filter(s => s.nfc_tag_id).length;
   const shopsWithoutTags = shops.filter(s => !s.nfc_tag_id).length;
 
+  const getNfcUrl = (tagId: string | null): string => {
+    if (!tagId) return '';
+    return `${window.location.origin}/nfc-clock?tag=${tagId}`;
+  };
+
+  const copyToClipboard = async (text: string, shopId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedTagId(shopId);
+      setTimeout(() => setCopiedTagId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="page">
@@ -407,6 +423,7 @@ export default function AssignNFCTags() {
                   <th>Owner</th>
                   <th>Email</th>
                   <th>Current Tag ID</th>
+                  <th>NFC Clock-In URL</th>
                   <th>New Tag ID</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -415,7 +432,7 @@ export default function AssignNFCTags() {
               <tbody>
                 {shops.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-500">
+                    <td colSpan={8} className="text-center py-8 text-gray-500">
                       No shops found
                     </td>
                   </tr>
@@ -432,6 +449,37 @@ export default function AssignNFCTags() {
                           </code>
                         ) : (
                           <em className="text-muted">Not assigned</em>
+                        )}
+                      </td>
+                      <td>
+                        {shop.nfc_tag_id ? (
+                          <div className="flex items-center gap-2">
+                            <code className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-mono max-w-xs truncate">
+                              {getNfcUrl(shop.nfc_tag_id)}
+                            </code>
+                            <button
+                              onClick={() => copyToClipboard(getNfcUrl(shop.nfc_tag_id), shop.id)}
+                              className="p-1 hover:bg-gray-100 rounded transition-colors"
+                              title="Copy URL"
+                            >
+                              {copiedTagId === shop.id ? (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-gray-600" />
+                              )}
+                            </button>
+                            <a
+                              href={getNfcUrl(shop.nfc_tag_id)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 hover:bg-gray-100 rounded transition-colors"
+                              title="Open URL"
+                            >
+                              <ExternalLink className="w-4 h-4 text-gray-600" />
+                            </a>
+                          </div>
+                        ) : (
+                          <em className="text-muted text-sm">No tag assigned</em>
                         )}
                       </td>
                       <td>
@@ -508,6 +556,12 @@ export default function AssignNFCTags() {
             </li>
             <li>
               <strong>First 20 Shops:</strong> NFC tags are free for the first 20 shops. After assignment, shop owner can enable/disable in Settings
+            </li>
+            <li>
+              <strong>NFC Clock-In URL:</strong> Each assigned tag gets a unique URL. Staff can scan the NFC tag or visit the URL to clock in. Format: <code className="bg-gray-100 px-1 rounded">https://digiget.uk/nfc-clock?tag=DIGIGET-XXXXXXXX</code>
+            </li>
+            <li>
+              <strong>Usage:</strong> Share the NFC Clock-In URL with shop owners. They can print it as a QR code or use it directly for staff clock-ins.
             </li>
           </ul>
         </div>
