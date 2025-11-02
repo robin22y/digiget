@@ -423,7 +423,7 @@ export default function AssignNFCTags() {
                   <th>Owner</th>
                   <th>Email</th>
                   <th>Current Tag ID</th>
-                  <th style={{ minWidth: '350px' }}>NFC Clock-In URL</th>
+                  <th style={{ minWidth: '450px' }}>NFC Clock-In URL</th>
                   <th>New Tag ID</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -453,32 +453,42 @@ export default function AssignNFCTags() {
                       </td>
                       <td>
                         {shop.nfc_tag_id ? (
-                          <div className="flex flex-col gap-2 min-w-[300px]">
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={getNfcUrl(shop.nfc_tag_id)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-700 hover:underline font-mono text-sm break-all"
-                                title="Click to open NFC clock-in page"
-                              >
-                                {getNfcUrl(shop.nfc_tag_id)}
-                              </a>
+                          <div className="flex flex-col gap-3 min-w-[400px] max-w-[500px]">
+                            {/* Full URL - Large and visible */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <div className="flex items-start gap-2">
+                                <div className="flex-1">
+                                  <label className="block text-xs font-semibold text-blue-900 mb-1 uppercase tracking-wide">
+                                    NFC Clock-In URL
+                                  </label>
+                                  <a
+                                    href={getNfcUrl(shop.nfc_tag_id)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-700 hover:text-blue-800 hover:underline font-mono text-base break-all leading-relaxed block"
+                                    title="Click to open NFC clock-in page"
+                                    style={{ wordBreak: 'break-all' }}
+                                  >
+                                    {getNfcUrl(shop.nfc_tag_id)}
+                                  </a>
+                                </div>
+                              </div>
                             </div>
+                            {/* Action buttons */}
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => copyToClipboard(getNfcUrl(shop.nfc_tag_id), shop.id)}
-                                className="flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-medium transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
                                 title="Copy URL to clipboard"
                               >
                                 {copiedTagId === shop.id ? (
                                   <>
-                                    <CheckCircle className="w-3 h-3" />
+                                    <CheckCircle className="w-4 h-4" />
                                     <span>Copied!</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Copy className="w-3 h-3" />
+                                    <Copy className="w-4 h-4" />
                                     <span>Copy URL</span>
                                   </>
                                 )}
@@ -487,11 +497,11 @@ export default function AssignNFCTags() {
                                 href={getNfcUrl(shop.nfc_tag_id)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
                                 title="Open in new tab"
                               >
-                                <ExternalLink className="w-3 h-3" />
-                                <span>Open</span>
+                                <ExternalLink className="w-4 h-4" />
+                                <span>Open Link</span>
                               </a>
                             </div>
                           </div>
