@@ -18,17 +18,43 @@ export default function ShopPortal() {
   // Note: Using static manifest for now - shop-specific features can be added later
   // The basic PWA will work with the static manifest.json
 
-  // Check if shop PIN is stored in session
+  const navigate = useNavigate();
+
+  // Check if device is trusted OR shop PIN is stored in session
   useEffect(() => {
     if (!code) return;
     
-    const unlocked = sessionStorage.getItem(`shop_unlocked_${code}`);
-    if (unlocked === 'true') {
-      setIsUnlocked(true);
-      loadShopData();
-      loadCurrentlyWorking();
-      loadTodayCustomers();
-    }
+    const checkAccess = async () => {
+      // Load shop data first
+      const { data } = await supabase
+        .from('shops')
+        .select('id, shop_name, short_code, shop_pin')
+        .eq('short_code', code)
+        .maybeSingle();
+
+      if (data) {
+        setShop(data);
+        
+        // Check if device is trusted
+        const trusted = await isDeviceTrusted(data.id);
+        if (trusted) {
+          setIsUnlocked(true);
+          loadCurrentlyWorking();
+          loadTodayCustomers();
+          return;
+        }
+      }
+      
+      // If not trusted, check session PIN
+      const unlocked = sessionStorage.getItem(`shop_unlocked_${code}`);
+      if (unlocked === 'true') {
+        setIsUnlocked(true);
+        loadCurrentlyWorking();
+        loadTodayCustomers();
+      }
+    };
+    
+    checkAccess();
   }, [code]);
 
   async function loadShopData() {

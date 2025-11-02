@@ -75,10 +75,73 @@ export async function isDeviceTrusted(shopId: string): Promise<boolean> {
       .eq('is_active', true)
       .maybeSingle();
 
-    return !!data && !error;
+    if (data && !error) {
+      // Update last used time
+      await supabase
+        .from('trusted_devices')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('device_fingerprint', fingerprint);
+      
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error('Error checking device trust:', error);
     return false;
+  }
+}
+
+/**
+ * Authorize current device as trusted for a shop
+ */
+export async function authorizeDevice(
+  shopId: string, 
+  authorizedBy: string,
+  deviceName?: string
+): Promise<{ success: boolean; error?: string }> {
+  const fingerprint = storeDeviceFingerprint();
+
+  try {
+    // Check if already authorized
+    const { data: existing } = await supabase
+      .from('trusted_devices')
+      .select('*')
+      .eq('device_fingerprint', fingerprint)
+      .eq('shop_id', shopId)
+      .maybeSingle();
+
+    if (existing) {
+      // Already authorized, just update
+      const { error: updateError } = await supabase
+        .from('trusted_devices')
+        .update({ 
+          is_active: true,
+          last_used_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+
+      if (updateError) throw updateError;
+      return { success: true };
+    }
+
+    // Create new authorization
+    const { error: insertError } = await supabase
+      .from('trusted_devices')
+      .insert({
+        shop_id: shopId,
+        device_name: deviceName || 'Shop Tablet',
+        device_fingerprint: fingerprint,
+        authorized_by: authorizedBy,
+        is_active: true,
+        authorized_at: new Date().toISOString()
+      });
+
+    if (insertError) throw insertError;
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error authorizing device:', error);
+    return { success: false, error: error.message || 'Failed to authorize device' };
   }
 }
 

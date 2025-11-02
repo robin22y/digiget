@@ -40,6 +40,8 @@ import CustomerArea from './pages/public/CustomerArea';
 import CustomerLoginPortal from './pages/public/CustomerLoginPortal';
 import StaffPortal from './pages/staff/StaffPortal';
 import ShopPortal from './pages/ShopPortal';
+import { TabletSetup } from './pages/TabletSetup';
+import { ShopOwnerHome } from './pages/ShopOwnerHome';
 import StaffClockIn from './pages/staff/StaffClockIn';
 import CustomerCheckIn from './pages/staff/CustomerCheckIn';
 import NFCClockIn from './pages/NFCClockIn';
@@ -144,6 +146,12 @@ function App() {
 
           {/* Shop Portal - Shared Tablet (shop PIN) */}
           <Route path="/shop/:code" element={<ShopPortal />} />
+          
+          {/* Tablet Setup - First Time Authorization */}
+          <Route path="/setup/:code" element={<TabletSetup />} />
+          
+          {/* Shop Owner Home - Simplified Dashboard */}
+          <Route path="/owner-home" element={<ShopOwnerHome />} />
 
           {/* New staff-facing pages */}
           <Route path="/staff/:shopId/clock-in" element={<StaffClockIn />} />
