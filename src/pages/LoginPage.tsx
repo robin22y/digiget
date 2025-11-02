@@ -111,7 +111,7 @@ export default function LoginPage() {
       const { data: shops, error: shopsError } = await supabase
         .from('shops')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .limit(1);
 
       if (shopsError) {
