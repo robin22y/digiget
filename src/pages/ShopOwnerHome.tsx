@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { PINModal } from '../components/PINModal';
+import '../styles/shop-owner.css';
 
 interface MenuButtonProps {
   icon: string;
@@ -19,21 +20,15 @@ function MenuButton({ icon, label, subtitle, locked, onClick, fullWidth }: MenuB
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center p-5 bg-gray-50 border-2 rounded-xl transition-all ${
-        locked 
-          ? 'border-gray-200 opacity-60 cursor-not-allowed' 
-          : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:shadow-md active:scale-95'
-      } ${fullWidth ? 'col-span-full' : ''}`}
+      className={`menu-button ${locked ? 'locked' : ''} ${fullWidth ? 'full-width' : ''}`}
       disabled={locked}
     >
-      <div className="text-4xl mb-3">{icon}</div>
-      <div className="text-center">
-        <div className="font-semibold text-gray-900 mb-1 text-sm">{label}</div>
-        <div className="text-xs text-gray-600">{subtitle}</div>
+      <div className="menu-icon">{icon}</div>
+      <div className="menu-content">
+        <div className="menu-label">{label}</div>
+        <div className="menu-subtitle">{subtitle}</div>
       </div>
-      {locked && (
-        <div className="absolute top-2 right-2 text-lg">🔒</div>
-      )}
+      {locked && <div className="lock-indicator">🔒</div>}
     </button>
   );
 }
@@ -257,65 +252,63 @@ export function ShopOwnerHome() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-bold text-gray-900">{shop.shop_name}</h1>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-              {t('common.active')}
-            </span>
+    <div className="shop-owner-home">
+      {/* Header */}
+      <div className="header">
+        <div className="header-left">
+          <h1>{shop.shop_name}</h1>
+          <span className="status-badge active">
+            {t('common.active')}
+          </span>
+        </div>
+        <div className="header-right">
+          <LanguageSelector />
+          <button 
+            onClick={() => handleMenuClick(`/dashboard/${shop.id}/settings`, false)}
+            className="settings-button"
+          >
+            ⚙️
+          </button>
+        </div>
+      </div>
+
+      {/* Today's Overview */}
+      <div className="card">
+        <h3>{t('home.todays_overview')}</h3>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">👥</div>
+            <div className="stat-value">{todayStats.customers}</div>
+            <div className="stat-label">{t('home.customers')}</div>
           </div>
-          <div className="flex items-center gap-3">
-            <LanguageSelector />
-            <button 
-              onClick={() => handleMenuClick(`/dashboard/${shop.id}/settings`, false)}
-              className="w-10 h-10 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-xl"
-            >
-              ⚙️
-            </button>
+          <div className="stat-card">
+            <div className="stat-icon">⏰</div>
+            <div className="stat-value">{todayStats.staffHours.toFixed(1)}h</div>
+            <div className="stat-label">{t('home.staff_hours')}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon">👥</div>
+            <div className="stat-value">{todayStats.working}</div>
+            <div className="stat-label">{t('home.working')}</div>
           </div>
         </div>
+      </div>
 
-        {/* Today's Overview */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">{t('home.todays_overview')}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="flex flex-col items-center p-4 bg-blue-50 rounded-xl">
-              <div className="text-3xl mb-2">👥</div>
-              <div className="text-3xl font-bold text-blue-600 mb-1">{todayStats.customers}</div>
-              <div className="text-sm text-gray-600">{t('home.customers')}</div>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-green-50 rounded-xl">
-              <div className="text-3xl mb-2">⏰</div>
-              <div className="text-3xl font-bold text-green-600 mb-1">{todayStats.staffHours.toFixed(1)}h</div>
-              <div className="text-sm text-gray-600">{t('home.staff_hours')}</div>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-purple-50 rounded-xl">
-              <div className="text-3xl mb-2">👥</div>
-              <div className="text-3xl font-bold text-purple-600 mb-1">{todayStats.working}</div>
-              <div className="text-sm text-gray-600">{t('home.working')}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Secure Menu */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-900">🔐 {t('home.secure_menu')}</h3>
-            {isUnlocked && sessionExpiry && (
-              <span className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                🔓 {t('common.unlocked')} 
-                <span className="font-normal">
-                  {Math.floor((sessionExpiry - Date.now()) / 60000)}m
-                </span>
+      {/* Secure Menu */}
+      <div className="card">
+        <div className="card-header">
+          <h3>🔐 {t('home.secure_menu')}</h3>
+          {isUnlocked && sessionExpiry && (
+            <span className="session-indicator">
+              🔓 {t('common.unlocked')}
+              <span className="session-timer">
+                {Math.floor((sessionExpiry - Date.now()) / 60000)}m
               </span>
-            )}
-          </div>
-          <p className="text-gray-600 mb-4 text-sm">{t('home.tap_to_unlock')}</p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            </span>
+          )}
+        </div>
+        <p className="text-gray-600 mb-3">{t('home.tap_to_unlock')}</p>
+        <div className="menu-grid">
             <MenuButton
               icon="👥"
               label={t('menu.add_staff')}
@@ -391,44 +384,42 @@ export function ShopOwnerHome() {
           </div>
         </div>
 
-        {/* Currently Working */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">
-            {t('home.currently_working')} ({currentStaff.length})
-          </h3>
-          
-          {currentStaff.length > 0 ? (
-            <div className="space-y-3 mb-4">
-              {currentStaff.map((entry: any) => {
-                const employee = entry.employees;
-                return (
-                  <div key={entry.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-semibold text-gray-900">
-                        {employee?.first_name} {employee?.last_name}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Since {formatTime(entry.clock_in_time)}
-                      </div>
+      {/* Currently Working */}
+      <div className="card">
+        <h3>{t('home.currently_working')} ({currentStaff.length})</h3>
+        
+        {currentStaff.length > 0 ? (
+          <div className="staff-list">
+            {currentStaff.map((entry: any) => {
+              const employee = entry.employees;
+              return (
+                <div key={entry.id} className="staff-item">
+                  <div className="staff-info">
+                    <div className="staff-name">
+                      {employee?.first_name} {employee?.last_name}
                     </div>
-                    <div className="text-lg font-semibold text-green-600">
-                      {calculateDuration(entry.clock_in_time)}
+                    <div className="staff-time">
+                      Since {formatTime(entry.clock_in_time)}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-gray-600 mb-4">No staff currently clocked in</p>
-          )}
+                  <div className="staff-duration">
+                    {calculateDuration(entry.clock_in_time)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-gray-600 mb-4">No staff currently clocked in</p>
+        )}
 
-          <button
-            onClick={() => handleMenuClick(`/dashboard/${shop.id}/staff`, !isUnlocked)}
-            className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            {t('home.view_all_staff')} {!isUnlocked && '🔒'}
-          </button>
-        </div>
+        <button
+          onClick={() => handleMenuClick(`/dashboard/${shop.id}/staff`, !isUnlocked)}
+          className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        >
+          {t('home.view_all_staff')} {!isUnlocked && '🔒'}
+        </button>
+      </div>
 
         {/* PIN Modal */}
         {showPINModal && (
