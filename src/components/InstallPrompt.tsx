@@ -4,6 +4,7 @@ export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const promptRef = useRef<any>(null);
 
   useEffect(() => {
     // Check if already installed
@@ -34,7 +35,9 @@ export function InstallPrompt() {
           return;
         }
         
+        // Store in both state and ref (ref for timeout callback)
         setDeferredPrompt(promptEvent);
+        promptRef.current = promptEvent;
         
         // Clear any existing timeout
         if (timeoutRef.current) {
@@ -43,17 +46,10 @@ export function InstallPrompt() {
         
         // Show our custom prompt after a delay
         timeoutRef.current = setTimeout(() => {
-          // Check if already dismissed
+          // Check if already dismissed and prompt is still valid
           const dismissed = localStorage.getItem('install-prompt-dismissed');
-          if (!dismissed) {
-            // Use functional setState to access current deferredPrompt
-            setShowPrompt((prev) => {
-              // Check if prompt is still valid before showing
-              if (deferredPrompt) {
-                return true;
-              }
-              return prev;
-            });
+          if (!dismissed && promptRef.current) {
+            setShowPrompt(true);
           }
         }, 30000); // Show after 30 seconds
       } catch (error: any) {
@@ -75,6 +71,8 @@ export function InstallPrompt() {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      // Clear prompt ref on unmount
+      promptRef.current = null;
     };
   }, []);
 
@@ -138,6 +136,7 @@ export function InstallPrompt() {
 
       // Clear the prompt
       setDeferredPrompt(null);
+      promptRef.current = null;
       setShowPrompt(false);
 
     } catch (error: any) {
@@ -146,6 +145,7 @@ export function InstallPrompt() {
           error?.message?.includes('asynchronous response')) {
         // Extension interference - just clear and continue
         setDeferredPrompt(null);
+        promptRef.current = null;
         setShowPrompt(false);
         return;
       }
@@ -155,6 +155,7 @@ export function InstallPrompt() {
       }
       // Clear prompt on error
       setDeferredPrompt(null);
+      promptRef.current = null;
       setShowPrompt(false);
     }
   };
