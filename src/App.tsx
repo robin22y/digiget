@@ -35,6 +35,7 @@ import CustomerBalance from './pages/public/CustomerBalance';
 import CustomerArea from './pages/public/CustomerArea';
 import CustomerLoginPortal from './pages/public/CustomerLoginPortal';
 import StaffPortal from './pages/staff/StaffPortal';
+import ShopPortal from './pages/ShopPortal';
 import StaffClockIn from './pages/staff/StaffClockIn';
 import CustomerCheckIn from './pages/staff/CustomerCheckIn';
 import NFCClockIn from './pages/NFCClockIn';
@@ -85,7 +86,12 @@ function App() {
           
           <Route path="/xtra/:staffIdentifier" element={<TabletInterfaceByName />} />
 
+          {/* Staff Portal - Personal (for phones) */}
           <Route path="/staff-portal/:shopSlug" element={<StaffPortal />} />
+          <Route path="/staff/:code" element={<StaffPortal />} />
+
+          {/* Shop Portal - Shared Tablet (shop PIN) */}
+          <Route path="/shop/:code" element={<ShopPortal />} />
 
           {/* New staff-facing pages */}
           <Route path="/staff/:shopId/clock-in" element={<StaffClockIn />} />
@@ -100,7 +106,7 @@ function App() {
 
           {/* Short URL routes (short codes) */}
           <Route path="/s/:code" element={<ShortUrlRedirect redirectType="clock-in" />} />
-          <Route path="/p/:code" element={<ShortUrlRedirect redirectType="portal" />} />
+          <Route path="/p/:code" element={<Navigate to="/staff/:code" replace />} />
 
           {/* Short check-in routes */}
           <Route path="/c/:shopId" element={<CheckInPage />} />

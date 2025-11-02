@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { getCurrentPosition, calculateDistance } from '../utils/geolocation';
+import { isDeviceTrusted, getDeviceFingerprint } from './deviceFingerprint';
 
 export interface ClockInResult {
   success: boolean;
@@ -86,7 +87,19 @@ async function performClockIn(
   
   const now = new Date();
   let location: GeoLocation | null = null;
+  let verificationMethod: 'trusted_device' | 'gps_verified' | 'no_verification' = 'no_verification';
+  let deviceFingerprint: string | null = null;
 
+  // Check if device is trusted
+  const deviceTrusted = await isDeviceTrusted(shopId);
+  
+  if (deviceTrusted) {
+    // Trusted device - skip GPS verification
+    console.log('Trusted device detected - skipping GPS verification');
+    verificationMethod = 'trusted_device';
+    deviceFingerprint = getDeviceFingerprint();
+  } else {
+    // Device not trusted - proceed with GPS verification if required
   // Get GPS location if required or if using GPS method
   // Also get location for shop_tablet method if shopLocation is provided (for verification)
   if (method === 'gps' || options?.requireGPS || (method === 'shop_tablet' && options?.shopLocation)) {
@@ -121,6 +134,9 @@ async function performClockIn(
             error: `You must be within ${options.shopLocation.radius || 50}m of the shop to clock in. You are ${Math.round(distance)}m away.`
           };
         }
+          
+          // GPS verified successfully
+          verificationMethod = 'gps_verified';
         // GPS method: don't block even if far away (allows remote clock-ins)
       }
     } catch (gpsError) {
@@ -132,6 +148,7 @@ async function performClockIn(
         };
       }
       // For shop_tablet, continue without location if GPS fails
+      }
     }
   }
 
@@ -148,6 +165,8 @@ async function performClockIn(
     clock_out_latitude: null,
     clock_out_longitude: null,
     nfc_tag_id: options?.nfcTagId || null,
+    verification_method: verificationMethod,
+    device_fingerprint: deviceFingerprint,
   };
 
   const { data: clockEvent, error: insertError } = await supabase

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Save, CheckCircle, Lock, KeyRound } from 'lucide-react';
+import { Save, CheckCircle, Lock, KeyRound, Smartphone, Trash2, RotateCcw } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import ShopLocationSetup from '../../components/ShopLocationSetup';
 import OwnerPinModal from '../../components/OwnerPinModal';
 import ChangeOwnerPinModal from '../../components/ChangeOwnerPinModal';
 import { CancelSubscriptionModal } from '../../components/CancelSubscriptionModal';
 import { DeleteAccountModal } from '../../components/DeleteAccountModal';
+import { AuthorizeDeviceModal } from '../../components/AuthorizeDeviceModal';
+import { storeDeviceFingerprint } from '../../lib/deviceFingerprint';
 
 interface Shop {
   id: string;
@@ -15,6 +17,8 @@ interface Shop {
   owner_name: string;
   owner_email: string;
   owner_pin: string | null;
+  shop_pin: string | null;
+  short_code: string | null;
   business_category: string;
   plan_type: 'basic' | 'pro';
   subscription_status: string;
@@ -53,6 +57,9 @@ export default function SettingsPage() {
   const [showChangePinModal, setShowChangePinModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAuthDeviceModal, setShowAuthDeviceModal] = useState(false);
+  const [trustedDevices, setTrustedDevices] = useState<any[]>([]);
+  const [currentDeviceFingerprint, setCurrentDeviceFingerprint] = useState<string>('');
 
   const handlePinSuccess = () => {
     setIsUnlocked(true);
@@ -273,12 +280,109 @@ export default function SettingsPage() {
       setNfcEnabled(data.nfc_enabled || false);
       setTabletPinEnabled(data.tablet_pin_enabled !== false); // Default to true
       setGpsEnabled(data.gps_enabled || false);
+
+      // Load trusted devices
+      await loadTrustedDevices();
+      
+      // Initialize device fingerprint
+      const fingerprint = storeDeviceFingerprint();
+      setCurrentDeviceFingerprint(fingerprint);
     } catch (error) {
       console.error('Error loading shop:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadTrustedDevices = async () => {
+    if (!shopId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('trusted_devices')
+        .select('*')
+        .eq('shop_id', shopId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTrustedDevices(data || []);
+    } catch (error) {
+      console.error('Error loading trusted devices:', error);
+    }
+  };
+
+  const handleRevokeDevice = async (deviceId: string) => {
+    const confirmed = confirm(
+      'Revoke access for this device?\n\n' +
+      'Staff will no longer be able to clock in from this device without GPS verification.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('trusted_devices')
+        .update({ is_active: false })
+        .eq('id', deviceId);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: '✓ Device access revoked' });
+      setTimeout(() => setMessage(null), 3000);
+      await loadTrustedDevices();
+    } catch (error: any) {
+      setMessage({ type: 'error', text: 'Failed to revoke device' });
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const handleReactivateDevice = async (deviceId: string) => {
+    try {
+      const { error } = await supabase
+        .from('trusted_devices')
+        .update({ is_active: true })
+        .eq('id', deviceId);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: '✓ Device reactivated' });
+      setTimeout(() => setMessage(null), 3000);
+      await loadTrustedDevices();
+    } catch (error: any) {
+      setMessage({ type: 'error', text: 'Failed to reactivate device' });
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const formatDate = (date: string | null) => {
+    if (!date) return 'Never';
+    return new Date(date).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const formatRelativeTime = (date: string | null) => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const then = new Date(date);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  };
+
+  const currentDeviceIsTrusted = trustedDevices.some(
+    d => d.device_fingerprint === currentDeviceFingerprint && d.is_active
+  );
 
   const saveBusinessSettings = async () => {
     setSaving(true);
@@ -1113,6 +1217,279 @@ export default function SettingsPage() {
                 </button>
               </div>
 
+              {/* SHOP PIN & PORTAL LINKS SECTION */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">🏪 Shop PIN & Portal Access</h3>
+                
+                {/* Shop PIN Configuration */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Shop PIN (6 digits)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      {shop.shop_pin ? (
+                        <div className="flex items-center gap-3">
+                          <code className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-lg font-mono font-semibold">
+                            {shop.shop_pin}
+                          </code>
+                          <button
+                            onClick={async () => {
+                              const newPin = prompt('Enter new 6-digit shop PIN:');
+                              if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
+                                const { error } = await supabase
+                                  .from('shops')
+                                  .update({ shop_pin: newPin })
+                                  .eq('id', shopId);
+                                if (error) {
+                                  alert('Failed to update shop PIN');
+                                } else {
+                                  alert('Shop PIN updated successfully');
+                                  await loadShop();
+                                }
+                              } else if (newPin) {
+                                alert('PIN must be exactly 6 digits');
+                              }
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                          >
+                            Change Shop PIN
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            const newPin = prompt('Enter 6-digit shop PIN for tablet access:');
+                            if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
+                              const { error } = await supabase
+                                .from('shops')
+                                .update({ shop_pin: newPin })
+                                .eq('id', shopId);
+                              if (error) {
+                                alert('Failed to set shop PIN');
+                              } else {
+                                alert('Shop PIN set successfully');
+                                await loadShop();
+                              }
+                            } else if (newPin) {
+                              alert('PIN must be exactly 6 digits');
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          Set Shop PIN
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    This PIN is used to unlock the shop tablet. All staff share this PIN to access the tablet, 
+                    then enter their own PIN for each action (clock in, check in customer).
+                  </p>
+                </div>
+
+                {/* Portal Links */}
+                {shop.short_code && (
+                  <div className="space-y-4">
+                    {/* Shop Tablet Portal */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                            🏪 Shop Tablet Portal
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">For Shared Tablet</span>
+                          </h4>
+                          <p className="text-sm text-gray-600 mb-3">
+                            Open this on your shop tablet. All staff use the same shop PIN to access, 
+                            then enter their own PIN for each action.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={`${window.location.origin}/shop/${shop.short_code}`}
+                              readOnly
+                              className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono"
+                            />
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/shop/${shop.short_code}`);
+                                alert('Shop portal link copied!');
+                              }}
+                              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                            >
+                              📋 Copy
+                            </button>
+                          </div>
+                          {shop.shop_pin && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                              <p className="text-sm text-blue-900">
+                                <strong>Shop PIN:</strong> <code className="font-mono font-semibold">{shop.shop_pin}</code>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Staff Personal Portal */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                            📱 Staff Personal Portal
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">For Personal Phones</span>
+                          </h4>
+                          <p className="text-sm text-gray-600 mb-3">
+                            Staff use this on their personal phones to view their hours, wages, 
+                            and clock in/out remotely. Each staff logs in with their own PIN.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={`${window.location.origin}/staff/${shop.short_code}`}
+                              readOnly
+                              className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono"
+                            />
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/staff/${shop.short_code}`);
+                                alert('Staff portal link copied!');
+                              }}
+                              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                            >
+                              📋 Copy
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!shop.short_code && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">
+                      Short code not available. Portal links will be generated once short code is created.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* TRUSTED DEVICES SECTION */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <Smartphone className="w-6 h-6 text-blue-600 mt-1" />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">📱 Trusted Devices</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Authorize devices (tablets, computers) that are always at your shop. 
+                      Staff can clock in from trusted devices without GPS verification.
+                    </p>
+
+                    {/* Current Device Status */}
+                    <div className={`rounded-lg p-4 mb-4 ${currentDeviceIsTrusted ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+                      <strong className={currentDeviceIsTrusted ? 'text-green-900' : 'text-yellow-900'}>This Device:</strong>
+                      {currentDeviceIsTrusted ? (
+                        <p className="mb-0 mt-2 text-green-800 text-sm">
+                          ✓ This device is trusted. Staff can clock in without GPS verification.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="mb-2 mt-2 text-yellow-800 text-sm">
+                            ⚠️ This device is NOT trusted. Staff will need GPS verification to clock in.
+                          </p>
+                          <button
+                            onClick={() => setShowAuthDeviceModal(true)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                          >
+                            Authorize This Device
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Info Box */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <strong className="text-blue-900">💡 When to use trusted devices:</strong>
+                      <ul className="mb-0 mt-2 text-blue-800 text-sm space-y-1">
+                        <li><strong>Shop tablet/computer:</strong> Always at counter → Authorize it</li>
+                        <li><strong>Staff personal phones:</strong> They take home → Don't authorize (use GPS)</li>
+                      </ul>
+                    </div>
+
+                    {/* List of Trusted Devices */}
+                    {trustedDevices.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-gray-900 mb-3">
+                          Authorized Devices ({trustedDevices.filter(d => d.is_active).length})
+                        </h4>
+                        
+                        <div className="space-y-3">
+                          {trustedDevices.map(device => (
+                            <div key={device.id} className={`border rounded-lg p-4 ${!device.is_active ? 'opacity-60 bg-gray-50' : 'bg-white'}`}>
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h5 className="font-semibold text-gray-900">{device.device_name}</h5>
+                                    {device.is_active ? (
+                                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">Active</span>
+                                    ) : (
+                                      <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">Revoked</span>
+                                    )}
+                                  </div>
+
+                                  <div className="text-sm text-gray-600 space-y-1">
+                                    <p>Authorized: {formatDate(device.authorized_at)}</p>
+                                    {device.last_used_at && (
+                                      <p>Last used: {formatRelativeTime(device.last_used_at)}</p>
+                                    )}
+                                    {device.notes && (
+                                      <p className="text-gray-700">Note: {device.notes}</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2 ml-4">
+                                  {device.is_active ? (
+                                    <button
+                                      onClick={() => handleRevokeDevice(device.id)}
+                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                      title="Revoke access"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleReactivateDevice(device.id)}
+                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                      title="Reactivate"
+                                    >
+                                      <RotateCcw className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {trustedDevices.length === 0 && (
+                      <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+                        <p className="text-gray-600 mb-3">No trusted devices yet.</p>
+                        <button
+                          onClick={() => setShowAuthDeviceModal(true)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          Authorize This Device
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* DANGER ZONE */}
               <div className="danger-zone-section mt-8">
                 <div className="danger-zone-header">
@@ -1235,6 +1612,19 @@ export default function SettingsPage() {
             if (!shop.owner_pin || shop.owner_pin === '000000') {
               navigate('/dashboard');
             }
+          }}
+        />
+      )}
+
+      {/* Authorize Device Modal */}
+      {showAuthDeviceModal && shopId && (
+        <AuthorizeDeviceModal
+          isOpen={showAuthDeviceModal}
+          onClose={() => setShowAuthDeviceModal(false)}
+          shopId={shopId}
+          onSuccess={() => {
+            setShowAuthDeviceModal(false);
+            loadTrustedDevices();
           }}
         />
       )}

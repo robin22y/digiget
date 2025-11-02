@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Check if already installed
@@ -12,25 +13,47 @@ export function InstallPrompt() {
 
     // Listen for beforeinstallprompt event
     const handler = (e: Event) => {
-      // Prevent default browser install prompt
-      e.preventDefault();
-      const promptEvent = e as any; // beforeinstallprompt event
-      setDeferredPrompt(promptEvent);
-      
-      // Show our custom prompt after a delay
-      setTimeout(() => {
-        // Check if already dismissed
-        const dismissed = localStorage.getItem('install-prompt-dismissed');
-        if (!dismissed) {
-          setShowPrompt(true);
+      try {
+        // Prevent default browser install prompt
+        e.preventDefault();
+        const promptEvent = e as any; // beforeinstallprompt event
+        
+        // Verify the event is still valid
+        if (!promptEvent || typeof promptEvent.prompt !== 'function') {
+          return;
         }
-      }, 30000); // Show after 30 seconds
+        
+        setDeferredPrompt(promptEvent);
+        
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+        
+        // Show our custom prompt after a delay
+        timeoutRef.current = setTimeout(() => {
+          // Check if already dismissed
+          const dismissed = localStorage.getItem('install-prompt-dismissed');
+          if (!dismissed) {
+            setShowPrompt(true);
+          }
+        }, 30000); // Show after 30 seconds
+      } catch (error) {
+        // Silently handle errors from browser extensions interfering
+        console.debug('Install prompt handler error (likely from browser extension):', error);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      // Clear timeout on unmount
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // Clear deferred prompt on unmount to prevent channel errors
+      setDeferredPrompt(null);
     };
   }, []);
 
@@ -42,11 +65,24 @@ export function InstallPrompt() {
     }
 
     try {
+      // Verify prompt is still valid before using it
+      if (typeof deferredPrompt.prompt !== 'function') {
+        console.warn('Install prompt is no longer valid');
+        setDeferredPrompt(null);
+        setShowPrompt(false);
+        return;
+      }
+
       // Show install prompt
       await deferredPrompt.prompt();
 
-      // Wait for user choice
-      const { outcome } = await deferredPrompt.userChoice;
+      // Wait for user choice with timeout
+      const choicePromise = deferredPrompt.userChoice;
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Install prompt timeout')), 5000)
+      );
+
+      const { outcome } = await Promise.race([choicePromise, timeoutPromise]) as any;
       
       console.log(`User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} install`);
 
@@ -57,8 +93,11 @@ export function InstallPrompt() {
       if (outcome === 'accepted') {
         localStorage.setItem('install-prompt-dismissed', 'true');
       }
-    } catch (error) {
-      console.error('Error showing install prompt:', error);
+    } catch (error: any) {
+      // Silently handle errors (often from browser extensions or user cancelling)
+      if (error?.message !== 'Install prompt timeout') {
+        console.debug('Install prompt error (non-critical):', error);
+      }
       // Clear prompt on error
       setDeferredPrompt(null);
       setShowPrompt(false);

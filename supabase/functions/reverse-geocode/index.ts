@@ -4,6 +4,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Max-Age": "3600",
 };
 
 interface RequestBody {
@@ -12,7 +13,7 @@ interface RequestBody {
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
+  // Handle CORS preflight - must be first and return 200
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -20,36 +21,44 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Ensure CORS headers are on all responses
+  const createResponse = (body: any, status: number = 200) => {
+    return new Response(
+      typeof body === 'string' ? body : JSON.stringify(body),
+      {
+        status,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  };
+
   try {
+    // Validate request method
+    if (req.method !== "POST") {
+      return createResponse({ error: "Method not allowed" }, 405);
+    }
+
     // Parse request body
-    const { latitude, longitude }: RequestBody = await req.json();
+    let requestBody: RequestBody;
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      return createResponse({ error: "Invalid JSON in request body" }, 400);
+    }
+    
+    const { latitude, longitude } = requestBody;
 
     // Validate inputs
-    if (!latitude || !longitude) {
-      return new Response(
-        JSON.stringify({ error: "Missing latitude or longitude" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return createResponse({ error: "Missing or invalid latitude or longitude" }, 400);
     }
 
     // Validate coordinate ranges
     if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-      return new Response(
-        JSON.stringify({ error: "Invalid coordinates" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return createResponse({ error: "Invalid coordinates" }, 400);
     }
 
     // Make request to Nominatim API from server (no CORS issues)
@@ -64,49 +73,28 @@ Deno.serve(async (req: Request) => {
 
     if (!response.ok) {
       console.error(`Nominatim API error: ${response.status} ${response.statusText}`);
-      return new Response(
-        JSON.stringify({ 
+      return createResponse(
+        { 
           error: "Geocoding service unavailable",
           fallback: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-        }),
-        {
-          status: response.status,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
+        },
+        502
       );
     }
 
     const data = await response.json();
 
     // Return the full response from Nominatim
-    return new Response(
-      JSON.stringify(data),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    return createResponse(data, 200);
 
   } catch (error: any) {
     console.error("Error in reverse-geocode function:", error);
-    return new Response(
-      JSON.stringify({ 
+    return createResponse(
+      { 
         error: error.message || "Internal server error",
         fallback: "Unable to determine location"
-      }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
+      },
+      500
     );
   }
 });

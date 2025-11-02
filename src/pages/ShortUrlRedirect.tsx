@@ -49,19 +49,8 @@ export default function ShortUrlRedirect({ redirectType }: ShortUrlRedirectProps
         if (redirectType === 'clock-in') {
           navigate(`/staff/${shop.id}/clock-in`, { replace: true });
         } else {
-          // portal - try to use slug if available, otherwise use ID
-          // First get the shop's slug
-          const { data: shopData } = await supabase
-            .from('shops')
-            .select('slug')
-            .eq('id', shop.id)
-            .single();
-          
-          if (shopData?.slug) {
-            navigate(`/staff-portal/${shopData.slug}`, { replace: true });
-          } else {
-            navigate(`/staff-portal/${shop.id}`, { replace: true });
-          }
+          // portal - redirect to personal staff portal using short code
+          navigate(`/staff/${code.toUpperCase()}`, { replace: true });
         }
       } catch (err: any) {
         console.error('Error resolving short code:', err);
