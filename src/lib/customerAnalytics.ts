@@ -16,7 +16,6 @@ export async function getFrequentCustomers(
 ) {
   // Try customer_checkins first, fallback to customer_visits
   let data: any[] = [];
-  let error: any = null;
 
   // Try customer_checkins table
   const checkinsResult = await supabase
@@ -38,8 +37,8 @@ export async function getFrequentCustomers(
     .lte('checkin_time', dateRange.end)
     .order('checkin_time', { ascending: false });
 
-  if (checkinsResult.error && checkinsResult.error.code !== '42P01') {
-    // Table doesn't exist, try customer_visits
+  // If table doesn't exist (code 42P01), try customer_visits
+  if (checkinsResult.error && checkinsResult.error.code === '42P01') {
     const visitsResult = await supabase
       .from('customer_visits')
       .select(`
@@ -67,8 +66,6 @@ export async function getFrequentCustomers(
     if (checkinsResult.error) throw checkinsResult.error;
     data = checkinsResult.data || [];
   }
-
-  if (error) throw error;
 
   // Count visits per customer
   const customerVisitCounts = data.reduce((acc: any, visit: any) => {
@@ -167,7 +164,6 @@ export async function getStaffPerformance(
 ) {
   // Try customer_checkins first, fallback to customer_visits
   let data: any[] = [];
-  let error: any = null;
 
   const checkinsResult = await supabase
     .from('customer_checkins')
@@ -185,8 +181,8 @@ export async function getStaffPerformance(
     .lte('checkin_time', dateRange.end)
     .not('checked_in_by_employee_id', 'is', null);
 
-  if (checkinsResult.error && checkinsResult.error.code !== '42P01') {
-    // Try customer_visits with staff_id
+  // If table doesn't exist (code 42P01), try customer_visits
+  if (checkinsResult.error && checkinsResult.error.code === '42P01') {
     const visitsResult = await supabase
       .from('customer_visits')
       .select(`
@@ -212,8 +208,6 @@ export async function getStaffPerformance(
     if (checkinsResult.error) throw checkinsResult.error;
     data = checkinsResult.data || [];
   }
-
-  if (error) throw error;
 
   // Count customers per staff member
   const staffCounts = data.reduce((acc: any, checkin: any) => {
@@ -246,7 +240,6 @@ export async function getCustomerStats(
 ) {
   // Try customer_checkins first, fallback to customer_visits
   let checkins: any[] = [];
-  let visitsError: any = null;
 
   const checkinsResult = await supabase
     .from('customer_checkins')
@@ -255,8 +248,8 @@ export async function getCustomerStats(
     .gte('checkin_time', dateRange.start)
     .lte('checkin_time', dateRange.end);
 
-  if (checkinsResult.error && checkinsResult.error.code !== '42P01') {
-    // Try customer_visits
+  // If table doesn't exist (code 42P01), try customer_visits
+  if (checkinsResult.error && checkinsResult.error.code === '42P01') {
     const visitsResult = await supabase
       .from('customer_visits')
       .select('id, customer_id')
@@ -270,8 +263,6 @@ export async function getCustomerStats(
     if (checkinsResult.error) throw checkinsResult.error;
     checkins = checkinsResult.data || [];
   }
-
-  if (visitsError) throw visitsError;
 
   // Unique customers in period
   const uniqueCustomerIds = new Set(checkins.map(c => c.customer_id).filter(Boolean));
@@ -318,7 +309,6 @@ export async function getVisitTrend(
 ) {
   // Try customer_checkins first, fallback to customer_visits
   let data: any[] = [];
-  let error: any = null;
 
   const checkinsResult = await supabase
     .from('customer_checkins')
@@ -328,8 +318,8 @@ export async function getVisitTrend(
     .lte('checkin_time', dateRange.end)
     .order('checkin_time', { ascending: true });
 
-  if (checkinsResult.error && checkinsResult.error.code !== '42P01') {
-    // Try customer_visits
+  // If table doesn't exist (code 42P01), try customer_visits
+  if (checkinsResult.error && checkinsResult.error.code === '42P01') {
     const visitsResult = await supabase
       .from('customer_visits')
       .select('visit_date')
@@ -344,8 +334,6 @@ export async function getVisitTrend(
     if (checkinsResult.error) throw checkinsResult.error;
     data = checkinsResult.data || [];
   }
-
-  if (error) throw error;
 
   // Group by date
   const dailyCounts = data.reduce((acc: any, checkin) => {
