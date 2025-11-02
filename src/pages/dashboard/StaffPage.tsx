@@ -390,7 +390,7 @@ export default function StaffPage() {
             <div className="flex gap-2">
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono truncate">
                 {shopData?.short_code 
-                  ? `${window.location.origin}/p/${shopData.short_code}`
+                  ? `${window.location.origin}/staff/${shopData.short_code}`
                   : shopData?.slug 
                     ? `${window.location.origin}/staff-portal/${shopData.slug}`
                     : `${window.location.origin}/staff-portal/${shopId}`}
@@ -398,7 +398,7 @@ export default function StaffPage() {
               <button
                 onClick={() => {
                   const link = shopData?.short_code 
-                    ? `${window.location.origin}/p/${shopData.short_code}`
+                    ? `${window.location.origin}/staff/${shopData.short_code}`
                     : shopData?.slug 
                       ? `${window.location.origin}/staff-portal/${shopData.slug}`
                       : `${window.location.origin}/staff-portal/${shopId}`;
@@ -412,7 +412,7 @@ export default function StaffPage() {
               </button>
               <a
                 href={shopData?.short_code 
-                  ? `/p/${shopData.short_code}` 
+                  ? `/staff/${shopData.short_code}` 
                   : shopData?.slug 
                     ? `/staff-portal/${shopData.slug}` 
                     : `/staff-portal/${shopId}`}
@@ -426,7 +426,7 @@ export default function StaffPage() {
             </div>
             <p className="text-xs text-gray-500 mt-2">
               {shopData?.short_code 
-                ? `Short URL: digiget.uk/p/${shopData.short_code} - Full portal with customer management, tasks, and more.`
+                ? `Staff Portal: digiget.uk/staff/${shopData.short_code} - Full portal with customer management, tasks, and more.`
                 : 'Full portal with customer management, tasks, and more. Shows working time and clock out button when clocked in. Both links stay in sync.'}
             </p>
           </div>
