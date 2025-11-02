@@ -138,14 +138,15 @@ export async function getPendingClockEntries(): Promise<PendingClockEntry[]> {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('synced');
     
-    // Use IDBKeyRange.only() to query for false values
-    const keyRange = IDBKeyRange.only(false);
-    const request = index.getAll(keyRange);
+    // Since IndexedDB doesn't support boolean keys well, get all and filter
+    const request = store.getAll();
 
     request.onsuccess = () => {
-      resolve(request.result || []);
+      const allEntries = request.result || [];
+      // Filter for unsynced entries
+      const pending = allEntries.filter((entry: PendingClockEntry) => !entry.synced);
+      resolve(pending);
     };
 
     request.onerror = () => {
@@ -294,18 +295,19 @@ export async function getPendingCount(): Promise<number> {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('synced');
     
-    // Use IDBKeyRange.only() to count false values
-    const keyRange = IDBKeyRange.only(false);
-    const countRequest = index.count(keyRange);
+    // Since IndexedDB doesn't support boolean keys well, get all and filter
+    const request = store.getAll();
 
-    countRequest.onsuccess = () => {
-      resolve(countRequest.result);
+    request.onsuccess = () => {
+      const allEntries = request.result || [];
+      // Count unsynced entries
+      const pending = allEntries.filter((entry: PendingClockEntry) => !entry.synced);
+      resolve(pending.length);
     };
 
-    countRequest.onerror = () => {
-      reject(countRequest.error);
+    request.onerror = () => {
+      reject(request.error);
     };
   });
 }
@@ -319,14 +321,14 @@ export async function clearSyncedEntries(): Promise<void> {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('synced');
     
-    // Use IDBKeyRange.only() to query for true values
-    const keyRange = IDBKeyRange.only(true);
-    const request = index.getAll(keyRange);
+    // Since IndexedDB doesn't support boolean keys well, get all and filter
+    const request = store.getAll();
 
     request.onsuccess = () => {
-      const syncedEntries = request.result || [];
+      const allEntries = request.result || [];
+      // Filter for synced entries
+      const syncedEntries = allEntries.filter((entry: PendingClockEntry) => entry.synced);
       let deleted = 0;
 
       if (syncedEntries.length === 0) {

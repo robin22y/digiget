@@ -112,14 +112,14 @@ async function syncClockIns() {
         
         const transaction = db.transaction(['pending_clock_entries'], 'readonly');
         const store = transaction.objectStore('pending_clock_entries');
-        const index = store.index('synced');
         
-        // Use IDBKeyRange.only() to query for false values
-        const keyRange = IDBKeyRange.only(false);
-        const getAllRequest = index.getAll(keyRange);
+        // Since IndexedDB doesn't support boolean keys well, get all and filter
+        const getAllRequest = store.getAll();
         
         getAllRequest.onsuccess = async () => {
-          const pending = getAllRequest.result || [];
+          const allEntries = getAllRequest.result || [];
+          // Filter for unsynced entries
+          const pending = allEntries.filter(entry => !entry.synced);
           console.log(`Found ${pending.length} pending clock entries to sync`);
           
           // Notify the main app to sync
