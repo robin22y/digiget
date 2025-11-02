@@ -1424,7 +1424,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Shop Tablet Portal */}
+                    {/* Shop Tablet Portal - with install instructions */}
                     <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
                       <div className="mb-3">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
@@ -1442,12 +1442,74 @@ export default function SettingsPage() {
                         <div className="mt-4 mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <h5 className="font-semibold text-blue-900 text-sm mb-2">📱 Install as App</h5>
                           <p className="text-xs text-blue-800 mb-2">
-                            Add this to your tablet's home screen. The app will show as <strong>{shop?.shop_name}</strong>.
+                            Add this to your tablet's home screen. The app will show as <strong>{shop?.shop_name}</strong> with icon showing shop initials.
                           </p>
-                          <div className="text-xs text-blue-700 space-y-1">
-                            <p><strong>iPad/iPhone:</strong> Open in Safari → Share (□↑) → "Add to Home Screen"</p>
-                            <p><strong>Android:</strong> Open in Chrome → Menu (⋮) → "Install app" or "Add to Home screen"</p>
+                          
+                          {/* Warning if previously installed */}
+                          <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mb-2">
+                            <p className="text-xs text-yellow-800 font-semibold mb-1">⚠️ Before Installing:</p>
+                            <p className="text-xs text-yellow-700">
+                              If you previously installed DigiGet, you may need to:
+                            </p>
+                            <ol className="text-xs text-yellow-700 list-decimal list-inside mt-1 space-y-0.5">
+                              <li>Uninstall the old app (long-press icon → Remove)</li>
+                              <li>Clear browser cache</li>
+                              <li>Then install again</li>
+                            </ol>
                           </div>
+
+                          <div className="text-xs text-blue-700 space-y-2 mt-3">
+                            <div>
+                              <p className="font-semibold mb-1">iPad/iPhone (Safari):</p>
+                              <ol className="list-decimal list-inside space-y-0.5 ml-2">
+                                <li>Open <code className="bg-blue-100 px-1 rounded">digiget.uk/shop/{shop?.short_code}</code> in Safari</li>
+                                <li>Tap Share button (square with arrow up)</li>
+                                <li>Scroll and tap "Add to Home Screen"</li>
+                                <li>Verify name shows: <strong>{shop?.shop_name}</strong></li>
+                                <li>Tap "Add"</li>
+                              </ol>
+                            </div>
+                            <div>
+                              <p className="font-semibold mb-1">Android (Chrome):</p>
+                              <ol className="list-decimal list-inside space-y-0.5 ml-2">
+                                <li>Open <code className="bg-blue-100 px-1 rounded">digiget.uk/shop/{shop?.short_code}</code> in Chrome</li>
+                                <li>Tap menu (three dots)</li>
+                                <li>Tap "Install app" or "Add to Home screen"</li>
+                                <li>Verify name shows: <strong>{shop?.shop_name}</strong></li>
+                                <li>Tap "Install"</li>
+                              </ol>
+                            </div>
+                          </div>
+
+                          {/* Icon Preview */}
+                          <div className="mt-3 pt-3 border-t border-blue-200 text-center">
+                            <p className="text-xs text-blue-800 font-semibold mb-2">Your app icon will show:</p>
+                            <div className="inline-flex flex-col items-center">
+                              <div 
+                                className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white font-bold text-xl shadow-lg"
+                                style={{
+                                  background: 'linear-gradient(135deg, #2563EB, #1e40af)'
+                                }}
+                              >
+                                {shop?.shop_name 
+                                  ? shop.shop_name.split(' ').map(w => w[0]).filter(c => /[A-Za-z]/.test(c)).join('').toUpperCase().slice(0, 2)
+                                  : 'DG'}
+                              </div>
+                              <p className="text-xs text-blue-900 font-semibold mt-1">{shop?.shop_name}</p>
+                            </div>
+                          </div>
+
+                          {/* Debug Info */}
+                          <details className="mt-3">
+                            <summary className="text-xs text-blue-700 cursor-pointer font-semibold">🔍 Debug Info</summary>
+                            <div className="mt-2 p-2 bg-white rounded text-xs space-y-1">
+                              <p><strong>Current URL:</strong> <code className="break-all">{window.location.href}</code></p>
+                              <p><strong>Expected:</strong> <code>https://digiget.uk/shop/{shop?.short_code}</code></p>
+                              <p><strong>Manifest:</strong> <code className="break-all">{window.location.origin}/api/shop/{shop?.short_code}/manifest.json</code></p>
+                              <p><strong>Icon:</strong> <code className="break-all">{window.location.origin}/api/shop/{shop?.short_code}/icon?size=192</code></p>
+                              <p><strong>PWA Installed:</strong> {window.matchMedia('(display-mode: standalone)').matches ? 'Yes ✓' : 'No ❌'}</p>
+                            </div>
+                          </details>
                         </div>
                         
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">

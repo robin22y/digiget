@@ -5,15 +5,19 @@
 
 # Serve API functions (shop manifest and icon)
 # These must be excluded from SPA redirect
+# Netlify automatically serves functions at /.netlify/functions/function-name
+# But we want to map them to /api/shop/:code/manifest.json and /api/shop/:code/icon
 [[redirects]]
   from = "/api/shop/*/manifest.json"
   to = "/.netlify/functions/shop-manifest"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/api/shop/*/icon"
   to = "/.netlify/functions/shop-icon"
   status = 200
+  force = true
 
 # Redirect all other routes to index.html for React Router (SPA)
 # Must come AFTER API routes

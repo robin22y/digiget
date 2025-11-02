@@ -39,19 +39,20 @@ exports.handler = async (event, context) => {
   try {
     // Extract shop code from path
     // Path format: /api/shop/:code/manifest.json
+    // When called via redirect, event.path is the original path before redirect
     const pathMatch = event.path.match(/\/api\/shop\/([^\/]+)\/manifest\.json/);
-    if (!pathMatch || !pathMatch[1]) {
+    const shopCode = pathMatch ? pathMatch[1] : null;
+    
+    if (!shopCode) {
       return {
         statusCode: 400,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ error: 'Shop code missing' }),
+        body: JSON.stringify({ error: 'Shop code missing. Path: ' + event.path }),
       };
     }
-
-    const shopCode = pathMatch[1];
 
     // Initialize Supabase
     if (!supabaseUrl || !supabaseKey) {
