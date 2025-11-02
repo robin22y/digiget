@@ -225,9 +225,9 @@ function App() {
           </Route>
 
         </Routes>
+        <OfflineIndicator />
+        <InstallPrompt />
       </BrowserRouter>
-      <OfflineIndicator />
-      <InstallPrompt />
       </ShopProvider>
     </AuthProvider>
   );
