@@ -1316,6 +1316,19 @@ export default function SettingsPage() {
                           Open this on your shop tablet. All staff use the same shop PIN to access, 
                           then enter their own PIN for each action.
                         </p>
+                        
+                        {/* Installation Instructions */}
+                        <div className="mt-4 mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <h5 className="font-semibold text-blue-900 text-sm mb-2">📱 Install as App</h5>
+                          <p className="text-xs text-blue-800 mb-2">
+                            Add this to your tablet's home screen. The app will show as <strong>{shop?.shop_name}</strong>.
+                          </p>
+                          <div className="text-xs text-blue-700 space-y-1">
+                            <p><strong>iPad/iPhone:</strong> Open in Safari → Share (□↑) → "Add to Home Screen"</p>
+                            <p><strong>Android:</strong> Open in Chrome → Menu (⋮) → "Install app" or "Add to Home screen"</p>
+                          </div>
+                        </div>
+                        
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                           <input
                             type="text"

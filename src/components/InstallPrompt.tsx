@@ -1,15 +1,47 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { detectPWAType } from '../utils/manifestManager';
 
-export function InstallPrompt() {
+interface InstallPromptProps {
+  shopName?: string;
+}
+
+export function InstallPrompt({ shopName }: InstallPromptProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const promptRef = useRef<any>(null);
+  const location = useLocation();
+  const params = useParams();
+  const [currentShopName, setCurrentShopName] = useState<string | undefined>(shopName);
+
+  // Load shop name if in shop portal
+  useEffect(() => {
+    const { type, shopCode } = detectPWAType(location.pathname);
+    if (type === 'shop' && shopCode && !currentShopName) {
+      supabase
+        .from('shops')
+        .select('shop_name')
+        .eq('short_code', shopCode)
+        .maybeSingle()
+        .then(({ data: shop }) => {
+          if (shop) {
+            setCurrentShopName(shop.shop_name);
+          }
+        });
+    }
+  }, [location.pathname, params.code, currentShopName]);
 
   useEffect(() => {
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       return; // Already installed
+    }
+
+    // Don't show on login/signup pages
+    if (location.pathname === '/login' || location.pathname === '/signup') {
+      return;
     }
 
     // Listen for beforeinstallprompt event
@@ -165,13 +197,19 @@ export function InstallPrompt() {
     localStorage.setItem('install-prompt-dismissed', 'true');
   };
 
-  // Don't show on login/signup pages
-  useEffect(() => {
-    const currentPath = window.location.pathname;
-    if (currentPath === '/login' || currentPath === '/signup') {
-      setShowPrompt(false);
-    }
-  }, []);
+  const { type } = detectPWAType(location.pathname);
+  const displayName = type === 'shop' && currentShopName 
+    ? currentShopName 
+    : type === 'owner' 
+    ? 'DigiGet Owner'
+    : 'DigiGet';
+  
+  const icon = type === 'shop' ? '🏪' : type === 'owner' ? '👔' : '📱';
+  const description = type === 'shop' 
+    ? 'Add to home screen for easy staff and customer management'
+    : type === 'owner'
+    ? 'Add to home screen for quick access to your dashboard'
+    : 'Add to home screen for faster access';
 
   if (!showPrompt) return null;
 
@@ -202,12 +240,14 @@ export function InstallPrompt() {
           justifyContent: 'center',
           fontSize: '24px'
         }}>
-          📱
+          {icon}
         </div>
         <div>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111827' }}>Install DigiGet</h3>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111827' }}>
+            Install {displayName}
+          </h3>
           <p style={{ margin: 0, fontSize: '14px', color: '#6B7280' }}>
-            Add to home screen for faster access
+            {description}
           </p>
         </div>
       </div>

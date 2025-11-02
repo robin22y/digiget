@@ -1,8 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { ShopProvider } from './contexts/ShopContext';
 import { InstallPrompt } from './components/InstallPrompt';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { updateManifest, detectPWAType } from './utils/manifestManager';
+import ShopManifest from './pages/ShopManifest';
+import ShopIcon from './pages/ShopIcon';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
@@ -56,6 +60,7 @@ import EmailTemplates from './pages/super-admin/EmailTemplates';
 import AssignNFCTags from './pages/super-admin/AssignNFCTags';
 import NotificationsPage from './pages/dashboard/NotificationsPage';
 import TopRatedShops from './pages/super-admin/TopRatedShops';
+// @ts-ignore - JSX file
 import ShopTalk from './pages/ShopTalk.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
@@ -65,12 +70,45 @@ import DashboardRedirect from './pages/DashboardRedirect';
 import SubscriptionCancelled from './pages/SubscriptionCancelled';
 import AccountDeleted from './pages/AccountDeleted';
 
+function ManifestUpdater() {
+  const location = useLocation();
+  const params = useParams();
+
+  useEffect(() => {
+    const { type, shopCode } = detectPWAType(location.pathname);
+    
+    if (type === 'shop' && shopCode) {
+      // Fetch shop name for manifest
+      import('./lib/supabase').then(({ supabase }) => {
+        supabase
+          .from('shops')
+          .select('shop_name')
+          .eq('short_code', shopCode)
+          .maybeSingle()
+          .then(({ data: shop }) => {
+            updateManifest('shop', shopCode, shop?.shop_name);
+          });
+      });
+    } else {
+      updateManifest(type);
+    }
+  }, [location.pathname, params.code]);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <ShopProvider>
         <BrowserRouter>
+        <ManifestUpdater />
         <Routes>
+          {/* Manifest and Icon Routes - Must be before other routes */}
+          <Route path="/shop/:code/manifest.json" element={<ShopManifest />} />
+          <Route path="/shop/:code/icon" element={<ShopIcon />} />
+          
+          {/* Existing Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
