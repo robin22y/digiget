@@ -1386,6 +1386,44 @@ export default function SettingsPage() {
                 {/* Portal Links */}
                 {shop?.short_code && (
                   <div className="space-y-4">
+                    {/* Customer Portal */}
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <div className="mb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-gray-900 text-base sm:text-lg flex items-center gap-2">
+                            👥 Customer Portal
+                          </h4>
+                          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded w-fit">For Customers</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Share this link with your customers so they can check their loyalty points, see how many visits until their reward, and manage their name.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <input
+                            type="text"
+                            value={`${window.location.origin}/${shopId}/balance`}
+                            readOnly
+                            className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm font-mono break-all"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/${shopId}/balance`);
+                              setMessage({ type: 'success', text: 'Customer portal link copied!' });
+                              setTimeout(() => setMessage(null), 2000);
+                            }}
+                            className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap"
+                          >
+                            📋 Copy
+                          </button>
+                        </div>
+                        <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                          <p className="text-xs text-purple-800">
+                            <strong>Features:</strong> Customers can enter their phone number to view points, add/edit their name, and see how many points needed for a reward.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Shop Tablet Portal */}
                     <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
                       <div className="mb-3">
@@ -1422,7 +1460,8 @@ export default function SettingsPage() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(`${window.location.origin}/shop/${shop.short_code}`);
-                              alert('Shop portal link copied!');
+                              setMessage({ type: 'success', text: 'Shop portal link copied!' });
+                              setTimeout(() => setMessage(null), 2000);
                             }}
                             className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap"
                           >
@@ -1462,7 +1501,8 @@ export default function SettingsPage() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(`${window.location.origin}/staff/${shop.short_code}`);
-                              alert('Staff portal link copied!');
+                              setMessage({ type: 'success', text: 'Staff portal link copied!' });
+                              setTimeout(() => setMessage(null), 2000);
                             }}
                             className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap"
                           >

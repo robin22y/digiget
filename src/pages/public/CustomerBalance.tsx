@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Star } from 'lucide-react';
+import { Star, Edit2, Save, X } from 'lucide-react';
 
 export default function CustomerBalance() {
   const { shopId } = useParams();
@@ -10,6 +10,9 @@ export default function CustomerBalance() {
   const [shop, setShop] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   const formatPhone = (value: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -46,6 +49,7 @@ export default function CustomerBalance() {
 
       if (customerData) {
         setCustomer(customerData);
+        setEditedName(customerData.name || '');
         setShop(shopData);
       } else {
         setNotFound(true);
@@ -70,38 +74,126 @@ export default function CustomerBalance() {
     return stars;
   };
 
+  const handleSaveName = async () => {
+    if (!customer || !shopId) return;
+    
+    setSavingName(true);
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({ name: editedName.trim() || null })
+        .eq('id', customer.id);
+
+      if (error) throw error;
+
+      // Update local customer state
+      setCustomer({ ...customer, name: editedName.trim() || null });
+      setIsEditingName(false);
+    } catch (error) {
+      console.error('Error saving name:', error);
+      alert('Failed to save name. Please try again.');
+    } finally {
+      setSavingName(false);
+    }
+  };
+
   if (customer && shop) {
     const isRewardReady = customer.current_points >= shop.points_needed;
+    const pointsNeeded = Math.max(0, shop.points_needed - customer.current_points);
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{shop.shop_name}</h1>
-          <h2 className="text-xl font-semibold text-gray-700 mb-6">Your Loyalty Balance</h2>
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">{shop.shop_name}</h1>
+          <h2 className="text-xl font-semibold text-gray-700 mb-6 text-center">Your Loyalty Balance</h2>
 
-          <p className="text-lg text-gray-900 mb-6">Hi {customer.name || 'there'}! 👋</p>
+          {/* Name Section */}
+          <div className="mb-6">
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveName}
+                  disabled={savingName}
+                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                  title="Save name"
+                >
+                  <Save className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditingName(false);
+                    setEditedName(customer.name || '');
+                  }}
+                  className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  title="Cancel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="text-lg text-gray-900 mb-2">
+                  {customer.name ? (
+                    <>Hi {customer.name}! 👋</>
+                  ) : (
+                    <>Hi there! 👋</>
+                  )}
+                </p>
+                <button
+                  onClick={() => {
+                    setIsEditingName(true);
+                    setEditedName(customer.name || '');
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 mx-auto"
+                >
+                  <Edit2 className="w-3 h-3" />
+                  {customer.name ? 'Edit name' : 'Add your name'}
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-center gap-2 mb-6">
             {renderStars(customer.current_points, shop.points_needed)}
           </div>
 
-          <p className="text-lg text-gray-700 mb-6">
-            You have {customer.current_points} out of {shop.points_needed} visits!
-          </p>
+          {/* Points Display */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-900 mb-1">
+                {customer.current_points} / {shop.points_needed}
+              </p>
+              <p className="text-sm text-blue-700">Accumulated Points</p>
+            </div>
+          </div>
+
+          {/* Points Needed */}
+          {!isRewardReady && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-center">
+              <p className="text-lg font-semibold text-gray-900 mb-1">
+                {pointsNeeded} more {pointsNeeded !== 1 ? 'points' : 'point'} needed
+              </p>
+              <p className="text-sm text-gray-600">for your reward</p>
+            </div>
+          )}
 
           {isRewardReady ? (
-            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 mb-6">
+            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 mb-6 text-center">
               <p className="text-2xl font-bold text-green-800 mb-2">🎁 YOU'VE EARNED A REWARD!</p>
               <p className="text-lg text-green-700">{shop.reward_description}</p>
               <p className="text-sm text-green-600 mt-4">
                 Show this screen to staff to claim your reward.
               </p>
             </div>
-          ) : (
-            <p className="text-gray-600 mb-6">
-              {shop.points_needed - customer.current_points} more visit{shop.points_needed - customer.current_points !== 1 ? 's' : ''} to earn your reward!
-            </p>
-          )}
+          ) : null}
 
           <div className="text-sm text-gray-600 space-y-1">
             <p>Total visits: {customer.total_visits}</p>
