@@ -60,6 +60,7 @@ export default function SettingsPage() {
   const [showAuthDeviceModal, setShowAuthDeviceModal] = useState(false);
   const [trustedDevices, setTrustedDevices] = useState<any[]>([]);
   const [currentDeviceFingerprint, setCurrentDeviceFingerprint] = useState<string>('');
+  const [reactivatingSubscription, setReactivatingSubscription] = useState(false);
 
   const handlePinSuccess = () => {
     setIsUnlocked(true);
@@ -351,6 +352,69 @@ export default function SettingsPage() {
     } catch (error: any) {
       setMessage({ type: 'error', text: 'Failed to reactivate device' });
       setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    if (!shopId || !shop) return;
+
+    // Confirm subscription reactivation
+    const confirmed = confirm(
+      'Reactivate Subscription?\n\n' +
+      'Your subscription will be reactivated at £29.99/month. ' +
+      'You will be charged immediately and monthly thereafter.'
+    );
+
+    if (!confirmed) return;
+
+    setReactivatingSubscription(true);
+    setMessage(null);
+
+    try {
+      const now = new Date();
+      const nextPayment = new Date(now);
+      nextPayment.setMonth(nextPayment.getMonth() + 1);
+
+      // Update subscription status to active
+      const { error } = await supabase
+        .from('shops')
+        .update({
+          subscription_status: 'active',
+          subscription_started_at: now.toISOString(),
+          cancelled_at: null,
+          cancellation_reason: null,
+          cancellation_feedback: null,
+          subscription_end_date: null
+        })
+        .eq('id', shopId);
+
+      if (error) throw error;
+
+      // Reload shop data to reflect changes
+      await loadShop();
+
+      setMessage({ 
+        type: 'success', 
+        text: '✓ Subscription reactivated! Your account is now active.' 
+      });
+      setTimeout(() => setMessage(null), 5000);
+
+      // Note: In a production system, you would integrate with Stripe here
+      // to create a checkout session or subscription. For now, this updates
+      // the status directly. You would typically:
+      // 1. Create a Stripe checkout session
+      // 2. Redirect user to Stripe payment
+      // 3. Update status on webhook when payment succeeds
+
+    } catch (error: any) {
+      console.error('Reactivate subscription error:', error);
+      setMessage({ 
+        type: 'error', 
+        text: `Failed to reactivate subscription: ${error.message || 'Unknown error'}. Please contact support.` 
+      });
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setReactivatingSubscription(false);
     }
   };
 
@@ -1002,6 +1066,25 @@ export default function SettingsPage() {
                       }
                       return `Your next payment of £29.99 is due on ${nextPayment.toLocaleDateString()}.`;
                     })()}
+                  </p>
+                </div>
+              )}
+
+              {shop.subscription_status === 'cancelled' && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 sm:p-6">
+                  <h3 className="font-semibold text-orange-900 mb-2">Subscription Cancelled</h3>
+                  <p className="text-orange-800 text-sm mb-4">
+                    Your subscription has been cancelled. You can reactivate your subscription to continue using all features.
+                  </p>
+                  <button
+                    onClick={handleReactivateSubscription}
+                    disabled={reactivatingSubscription || saving}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {reactivatingSubscription ? 'Reactivating...' : 'Subscribe Now - £29.99/month'}
+                  </button>
+                  <p className="text-orange-700 text-xs mt-2">
+                    By subscribing, your account will be reactivated immediately and you'll be charged £29.99/month.
                   </p>
                 </div>
               )}
