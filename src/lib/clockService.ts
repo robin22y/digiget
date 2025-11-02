@@ -1,6 +1,8 @@
 import { supabase } from './supabase';
 import { getCurrentPosition, calculateDistance } from '../utils/geolocation';
 import { isDeviceTrusted, getDeviceFingerprint } from './deviceFingerprint';
+import { storeOfflineClockEntry, getPendingCount } from './offlineStorage';
+import { isOnline } from './offlineSync';
 
 export interface ClockInResult {
   success: boolean;
@@ -38,7 +40,15 @@ export async function handleStaffClock(
 ): Promise<ClockInResult> {
   
   try {
-    // STEP 1: Check if staff is currently clocked in
+    // Check if we're online
+    const online = isOnline();
+    
+    if (!online) {
+      // OFFLINE MODE: Store clock entry locally
+      return await handleOfflineClock(employeeId, shopId, method, options);
+    }
+
+    // ONLINE MODE: Check if staff is currently clocked in
     const { data: existingClockIn, error: checkError } = await supabase
       .from('clock_entries')
       .select('*')
@@ -51,10 +61,17 @@ export async function handleStaffClock(
 
     if (checkError) {
       console.error('Error checking clock status:', checkError);
-      return {
-        success: false,
-        error: 'Failed to check clock status. Please try again.'
-      };
+      
+      // If error, try offline mode as fallback
+      if (!checkError.message?.includes('Network')) {
+        return {
+          success: false,
+          error: 'Failed to check clock status. Please try again.'
+        };
+      }
+      
+      // Network error - use offline mode
+      return await handleOfflineClock(employeeId, shopId, method, options);
     }
 
     // STEP 2: Determine action (clock in or clock out)
@@ -66,8 +83,14 @@ export async function handleStaffClock(
       return await performClockIn(employeeId, shopId, method, options);
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Clock operation error:', error);
+    
+    // If it's a network error, try offline mode
+    if (error?.message?.includes('network') || error?.message?.includes('fetch') || !isOnline()) {
+      return await handleOfflineClock(employeeId, shopId, method, options);
+    }
+    
     return {
       success: false,
       error: 'An unexpected error occurred. Please try again.'
@@ -294,22 +317,127 @@ function formatTime(date: Date | string): string {
 }
 
 /**
+ * Handle clock-in/out when offline
+ */
+async function handleOfflineClock(
+  employeeId: string,
+  shopId: string,
+  method: 'nfc' | 'qr_code' | 'shop_tablet' | 'gps',
+  options?: any
+): Promise<ClockInResult> {
+  try {
+    // Get location if available (don't fail if GPS unavailable)
+    let location: GeoLocation | null = null;
+    try {
+      location = await getCurrentPosition();
+    } catch (gpsError) {
+      console.warn('GPS unavailable in offline mode:', gpsError);
+    }
+
+    // Determine action: check local storage for last clock-in
+    // For simplicity, we'll try to find the last clock-in from local storage
+    // If found, clock out; otherwise, clock in
+    const { getLastClockInEntry } = await import('./offlineStorage');
+    const lastClockIn = await getLastClockInEntry(employeeId, shopId);
+    
+    const action = lastClockIn && !lastClockIn.synced ? 'clock_out' : 'clock_in';
+    const deviceFingerprint = getDeviceFingerprint();
+
+    // Store offline entry
+    const { storeOfflineClockEntry } = await import('./offlineStorage');
+    const entryId = await storeOfflineClockEntry(
+      employeeId,
+      shopId,
+      action,
+      method,
+      {
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
+        device_fingerprint: deviceFingerprint,
+        verification_method: await isDeviceTrusted(shopId) ? 'trusted_device' : (location ? 'gps_verified' : 'no_verification'),
+        nfc_tag_id: options?.nfcTagId || null,
+        clock_entry_id: lastClockIn?.id,
+      }
+    );
+
+    // Get staff name for message
+    let staffName = 'Staff';
+    try {
+      const { data: staff } = await supabase
+        .from('employees')
+        .select('first_name')
+        .eq('id', employeeId)
+        .single();
+      if (staff) staffName = staff.first_name;
+    } catch (err) {
+      // Ignore error - use default name
+    }
+
+    if (action === 'clock_out') {
+      return {
+        success: true,
+        action: 'clock_out',
+        message: `✓ ${staffName} clocked out (offline). Will sync when connection is restored.`,
+      };
+    } else {
+      return {
+        success: true,
+        action: 'clock_in',
+        message: `✓ ${staffName} clocked in (offline) at ${formatTime(new Date())}. Will sync when connection is restored.`,
+      };
+    }
+  } catch (error: any) {
+    console.error('Offline clock error:', error);
+    return {
+      success: false,
+      error: 'Failed to record clock entry offline. Please try again.'
+    };
+  }
+}
+
+/**
  * Get current clock status for a staff member
  */
 export async function getStaffClockStatus(employeeId: string, shopId: string) {
-  const { data, error } = await supabase
-    .from('clock_entries')
-    .select('*')
-    .eq('employee_id', employeeId)
-    .eq('shop_id', shopId)
-    .is('clock_out_time', null)
-    .maybeSingle();
+  // First try online check
+  if (isOnline()) {
+    try {
+      const { data, error } = await supabase
+        .from('clock_entries')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .eq('shop_id', shopId)
+        .is('clock_out_time', null)
+        .maybeSingle();
 
-  if (error) {
-    console.error('Error fetching clock status:', error);
-    return null;
+      if (!error && data) {
+        return data;
+      }
+    } catch (err) {
+      console.warn('Online check failed, checking offline storage');
+    }
   }
 
-  return data;
+  // If online check failed or offline, check local storage
+  try {
+    const { getLastClockInEntry } = await import('./offlineStorage');
+    const lastClockIn = await getLastClockInEntry(employeeId, shopId);
+    if (lastClockIn && !lastClockIn.synced) {
+      // Return a mock entry for offline clock-in
+      return {
+        id: lastClockIn.id,
+        employee_id: employeeId,
+        shop_id: shopId,
+        clock_in_time: lastClockIn.timestamp,
+        clock_out_time: null,
+        clock_in_method: lastClockIn.method,
+        _offline: true, // Flag to indicate this is from offline storage
+      };
+    }
+  } catch (err) {
+    console.error('Error checking offline status:', err);
+  }
+
+  return null;
 }
 

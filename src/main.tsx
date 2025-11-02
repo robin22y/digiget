@@ -4,6 +4,30 @@ import App from './App.tsx';
 import './index.css';
 import './i18n/config'; // Initialize i18n BEFORE rendering App
 
+// Initialize offline storage and sync
+import { initOfflineStorage } from './lib/offlineStorage';
+import { setupOfflineSync, syncPendingClockEntries } from './lib/offlineSync';
+
+// Initialize offline storage
+initOfflineStorage()
+  .then(() => {
+    console.log('✓ Offline storage initialized');
+    setupOfflineSync();
+    
+    // Listen for service worker sync messages
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'SYNC_PENDING_ENTRIES') {
+          console.log(`Syncing ${event.data.count} pending entries...`);
+          syncPendingClockEntries().catch(console.error);
+        }
+      });
+    }
+  })
+  .catch((error) => {
+    console.error('Failed to initialize offline storage:', error);
+  });
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

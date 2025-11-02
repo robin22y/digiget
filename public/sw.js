@@ -89,18 +89,68 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// Placeholder sync functions (implement based on your data structure)
+// Sync clock entries from IndexedDB
 async function syncClockIns() {
-  // Get pending clock-ins from IndexedDB
-  // Send to server
-  // Clear from IndexedDB on success
-  console.log('Syncing clock-ins...');
+  console.log('Background sync: Syncing clock entries...');
+  
+  try {
+    // Import sync function (Note: This runs in service worker context)
+    // Since we can't import ES modules directly in service worker,
+    // we'll need to make a fetch request to a sync endpoint or use IndexedDB directly
+    
+    // Open IndexedDB
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('digiget-offline', 1);
+      
+      request.onsuccess = async () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('pending_clock_entries')) {
+          console.log('No offline storage found');
+          resolve();
+          return;
+        }
+        
+        const transaction = db.transaction(['pending_clock_entries'], 'readonly');
+        const store = transaction.objectStore('pending_clock_entries');
+        const index = store.index('synced');
+        const getAllRequest = index.getAll(false);
+        
+        getAllRequest.onsuccess = async () => {
+          const pending = getAllRequest.result || [];
+          console.log(`Found ${pending.length} pending clock entries to sync`);
+          
+          // Notify the main app to sync
+          // The main app will handle the actual sync using the offlineSync service
+          const clients = await self.clients.matchAll();
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'SYNC_PENDING_ENTRIES',
+              count: pending.length
+            });
+          });
+          
+          resolve();
+        };
+        
+        getAllRequest.onerror = () => {
+          console.error('Error reading pending entries:', getAllRequest.error);
+          reject(getAllRequest.error);
+        };
+      };
+      
+      request.onerror = () => {
+        console.error('Failed to open IndexedDB:', request.error);
+        reject(request.error);
+      };
+    });
+  } catch (error) {
+    console.error('Sync error:', error);
+    return Promise.resolve(); // Don't fail the sync event
+  }
 }
 
 async function syncCustomerCheckins() {
-  // Get pending customer check-ins from IndexedDB
-  // Send to server
-  // Clear from IndexedDB on success
+  // Placeholder for customer check-ins sync
   console.log('Syncing customer check-ins...');
 }
 
