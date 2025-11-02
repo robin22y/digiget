@@ -15,7 +15,7 @@ export function ShopCustomerCheckInModal({
   shopId,
   onSuccess 
 }: ShopCustomerCheckInModalProps) {
-  const [step, setStep] = useState<'phone' | 'name' | 'pin' | 'success' | 'redeem'>('phone');
+  const [step, setStep] = useState<'phone' | 'pin' | 'name' | 'success' | 'redeem'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [staffPin, setStaffPin] = useState('');
@@ -26,6 +26,7 @@ export function ShopCustomerCheckInModal({
   const [error, setError] = useState('');
   const [employee, setEmployee] = useState<any>(null);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [autoCloseTimer, setAutoCloseTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Load shop data on mount
   useEffect(() => {
@@ -79,8 +80,8 @@ export function ShopCustomerCheckInModal({
         setStep('pin');
       } else {
         setIsNewCustomer(true);
-        // For new customers, show name entry step first
-        setStep('name');
+        // For new customers, go to PIN entry first, then name after check-in
+        setStep('pin');
       }
 
     } catch (error: any) {
@@ -97,34 +98,52 @@ export function ShopCustomerCheckInModal({
     setError('');
 
     try {
-      const cleanPhone = phoneNumber.replace(/\s/g, '');
-
-      // Create new customer with optional name
-      const { data: newCustomer, error: createError } = await supabase
+      // Update customer name
+      const { data: updatedCustomer, error: updateError } = await supabase
         .from('customers')
-        .insert({
-          shop_id: shopId,
-          phone: cleanPhone,
+        .update({
           name: customerName.trim() || null,
-          current_points: 0,
-          lifetime_points: 0,
-          total_visits: 0,
         })
+        .eq('id', customer.id)
         .select()
         .single();
 
-      if (createError) throw createError;
-      setCustomer(newCustomer);
+      if (updateError) throw updateError;
+      setCustomer(updatedCustomer);
 
-      // Move to PIN entry
-      setStep('pin');
+      // Move to success screen
+      setStep('success');
+      startAutoCloseTimer();
     } catch (error: any) {
-      console.error('Customer creation error:', error);
-      setError('Failed to create customer');
+      console.error('Error updating customer name:', error);
+      setError('Failed to update customer name');
     } finally {
       setLoading(false);
     }
   }
+
+  function startAutoCloseTimer() {
+    // Clear any existing timer
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+    }
+
+    // Set new timer to close after 2 minutes
+    const timer = setTimeout(() => {
+      handleClose();
+    }, 2 * 60 * 1000); // 2 minutes in milliseconds
+
+    setAutoCloseTimer(timer);
+  }
+
+  useEffect(() => {
+    // Cleanup timer on unmount
+    return () => {
+      if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+      }
+    };
+  }, [autoCloseTimer]);
 
   async function handleStaffPinSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -230,9 +249,16 @@ export function ShopCustomerCheckInModal({
         setCustomer(updatedCustomer);
       }
 
-      // Move to success screen showing points and redeem option
-      setError('');
-      setStep('success');
+      // If new customer and no name, show name input first
+      if (isNewCustomer && !customer.name) {
+        setError('');
+        setStep('name');
+      } else {
+        // Move to success screen showing points and redeem option
+        setError('');
+        setStep('success');
+        startAutoCloseTimer();
+      }
       
       if (onSuccess) onSuccess();
 
@@ -300,22 +326,24 @@ export function ShopCustomerCheckInModal({
           added_by_employee_id: staffData.id,
         });
 
-      // Update customer state
+      // Update customer state with 0 points
       setCustomer(updatedCustomer);
       
       // Show success message
       alert(
         `🎉 Reward Redeemed!\n\n` +
-        `Customer: ${customer.name || customer.phone}\n` +
+        `Customer: ${updatedCustomer.name || updatedCustomer.phone}\n` +
         `Reward: ${shop.reward_description}\n` +
         `Points remaining: 0\n` +
         `Redeemed by: ${staffData.first_name}`
       );
 
-      // Reset redeem PIN
+      // Reset redeem PIN and go back to success screen to show updated points
       setRedeemPin('');
       setError('');
       setLoading(false);
+      setStep('success');
+      startAutoCloseTimer();
 
     } catch (error: any) {
       console.error('Redeem error:', error);
@@ -325,6 +353,12 @@ export function ShopCustomerCheckInModal({
   }
 
   function handleClose() {
+    // Clear auto-close timer
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+      setAutoCloseTimer(null);
+    }
+
     // Reset all state
     setPhoneNumber('');
     setCustomerName('');
@@ -392,53 +426,6 @@ export function ShopCustomerCheckInModal({
                 </button>
               </form>
             </>
-          ) : step === 'name' ? (
-            <>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-green-900 mb-1">✨ New Customer</p>
-                <p className="text-green-800 text-sm">Phone: {phoneNumber}</p>
-              </div>
-
-              <p className="text-gray-700 mb-4 text-center">
-                Enter customer's name (optional)
-              </p>
-
-              <form onSubmit={handleNameSubmit}>
-                <input
-                  type="text"
-                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-                  placeholder="Customer Name (Optional)"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  autoFocus
-                />
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                    <p className="text-red-800 text-sm">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  {loading ? 'Creating...' : 'Continue'}
-                </button>
-              </form>
-
-              <button
-                onClick={() => {
-                  setStep('phone');
-                  setCustomerName('');
-                  setError('');
-                }}
-                className="w-full mt-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                ← Back
-              </button>
-            </>
           ) : step === 'pin' ? (
             <>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -484,13 +471,63 @@ export function ShopCustomerCheckInModal({
 
               <button
                 onClick={() => {
-                  setStep(isNewCustomer ? 'name' : 'phone');
+                  setStep('phone');
                   setStaffPin('');
                   setError('');
                 }}
                 className="w-full mt-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 ← Back
+              </button>
+            </>
+          ) : step === 'name' ? (
+            <>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 text-center">
+                <p className="text-2xl mb-2">✨</p>
+                <p className="font-semibold text-green-900 mb-1">New Customer Checked In!</p>
+                <p className="text-green-800 text-sm">Phone: {phoneNumber}</p>
+                <p className="text-green-700 font-semibold mt-2">
+                  Points Awarded: {customer?.current_points || 0}
+                </p>
+              </div>
+
+              <p className="text-gray-700 mb-4 text-center">
+                Enter customer's name (optional)
+              </p>
+
+              <form onSubmit={handleNameSubmit}>
+                <input
+                  type="text"
+                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                  placeholder="Customer Name (Optional)"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  autoFocus
+                />
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-red-800 text-sm">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  {loading ? 'Saving...' : 'Continue'}
+                </button>
+              </form>
+
+              <button
+                onClick={() => {
+                  setStep('success');
+                  startAutoCloseTimer();
+                }}
+                className="w-full mt-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Skip & Continue
               </button>
             </>
           ) : step === 'success' ? (
@@ -500,11 +537,18 @@ export function ShopCustomerCheckInModal({
                   <span className="text-4xl">✓</span>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  Customer Checked In!
+                  {customer?.name ? `Welcome, ${customer.name}!` : 'Customer Checked In!'}
                 </h3>
-                <p className="text-gray-600">
-                  {customer?.name || customer?.phone}
-                </p>
+                {customer?.name && (
+                  <p className="text-lg text-gray-700 mb-2">
+                    Thank you for visiting us!
+                  </p>
+                )}
+                {!customer?.name && (
+                  <p className="text-gray-600">
+                    {customer?.phone}
+                  </p>
+                )}
               </div>
 
               {/* Points Display */}
@@ -567,21 +611,32 @@ export function ShopCustomerCheckInModal({
                 </button>
               )}
 
+              {/* Auto-close notice */}
+              <div className="text-center mt-4 mb-4">
+                <p className="text-xs text-gray-500">
+                  This window will auto-close in 2 minutes
+                </p>
+              </div>
+
               {/* Action Buttons */}
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-3 mt-2">
                 <button
                   onClick={handleClose}
                   className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
                 >
-                  Done
+                  Close
                 </button>
                 <button
                   onClick={() => {
-                    setPhoneNumber('');
-                    setCustomerName('');
-                    setCustomer(null);
-                    setEmployee(null);
-                    setStep('phone');
+                    handleClose();
+                    // Reset for next customer after a brief delay
+                    setTimeout(() => {
+                      setPhoneNumber('');
+                      setCustomerName('');
+                      setCustomer(null);
+                      setEmployee(null);
+                      setStep('phone');
+                    }, 100);
                   }}
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
                 >
