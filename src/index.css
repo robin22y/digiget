@@ -23,7 +23,7 @@ html, body {
 /* Base styles - now in globals.css */
 @layer base {
   body {
-    background-color: var(--color-background-secondary);
+    background-color: var(--color-background);  /* Light gray background */
     color: var(--color-text-primary);
   }
 }

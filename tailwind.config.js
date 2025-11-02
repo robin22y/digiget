@@ -17,10 +17,10 @@ export default {
           yellow: '#FFCC00',
         },
         system: {
-          bg: '#F2F2F7',
-          separator: '#C6C6C8',
-          label: '#000000',
-          secondary: '#8E8E93',
+          bg: '#f5f5f7',  // Light gray background
+          separator: '#d2d2d7',  // Border color
+          label: '#1d1d1f',  // Near black text
+          secondary: '#6e6e73',  // Secondary text
         },
       },
       fontFamily: {

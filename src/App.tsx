@@ -61,6 +61,8 @@ import TermsOfService from './pages/TermsOfService';
 import GDPRRights from './pages/GDPRRights';
 import CookiePolicy from './pages/CookiePolicy';
 import DashboardRedirect from './pages/DashboardRedirect';
+import SubscriptionCancelled from './pages/SubscriptionCancelled';
+import AccountDeleted from './pages/AccountDeleted';
 
 function App() {
   return (
@@ -122,6 +124,8 @@ function App() {
           {/* Legal Pages */}
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/subscription-cancelled" element={<SubscriptionCancelled />} />
+          <Route path="/account-deleted" element={<AccountDeleted />} />
           <Route path="/gdpr" element={<GDPRRights />} />
           <Route path="/cookies" element={<CookiePolicy />} />
 

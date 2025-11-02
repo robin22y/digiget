@@ -64,21 +64,24 @@ export function calculateDistance(
 // Get area name from coordinates using reverse geocoding with road/street level accuracy
 export async function getAreaName(latitude: number, longitude: number): Promise<string> {
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`,
-      {
-        headers: {
-          'User-Agent': 'DigiGet Location Service',
-        },
-      }
-    );
+    // Use Supabase Edge Function to proxy Nominatim requests (avoids CORS issues)
+    const { createClient } = await import('../lib/supabase');
+    const supabase = createClient();
     
-    if (!response.ok) {
-      // Fallback to coordinates if API fails
+    const { data, error } = await supabase.functions.invoke('reverse-geocode', {
+      body: { latitude, longitude }
+    });
+    
+    if (error || !data) {
+      console.warn('Reverse geocoding failed, using coordinates:', error);
       return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     }
     
-    const data = await response.json();
+    // Check if response has error
+    if (data.error) {
+      // If fallback provided, use it, otherwise use coordinates
+      return data.fallback || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    }
     
     if (data && data.address) {
       const addr = data.address;

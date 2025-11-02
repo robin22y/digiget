@@ -6,6 +6,8 @@ import { useShop } from '../../contexts/ShopContext';
 import ShopLocationSetup from '../../components/ShopLocationSetup';
 import OwnerPinModal from '../../components/OwnerPinModal';
 import ChangeOwnerPinModal from '../../components/ChangeOwnerPinModal';
+import { CancelSubscriptionModal } from '../../components/CancelSubscriptionModal';
+import { DeleteAccountModal } from '../../components/DeleteAccountModal';
 
 interface Shop {
   id: string;
@@ -49,6 +51,8 @@ export default function SettingsPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showChangePinModal, setShowChangePinModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handlePinSuccess = () => {
     setIsUnlocked(true);
@@ -457,6 +461,12 @@ export default function SettingsPage() {
               className={`tab ${activeTab === 'nfc' ? 'active' : ''}`}
             >
               NFC Clock-In
+            </button>
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`tab ${activeTab === 'security' ? 'active' : ''}`}
+            >
+              Security
             </button>
           </div>
 
@@ -1102,6 +1112,70 @@ export default function SettingsPage() {
                   {shop.owner_pin && shop.owner_pin !== '000000' ? 'Change PIN' : 'Create PIN'}
                 </button>
               </div>
+
+              {/* DANGER ZONE */}
+              <div className="danger-zone-section mt-8">
+                <div className="danger-zone-header">
+                  <h2 className="text-xl font-semibold mb-2">⚠️ Danger Zone</h2>
+                  <p className="text-sm text-gray-600">
+                    Irreversible actions. Please be careful.
+                  </p>
+                </div>
+
+                <div className="danger-zone-content">
+                  {/* Cancel Subscription */}
+                  <div className="danger-action">
+                    <div className="danger-action-info">
+                      <h3 className="text-lg font-semibold mb-2">Cancel Subscription</h3>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Stop your subscription to DigiGet. Access ends at the end of 
+                        your current billing period. Your data will be kept for 30 days 
+                        in case you want to reactivate.
+                      </p>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        <li>✓ Data preserved for 30 days</li>
+                        <li>✓ Can reactivate anytime</li>
+                        <li>✓ No refund for unused time</li>
+                      </ul>
+                    </div>
+                    <div className="danger-action-button">
+                      <button
+                        onClick={() => setShowCancelModal(true)}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+                        disabled={shop.subscription_status === 'cancelled'}
+                      >
+                        Cancel Subscription
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Delete Account */}
+                  <div className="danger-action">
+                    <div className="danger-action-info">
+                      <h3 className="text-lg font-semibold mb-2">Delete Account</h3>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Permanently delete your shop account and all associated data. 
+                        This includes all staff, customers, clock history, and loyalty points. 
+                        This action CANNOT be undone.
+                      </p>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        <li>❌ All staff deleted</li>
+                        <li>❌ All customers deleted</li>
+                        <li>❌ All clock history deleted</li>
+                        <li>❌ Cannot be recovered</li>
+                      </ul>
+                    </div>
+                    <div className="danger-action-button">
+                      <button
+                        onClick={() => setShowDeleteModal(true)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                      >
+                        Delete Account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1119,6 +1193,24 @@ export default function SettingsPage() {
           Lock Settings
         </button>
       </div>
+
+      {/* Cancel Subscription Modal */}
+      {showCancelModal && shop && (
+        <CancelSubscriptionModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          shop={shop}
+        />
+      )}
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && shop && (
+        <DeleteAccountModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          shop={shop}
+        />
+      )}
 
       {/* Change PIN Modal */}
       {showChangePinModal && shop && (

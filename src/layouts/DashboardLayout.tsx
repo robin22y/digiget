@@ -266,7 +266,7 @@ export default function DashboardLayout() {
       </aside>
 
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-x-hidden">
-        <main className="bg-system-bg flex-1 overflow-x-hidden">
+        <main className="bg-system-bg flex-1 overflow-x-hidden" style={{ backgroundColor: '#f5f5f7' }}>
           <div className="p-4 pb-20 md:pb-4 max-w-full overflow-x-hidden">
             {renderBillingBanner()}
             <Outlet context={{ shop }} />

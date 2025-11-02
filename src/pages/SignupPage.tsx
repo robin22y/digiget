@@ -187,8 +187,10 @@ export default function SignupPage() {
         return;
       }
 
-      // Generate and save QR URL after shop is created (so we have the ID)
-      const qrUrl = `${window.location.origin}/customer/${shop.id}/login`;
+      // Note: QR code URL is now generated from short_code in ShopQRCode component
+      // No need to set qr_url here anymore - staff clock-in uses /s/{short_code}
+      // Keeping this update for backwards compatibility if qr_url is still used elsewhere
+      const qrUrl = `${window.location.origin}/s/${shortCode}`;
       await supabase
         .from('shops')
         .update({ qr_url: qrUrl })
@@ -227,7 +229,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4 relative z-50">
+    <div className="min-h-screen flex items-center justify-center p-4 relative z-50" style={{ backgroundColor: '#f5f5f7' }}>
       <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 max-w-md w-full relative z-50">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 bg-gradient-to-r from-modern-blue to-modern-indigo bg-clip-text text-transparent">

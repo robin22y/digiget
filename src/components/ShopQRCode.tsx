@@ -9,6 +9,7 @@ interface ShopQRCodeProps {
 }
 
 interface Shop {
+  short_code?: string | null;
   branded_qr_url?: string | null;
   branded_qr_pdf?: string | null;
 }
@@ -21,71 +22,46 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   const [generatingBranded, setGeneratingBranded] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // QR code links to customer login portal
-  const defaultCheckInUrl = `${window.location.origin}/customer/${shopId}/login`;
-
-  // Load or generate QR URL
+  // Load shop short_code and generate staff clock-in URL
   useEffect(() => {
     const loadQRUrl = async () => {
       if (!shopId) {
-        setQrUrl(defaultCheckInUrl);
         return;
       }
 
       try {
-        // Try to fetch existing QR URL and branded QR URLs
+        // Fetch shop short_code for staff clock-in QR code
         const { data: shopData, error: fetchError } = await supabase
           .from('shops')
-          .select('qr_url, qr_code_active, branded_qr_url, branded_qr_pdf')
+          .select('short_code, branded_qr_url, branded_qr_pdf')
           .eq('id', shopId)
           .maybeSingle();
 
         if (fetchError) {
-          console.warn('Could not fetch shop QR URL (may be missing columns):', fetchError);
-          // Continue with default URL even if fetch fails
-          setQrUrl(defaultCheckInUrl);
+          console.warn('Could not fetch shop data:', fetchError);
           return;
         }
 
         if (shopData) {
           setShop(shopData);
-          if (shopData.qr_url) {
-            setQrUrl(shopData.qr_url);
+          // Use short code URL for staff clock-in
+          if (shopData.short_code) {
+            const staffClockInUrl = `${window.location.origin}/s/${shopData.short_code}`;
+            setQrUrl(staffClockInUrl);
           } else {
-          // Generate and save if not exists (for existing shops without QR codes)
-          const newQrUrl = defaultCheckInUrl;
-          
-          // Try to update, but don't fail if columns don't exist
-          try {
-            const { error: updateError } = await supabase
-              .from('shops')
-              .update({ 
-                qr_url: newQrUrl,
-                qr_code_active: true 
-              })
-              .eq('id', shopId);
-            
-            if (updateError) {
-              // If update fails (e.g., columns don't exist), log but continue
-              console.warn('Could not save QR URL to database (columns may not exist):', updateError);
-            }
-          } catch (updateErr) {
-            console.warn('Error updating QR URL:', updateErr);
-          }
-          
-          // Always set the URL locally even if DB update fails
-          setQrUrl(newQrUrl);
+            // Fallback to UUID-based URL if short_code doesn't exist yet
+            const fallbackUrl = `${window.location.origin}/staff/${shopId}/clock-in`;
+            setQrUrl(fallbackUrl);
+            console.warn('Shop does not have short_code yet. Using fallback URL.');
           }
         }
       } catch (error) {
         console.error('Error loading QR URL:', error);
-        // Always fallback to default URL
-        setQrUrl(defaultCheckInUrl);
       }
     };
 
     loadQRUrl();
-  }, [shopId, defaultCheckInUrl]);
+  }, [shopId]);
 
   const handleGenerateBranded = async () => {
     if (!confirm('Generate branded QR poster? This will create a print-ready poster with DigiGet branding.')) {
@@ -146,47 +122,33 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
   };
 
   const handleRegenerate = async () => {
-    if (!confirm('Regenerate QR code? The link will remain the same, but this will refresh the code.')) {
+    if (!confirm('Refresh QR code display? The link will remain the same, but this will refresh the visual code.')) {
       return;
     }
 
     setRegenerating(true);
     try {
-      // Regenerate QR URL (ensures it uses the current domain)
-      const newQrUrl = defaultCheckInUrl;
-      
-      // Try to update database, but don't fail if it doesn't work
-      try {
-        const { error } = await supabase
-          .from('shops')
-          .update({ 
-            qr_url: newQrUrl, 
-            qr_code_active: true,
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', shopId);
-        
-        if (error) {
-          console.warn('Could not update QR URL in database:', error);
-          // Continue anyway - the QR code will still work
-        }
-      } catch (updateErr) {
-        console.warn('Error updating QR URL:', updateErr);
+      // Just refresh the display - URL doesn't change (it's based on short_code)
+      // Reload shop data to ensure we have latest short_code
+      const { data: shopData } = await supabase
+        .from('shops')
+        .select('short_code')
+        .eq('id', shopId)
+        .maybeSingle();
+
+      if (shopData?.short_code) {
+        const staffClockInUrl = `${window.location.origin}/s/${shopData.short_code}`;
+        setQrUrl(staffClockInUrl);
       }
-      
-      // Always update local state
-      setQrUrl(newQrUrl);
       
       setTimeout(() => {
         setRegenerating(false);
-        alert('QR Code regenerated successfully! You can now reprint or download it.');
+        alert('QR Code refreshed successfully! You can now reprint or download it.');
       }, 500);
     } catch (error: any) {
       console.error('Error regenerating QR:', error);
       setRegenerating(false);
-      // Even on error, update the URL locally
-      setQrUrl(defaultCheckInUrl);
-      alert('QR Code refreshed (may not be saved to database). You can still use it.');
+      alert('QR Code refreshed.');
     }
   };
 
@@ -216,7 +178,7 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `digiget-checkin-qr-${shopName.replace(/\s+/g, '-').toLowerCase()}.png`;
+            link.download = `${shopName.replace(/\s+/g, '-').toLowerCase()}-staff-clock-in-qr.png`;
             link.click();
             URL.revokeObjectURL(url);
           }
@@ -231,10 +193,10 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Check-In QR Code</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Staff Clock-In QR Code</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Customers can scan this QR code to access their customer portal to view points and account. 
-            Print or download to display at your shop.
+            Print this QR code and place it near your shop entrance. Staff scan it to quickly clock in/out. 
+            Takes only 5 seconds per clock-in.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -256,6 +218,7 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
           <div className="bg-white p-6 rounded-lg border-2 border-gray-200 flex justify-center" ref={qrRef}>
             {qrUrl ? (
               <QRCode
+                id="staff-clock-in-qr"
                 value={qrUrl}
                 size={200}
                 level="H"
@@ -275,14 +238,15 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
         <div className="flex-1 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Check-In URL
+              Staff Clock-In URL
             </label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                value={qrUrl || defaultCheckInUrl}
+                value={qrUrl || ''}
                 readOnly
                 className="flex-1 px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono truncate"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
               />
               <button
                 onClick={handleCopyLink}
@@ -310,48 +274,115 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               <Download className="w-5 h-5" />
-              Download QR as PNG
+              Download QR Code (PNG)
             </button>
             <button
               onClick={() => {
-                // Open print dialog with only the QR code section
-                const printContent = qrRef.current?.innerHTML || '';
+                // Get QR code SVG
+                const svg = qrRef.current?.querySelector('svg');
+                if (!svg) return;
+                
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
+                
+                // Create printable card with instructions
                 const printWindow = window.open('', '_blank');
                 if (printWindow) {
                   printWindow.document.write(`
                     <!DOCTYPE html>
                     <html>
                       <head>
-                        <title>${shopName} - Check-In QR Code</title>
+                        <title>Staff Clock-In Card - ${shopName}</title>
                         <style>
                           @page { margin: 20mm; size: A4; }
                           body { 
                             font-family: Arial, sans-serif;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            min-height: 100vh;
-                            margin: 0;
-                            padding: 20px;
+                            max-width: 600px;
+                            margin: 40px auto;
+                            padding: 40px;
+                            text-align: center;
                           }
-                          h1 { margin: 0 0 10px 0; font-size: 24px; color: #1f2937; }
-                          p { margin: 0 0 30px 0; color: #6b7280; font-size: 14px; }
+                          h1 { 
+                            margin: 0 0 10px 0; 
+                            font-size: 32px; 
+                            color: #1f2937; 
+                          }
+                          h2 {
+                            margin: 0 0 30px 0;
+                            font-size: 24px;
+                            color: #6b7280;
+                          }
                           .qr-container { 
-                            border: 2px solid #e5e7eb;
+                            background: white;
+                            padding: 30px;
+                            border: 3px solid #1f2937;
+                            border-radius: 12px;
+                            margin: 30px auto;
+                            display: inline-block;
+                          }
+                          .instructions {
+                            text-align: left;
+                            margin: 30px auto;
+                            max-width: 400px;
+                            background: #f5f5f5;
                             padding: 20px;
                             border-radius: 8px;
-                            background: white;
+                          }
+                          .instructions h3 {
+                            margin-top: 0;
+                            color: #1f2937;
+                            font-size: 18px;
+                          }
+                          .instructions ol {
+                            margin: 10px 0;
+                            padding-left: 20px;
+                          }
+                          .instructions li {
+                            margin: 10px 0;
+                            font-size: 16px;
+                            line-height: 1.5;
+                          }
+                          .url {
+                            font-family: monospace;
+                            background: #e0e0e0;
+                            padding: 10px;
+                            border-radius: 4px;
+                            margin: 20px 0;
+                            word-break: break-all;
+                            font-size: 14px;
+                          }
+                          .footer {
+                            color: #9ca3af;
+                            font-size: 14px;
+                            margin-top: 40px;
                           }
                           svg { display: block; }
                         </style>
                       </head>
                       <body>
                         <h1>${shopName}</h1>
-                        <p>Customer Portal QR Code - Scan to view your account</p>
-                        <div class="qr-container">${printContent}</div>
-                        <p style="margin-top: 30px; font-size: 12px; color: #9ca3af;">
-                          Powered by DigiGet - digiget.uk
+                        <h2>Staff Clock-In</h2>
+                        
+                        <div class="qr-container">
+                          <img src="data:image/svg+xml;base64,${svgBase64}" width="300" height="300" alt="Staff Clock-In QR Code" />
+                        </div>
+                        
+                        <div class="instructions">
+                          <h3>📱 How to Clock In:</h3>
+                          <ol>
+                            <li>Open camera on your phone</li>
+                            <li>Point at QR code above</li>
+                            <li>Tap notification to open link</li>
+                            <li>Enter your 4-digit PIN</li>
+                            <li>Tap "Clock In" - Done!</li>
+                          </ol>
+                          
+                          <p><strong>Or visit:</strong></p>
+                          <div class="url">${qrUrl ? qrUrl.replace(window.location.origin, 'digiget.uk') : 'digiget.uk/s/[CODE]'}</div>
+                        </div>
+                        
+                        <p class="footer">
+                          Powered by DigiGet
                         </p>
                       </body>
                     </html>
@@ -365,7 +396,7 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
               }}
               className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
             >
-              Print
+              Print Card
             </button>
           </div>
 
@@ -423,13 +454,26 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">📱 How to Use</h3>
-            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-              <li>Download or print this QR code</li>
-              <li>Display it at your shop entrance or counter</li>
-              <li>Customers scan it to access their portal to view points and account</li>
-              <li>No app download required - works with any QR scanner</li>
-            </ul>
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">📱 How It Works</h3>
+            <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+              <li>Print this QR code (or download and print the PNG)</li>
+              <li>Place near entrance at chest height</li>
+              <li>Staff scans with phone camera</li>
+              <li>Enters 4-digit PIN</li>
+              <li>Clocked in! (5 seconds total)</li>
+            </ol>
+            <div className="mt-3 p-3 bg-blue-100 rounded-lg border border-blue-300">
+              <p className="text-xs text-blue-900 font-medium">💡 Tip:</p>
+              <p className="text-xs text-blue-800">
+                Laminate the printed QR code or put it in a plastic sleeve to protect it from wear and tear.
+              </p>
+            </div>
+            <div className="mt-3">
+              <p className="text-xs text-blue-700 font-medium mb-1">Or share the link:</p>
+              <p className="text-xs text-blue-600">
+                Staff can bookmark the link above on their phones for quick access without scanning.
+              </p>
+            </div>
           </div>
         </div>
       </div>

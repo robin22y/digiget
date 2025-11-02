@@ -105,7 +105,7 @@ export default function SuperAdminLayout() {
       </aside>
 
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-x-hidden">
-        <main className="bg-gray-50 flex-1 overflow-x-hidden">
+        <main className="flex-1 overflow-x-hidden" style={{ backgroundColor: '#f5f5f7' }}>
           <div className="p-4 pb-20 md:pb-4 max-w-full overflow-x-hidden">
             <Outlet />
           </div>

@@ -119,11 +119,12 @@ export default function LoginPage() {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-2 sm:p-4" 
+      className="min-h-screen flex items-center justify-center p-2 sm:p-4" 
       style={{ 
         position: 'relative', 
         zIndex: 100,
-        minHeight: '-webkit-fill-available' // For mobile browsers
+        minHeight: '-webkit-fill-available',
+        backgroundColor: '#f5f5f7' // Light gray background
       }}
     >
       <div 

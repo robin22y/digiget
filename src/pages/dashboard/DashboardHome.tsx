@@ -340,9 +340,9 @@ export default function DashboardHome() {
           >
             <div className="font-bold text-lg flex items-center gap-2">
               <QrCode className="w-5 h-5" />
-              QR Code
+              Staff Clock-In QR
             </div>
-            <div className="text-sm text-indigo-100">View, print, or download your check-in QR</div>
+            <div className="text-sm text-indigo-100">Print staff clock-in QR code for shop entrance</div>
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-3xl opacity-20">📱</div>
           </Link>
           {(
