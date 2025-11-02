@@ -1,4 +1,10 @@
-/*    /index.html   200
+# Exclude PWA files from SPA redirect
+/manifest.json    /manifest.json   200
+/sw.js            /sw.js           200
+/icon-*.png       /icon-192.png    200
+
+# Redirect all other routes to index.html for React Router (SPA)
+/*                /index.html       200
 
 # Service Worker - no cache
 /sw.js

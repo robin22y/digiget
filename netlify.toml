@@ -19,8 +19,34 @@
   status = 200
   force = true
 
+# CRITICAL: Exclude static PWA files from SPA redirect
+# These must be served as-is, not redirected to index.html
+[[redirects]]
+  from = "/manifest.json"
+  to = "/manifest.json"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/sw.js"
+  to = "/sw.js"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/icon-*.png"
+  to = "/icon-192.png"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/icon-512.png"
+  to = "/icon-512.png"
+  status = 200
+  force = true
+
 # Redirect all other routes to index.html for React Router (SPA)
-# Must come AFTER API routes
+# Must come AFTER all static file exclusions
 [[redirects]]
   from = "/*"
   to = "/index.html"
