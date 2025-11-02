@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { ShopPINEntry } from '../components/ShopPINEntry';
 import { ShopClockInOutModal } from '../components/ShopClockInOutModal';
 import { ShopCustomerCheckInModal } from '../components/ShopCustomerCheckInModal';
+import { updateManifest } from '../utils/manifestManager';
 
 export default function ShopPortal() {
   const { code } = useParams();
@@ -13,6 +14,32 @@ export default function ShopPortal() {
   const [showAction, setShowAction] = useState<'clock' | 'customer' | null>(null);
   const [currentlyWorking, setCurrentlyWorking] = useState<any[]>([]);
   const [todayCustomers, setTodayCustomers] = useState(0);
+
+  // CRITICAL: Set shop-specific manifest IMMEDIATELY on mount
+  // This must happen before browser reads manifest for PWA install
+  useEffect(() => {
+    if (!code) return;
+
+    // Load shop name immediately for manifest
+    const loadShopForManifest = async () => {
+      try {
+        const { data: shopData } = await supabase
+          .from('shops')
+          .select('shop_name, short_code')
+          .eq('short_code', code)
+          .maybeSingle();
+
+        if (shopData) {
+          // Update manifest immediately with shop info
+          updateManifest('shop', shopData.short_code, shopData.shop_name);
+        }
+      } catch (error) {
+        console.error('Error loading shop for manifest:', error);
+      }
+    };
+
+    loadShopForManifest();
+  }, [code]);
 
   // Check if shop PIN is stored in session
   useEffect(() => {

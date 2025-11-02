@@ -3,7 +3,20 @@
   publish = "dist"
   command = "npm run build"
 
-# Redirect all routes to index.html for React Router (SPA)
+# Serve API functions (shop manifest and icon)
+# These must be excluded from SPA redirect
+[[redirects]]
+  from = "/api/shop/*/manifest.json"
+  to = "/.netlify/functions/shop-manifest"
+  status = 200
+
+[[redirects]]
+  from = "/api/shop/*/icon"
+  to = "/.netlify/functions/shop-icon"
+  status = 200
+
+# Redirect all other routes to index.html for React Router (SPA)
+# Must come AFTER API routes
 [[redirects]]
   from = "/*"
   to = "/index.html"

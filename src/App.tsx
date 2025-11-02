@@ -78,17 +78,25 @@ function ManifestUpdater() {
     const { type, shopCode } = detectPWAType(location.pathname);
     
     if (type === 'shop' && shopCode) {
-      // Fetch shop name for manifest
-      import('./lib/supabase').then(({ supabase }) => {
-        supabase
-          .from('shops')
-          .select('shop_name')
-          .eq('short_code', shopCode)
-          .maybeSingle()
-          .then(({ data: shop }) => {
-            updateManifest('shop', shopCode, shop?.shop_name);
-          });
-      });
+      // Fetch shop name for manifest - do this immediately
+      const loadShopManifest = async () => {
+        try {
+          const { supabase } = await import('./lib/supabase');
+          const { data: shop } = await supabase
+            .from('shops')
+            .select('shop_name')
+            .eq('short_code', shopCode)
+            .maybeSingle();
+          
+          // Update manifest immediately with shop info
+          updateManifest('shop', shopCode, shop?.shop_name);
+        } catch (error) {
+          console.error('Error loading shop for manifest:', error);
+          // Still update manifest with code even if name fetch fails
+          updateManifest('shop', shopCode);
+        }
+      };
+      loadShopManifest();
     } else {
       updateManifest(type);
     }
