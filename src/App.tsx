@@ -42,6 +42,7 @@ import StaffPortal from './pages/staff/StaffPortal';
 import ShopPortal from './pages/ShopPortal';
 import { TabletSetup } from './pages/TabletSetup';
 import { ShopOwnerHome } from './pages/ShopOwnerHome';
+import { CustomerAnalytics } from './pages/CustomerAnalytics';
 import StaffClockIn from './pages/staff/StaffClockIn';
 import CustomerCheckIn from './pages/staff/CustomerCheckIn';
 import NFCClockIn from './pages/NFCClockIn';
@@ -152,6 +153,9 @@ function App() {
           
           {/* Shop Owner Home - Simplified Dashboard */}
           <Route path="/owner-home" element={<ShopOwnerHome />} />
+          
+          {/* Customer Analytics */}
+          <Route path="/analytics" element={<CustomerAnalytics />} />
 
           {/* New staff-facing pages */}
           <Route path="/staff/:shopId/clock-in" element={<StaffClockIn />} />

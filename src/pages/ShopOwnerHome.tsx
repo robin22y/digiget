@@ -389,6 +389,15 @@ export function ShopOwnerHome() {
               onClick={() => handleMenuClick(`/dashboard/${shop.id}/customers`)}
               fullWidth
             />
+
+            <MenuButton
+              icon="📊"
+              label="Customer Analytics"
+              subtitle="Insights & metrics"
+              locked={!isUnlocked}
+              onClick={() => handleMenuClick(`/analytics`)}
+              fullWidth
+            />
           </div>
         </div>
 

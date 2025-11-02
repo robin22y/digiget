@@ -655,6 +655,290 @@
   }
 }
 
+/* Analytics Page */
+.analytics-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.filter-group {
+  margin-bottom: 16px;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.custom-range {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.custom-range span {
+  color: var(--color-text-secondary);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rank-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  display: inline-block;
+}
+
+.rank-1 {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: white;
+}
+
+.rank-2 {
+  background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+  color: white;
+}
+
+.rank-3 {
+  background: linear-gradient(135deg, #CD7F32, #8B4513);
+  color: white;
+}
+
+.rank-badge:not(.rank-1):not(.rank-2):not(.rank-3) {
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.visit-count {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 16px;
+}
+
+.points-badge {
+  padding: 4px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-primary);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.days-badge {
+  padding: 4px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.staff-performance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.performance-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.performance-rank {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background);
+  border-radius: 50%;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.performance-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.staff-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--color-text);
+}
+
+.customer-count {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.performance-bar {
+  flex: 2;
+  height: 8px;
+  background: var(--color-background);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+.performance-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.chart-container {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--color-background);
+  border-radius: 8px;
+}
+
+.simple-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 200px;
+  padding: 20px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chart-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 40px;
+}
+
+.chart-bar-fill {
+  width: 100%;
+  min-height: 4px;
+  background: linear-gradient(180deg, #3b82f6, #60a5fa);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+.chart-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.chart-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.filter-group-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-group-inline label {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.filter-group-inline .input {
+  width: auto;
+  min-width: 120px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 14px;
+  min-height: 32px;
+}
+
+/* Responsive for Analytics */
+@media (max-width: 768px) {
+  .analytics-page {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .button-group .btn {
+    width: 100%;
+  }
+
+  .custom-range {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .custom-range input {
+    width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .performance-item {
+    flex-wrap: wrap;
+  }
+
+  .performance-bar {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .table-responsive {
+    font-size: 14px;
+  }
+}
+
 /* RTL Support for Arabic/Urdu */
 [dir="rtl"] .language-dropdown {
   left: 0;
