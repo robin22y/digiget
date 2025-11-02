@@ -422,18 +422,17 @@ export function ShopOwnerHome() {
       </div>
 
         {/* PIN Modal */}
-        {showPINModal && (
-          <PINModal
-            isOpen={showPINModal}
-            menuName={selectedMenu || ''}
-            onSuccess={handlePINSuccess}
-            onCancel={() => {
-              setShowPINModal(false);
-              setSelectedMenu(null);
-            }}
-          />
-        )}
-      </div>
+      {showPINModal && (
+        <PINModal
+          isOpen={showPINModal}
+          menuName={selectedMenu || ''}
+          onSuccess={handlePINSuccess}
+          onCancel={() => {
+            setShowPINModal(false);
+            setSelectedMenu(null);
+          }}
+        />
+      )}
     </div>
   );
 }
