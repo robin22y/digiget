@@ -70,6 +70,14 @@ export function InstallPrompt() {
     localStorage.setItem('install-prompt-dismissed', 'true');
   };
 
+  // Don't show on login/signup pages
+  useEffect(() => {
+    const currentPath = window.location.pathname;
+    if (currentPath === '/login' || currentPath === '/signup') {
+      setShowPrompt(false);
+    }
+  }, []);
+
   if (!showPrompt) return null;
 
   return (
@@ -84,7 +92,8 @@ export function InstallPrompt() {
       boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
       zIndex: 1000,
       maxWidth: '400px',
-      margin: '0 auto'
+      margin: '0 auto',
+      pointerEvents: 'auto'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{

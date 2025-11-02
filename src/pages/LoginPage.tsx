@@ -118,8 +118,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-4 relative z-50">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-md w-full animate-fade-in relative z-50">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-50 flex items-center justify-center p-2 sm:p-4" 
+      style={{ 
+        position: 'relative', 
+        zIndex: 100,
+        minHeight: '-webkit-fill-available' // For mobile browsers
+      }}
+    >
+      <div 
+        className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 lg:p-12 max-w-md w-full overflow-y-auto" 
+        style={{ 
+          position: 'relative', 
+          zIndex: 100,
+          marginTop: 'auto',
+          marginBottom: 'auto',
+          maxHeight: '-webkit-fill-available'
+        }}
+      >
         {/* Logo/Icon */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-center">
@@ -145,7 +161,13 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5 relative z-10" noValidate>
+        <form 
+          onSubmit={handleSubmit} 
+          className="space-y-5" 
+          noValidate 
+          style={{ position: 'relative', zIndex: 100 }}
+          autoComplete="on"
+        >
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Email Address
@@ -157,6 +179,10 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className="input-modern"
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
             />
           </div>
 
@@ -179,14 +205,35 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="input-modern"
+              autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-modern btn-modern-primary relative z-10 touch-manipulation"
-            style={{ minHeight: '44px', WebkitTapHighlightColor: 'transparent' }}
+            className="w-full btn-modern btn-modern-primary touch-manipulation"
+            style={{ 
+              minHeight: '48px',
+              WebkitTapHighlightColor: 'transparent',
+              position: 'relative',
+              zIndex: 100,
+              touchAction: 'manipulation',
+              userSelect: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1
+            }}
+            onClick={(e) => {
+              // Ensure form submission on mobile
+              if (!e.defaultPrevented) {
+                const form = e.currentTarget.closest('form');
+                if (form && !form.checkValidity()) {
+                  form.reportValidity();
+                }
+              }
+            }}
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
