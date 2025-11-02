@@ -116,6 +116,9 @@ export function CustomerAnalytics() {
   async function exportToCSV() {
     if (!stats) return;
 
+    // Import the export utility
+    const { exportToCSV: exportCSV } = await import('../lib/exportPayroll');
+
     // Create CSV data
     const csvData = [
       ['Customer Analytics Report'],
@@ -146,14 +149,9 @@ export function CustomerAnalytics() {
       ])
     ];
 
-    const csv = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `customer-analytics-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // Export with Excel-compatible format
+    const filename = `customer-analytics-${Date.now()}.csv`;
+    exportCSV(csvData, filename);
   }
 
   function formatDate(isoString: string | null): string {

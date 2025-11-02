@@ -203,12 +203,13 @@ export async function getWeeklyPayrollData(shopId: string): Promise<WeeklyPayrol
  * Generate CSV content for payroll
  */
 export function generatePayrollCSV(data: WeeklyPayrollData): string {
-  const headers = ['Staff Member', 'Hours', 'Rate (£)', 'Gross Pay (£)', 'Days Worked'];
+  // Excel-compatible CSV: No currency symbols, just numbers
+  const headers = ['Staff Member', 'Hours', 'Rate (GBP)', 'Gross Pay (GBP)', 'Days Worked'];
   const rows = data.staffBreakdown.map((staff) => [
     staff.name,
     staff.hours.toFixed(1),
-    staff.rate.toFixed(2),
-    staff.grossPay.toFixed(2),
+    staff.rate.toFixed(2), // No £ symbol
+    staff.grossPay.toFixed(2), // No £ symbol
     staff.daysWorked.toString(),
   ]);
 
@@ -221,13 +222,19 @@ export function generatePayrollCSV(data: WeeklyPayrollData): string {
     '',
   ]);
 
-  // Convert to CSV format
+  // Convert to CSV format with proper quoting
   const csvRows = [
-    headers.join(','),
-    ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    headers.map(h => `"${h}"`).join(','),
+    ...rows.map((row) => row.map((cell) => {
+      const escaped = String(cell).replace(/"/g, '""');
+      return `"${escaped}"`;
+    }).join(',')),
   ];
 
-  return csvRows.join('\n');
+  // Use Windows line endings for Excel compatibility
+  // Add UTF-8 BOM for Excel
+  const BOM = '\uFEFF';
+  return BOM + csvRows.join('\r\n');
 }
 
 /**

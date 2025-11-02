@@ -168,33 +168,30 @@ export default function PayrollPage() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Employee', 'Date', 'Clock In', 'Clock Out', 'Hours', 'Hourly Rate', 'Pay'];
-    const rows: string[][] = [];
+    // Import the export utility
+    import('../../lib/exportPayroll').then(({ exportPayrollToCSV }) => {
+      // Transform payroll data to PayrollRow format
+      const exportData: import('../../lib/exportPayroll').PayrollRow[] = [];
 
-    payrollData.forEach(({ employee, dailyBreakdown }) => {
-      dailyBreakdown.forEach(day => {
-        rows.push([
-          `${employee.first_name} ${employee.last_name || ''}`.trim(),
-          day.date,
-          day.clockIn,
-          day.clockOut,
-          day.hours.toFixed(2),
-          employee.hourly_rate ? `£${employee.hourly_rate.toFixed(2)}` : '-',
-          employee.hourly_rate ? `£${(day.hours * employee.hourly_rate).toFixed(2)}` : '-'
-        ]);
+      payrollData.forEach(({ employee, dailyBreakdown }) => {
+        dailyBreakdown.forEach(day => {
+          exportData.push({
+            employeeName: `${employee.first_name} ${employee.last_name || ''}`.trim(),
+            date: day.date,
+            clockIn: day.clockIn,
+            clockOut: day.clockOut,
+            hours: day.hours,
+            hourlyRate: employee.hourly_rate || 0,
+            pay: employee.hourly_rate ? day.hours * employee.hourly_rate : 0,
+            notes: ''
+          });
+        });
       });
-    });
 
-    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `payroll-${period}-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      // Export with Excel-compatible format
+      const filename = `payroll-${period}-${new Date().toISOString().split('T')[0]}.csv`;
+      exportPayrollToCSV(exportData, filename);
+    });
   };
 
   const totalHours = payrollData.reduce((sum, d) => sum + d.totalHours, 0);
