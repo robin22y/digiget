@@ -423,7 +423,7 @@ export default function AssignNFCTags() {
                   <th>Owner</th>
                   <th>Email</th>
                   <th>Current Tag ID</th>
-                  <th>NFC Clock-In URL</th>
+                  <th style={{ minWidth: '350px' }}>NFC Clock-In URL</th>
                   <th>New Tag ID</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -453,30 +453,47 @@ export default function AssignNFCTags() {
                       </td>
                       <td>
                         {shop.nfc_tag_id ? (
-                          <div className="flex items-center gap-2">
-                            <code className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-mono max-w-xs truncate">
-                              {getNfcUrl(shop.nfc_tag_id)}
-                            </code>
-                            <button
-                              onClick={() => copyToClipboard(getNfcUrl(shop.nfc_tag_id), shop.id)}
-                              className="p-1 hover:bg-gray-100 rounded transition-colors"
-                              title="Copy URL"
-                            >
-                              {copiedTagId === shop.id ? (
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Copy className="w-4 h-4 text-gray-600" />
-                              )}
-                            </button>
-                            <a
-                              href={getNfcUrl(shop.nfc_tag_id)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 hover:bg-gray-100 rounded transition-colors"
-                              title="Open URL"
-                            >
-                              <ExternalLink className="w-4 h-4 text-gray-600" />
-                            </a>
+                          <div className="flex flex-col gap-2 min-w-[300px]">
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={getNfcUrl(shop.nfc_tag_id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-700 hover:underline font-mono text-sm break-all"
+                                title="Click to open NFC clock-in page"
+                              >
+                                {getNfcUrl(shop.nfc_tag_id)}
+                              </a>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => copyToClipboard(getNfcUrl(shop.nfc_tag_id), shop.id)}
+                                className="flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-medium transition-colors"
+                                title="Copy URL to clipboard"
+                              >
+                                {copiedTagId === shop.id ? (
+                                  <>
+                                    <CheckCircle className="w-3 h-3" />
+                                    <span>Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy URL</span>
+                                  </>
+                                )}
+                              </button>
+                              <a
+                                href={getNfcUrl(shop.nfc_tag_id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium transition-colors"
+                                title="Open in new tab"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>Open</span>
+                              </a>
+                            </div>
                           </div>
                         ) : (
                           <em className="text-muted text-sm">No tag assigned</em>
