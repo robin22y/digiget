@@ -10,6 +10,8 @@ import { CancelSubscriptionModal } from '../../components/CancelSubscriptionModa
 import { DeleteAccountModal } from '../../components/DeleteAccountModal';
 import { AuthorizeDeviceModal } from '../../components/AuthorizeDeviceModal';
 import { storeDeviceFingerprint } from '../../lib/deviceFingerprint';
+import ResetShopPinModal from '../../components/ResetShopPinModal';
+import ToggleTrustedDevicesModal from '../../components/ToggleTrustedDevicesModal';
 
 interface Shop {
   id: string;
@@ -19,6 +21,7 @@ interface Shop {
   owner_pin: string | null;
   shop_pin: string | null;
   short_code: string | null;
+  trusted_devices_enabled: boolean;
   business_category: string;
   plan_type: 'basic' | 'pro';
   subscription_status: string;
@@ -58,6 +61,8 @@ export default function SettingsPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAuthDeviceModal, setShowAuthDeviceModal] = useState(false);
+  const [showResetShopPinModal, setShowResetShopPinModal] = useState(false);
+  const [showToggleTrustedDevicesModal, setShowToggleTrustedDevicesModal] = useState(false);
   const [trustedDevices, setTrustedDevices] = useState<any[]>([]);
   const [currentDeviceFingerprint, setCurrentDeviceFingerprint] = useState<string>('');
 
@@ -1255,30 +1260,84 @@ export default function SettingsPage() {
                           >
                             Change Shop PIN
                           </button>
+                          <button
+                            onClick={() => setShowResetShopPinModal(true)}
+                            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                            title="Reset shop PIN (requires owner PIN verification)"
+                          >
+                            Reset Shop PIN
+                          </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={async () => {
-                            const newPin = prompt('Enter 6-digit shop PIN for tablet access:');
-                            if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
-                              const { error } = await supabase
-                                .from('shops')
-                                .update({ shop_pin: newPin })
-                                .eq('id', shopId);
-                              if (error) {
-                                alert('Failed to set shop PIN');
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={async () => {
+                              // Generate random PIN
+                              const firstDigit = Math.floor(Math.random() * 9) + 1; // 1-9
+                              const restDigits = Math.floor(Math.random() * 100000); // 0-99999
+                              const generatedPin = firstDigit.toString() + restDigits.toString().padStart(5, '0');
+                              
+                              const useGenerated = confirm(
+                                `Generated Shop PIN: ${generatedPin}\n\nUse this PIN?`
+                              );
+                              
+                              if (useGenerated) {
+                                const { error } = await supabase
+                                  .from('shops')
+                                  .update({ shop_pin: generatedPin })
+                                  .eq('id', shopId);
+                                if (error) {
+                                  alert('Failed to set shop PIN');
+                                } else {
+                                  alert(`Shop PIN set to: ${generatedPin}\n\nShare this PIN with your staff!`);
+                                  await loadShop();
+                                }
                               } else {
-                                alert('Shop PIN set successfully');
-                                await loadShop();
+                                const newPin = prompt('Enter 6-digit shop PIN for tablet access:');
+                                if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
+                                  const { error } = await supabase
+                                    .from('shops')
+                                    .update({ shop_pin: newPin })
+                                    .eq('id', shopId);
+                                  if (error) {
+                                    alert('Failed to set shop PIN');
+                                  } else {
+                                    alert('Shop PIN set successfully');
+                                    await loadShop();
+                                  }
+                                } else if (newPin) {
+                                  alert('PIN must be exactly 6 digits');
+                                }
                               }
-                            } else if (newPin) {
-                              alert('PIN must be exactly 6 digits');
-                            }
-                          }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                        >
-                          Set Shop PIN
-                        </button>
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                          >
+                            Generate Shop PIN
+                          </button>
+                          <span className="text-sm text-gray-600">or</span>
+                          <button
+                            onClick={async () => {
+                              const newPin = prompt('Enter 6-digit shop PIN for tablet access:');
+                              if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
+                                const { error } = await supabase
+                                  .from('shops')
+                                  .update({ shop_pin: newPin })
+                                  .eq('id', shopId);
+                                if (error) {
+                                  alert('Failed to set shop PIN');
+                                } else {
+                                  alert('Shop PIN set successfully');
+                                  await loadShop();
+                                }
+                              } else if (newPin) {
+                                alert('PIN must be exactly 6 digits');
+                              }
+                            }}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                          >
+                            Set Custom PIN
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1286,6 +1345,11 @@ export default function SettingsPage() {
                     This PIN is used to unlock the shop tablet. All staff share this PIN to access the tablet, 
                     then enter their own PIN for each action (clock in, check in customer).
                   </p>
+                  {shop.shop_pin && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      ⚠️ Forgot shop PIN? Use "Reset Shop PIN" - requires your owner PIN for security.
+                    </p>
+                  )}
                 </div>
 
                 {/* Portal Links */}
@@ -1380,33 +1444,68 @@ export default function SettingsPage() {
                 <div className="flex items-start gap-3 mb-4">
                   <Smartphone className="w-6 h-6 text-blue-600 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">📱 Trusted Devices</h3>
-                    <p className="text-sm text-gray-600 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">📱 Trusted Devices</h3>
+                      {/* Enable/Disable Toggle */}
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm font-medium ${shop.trusted_devices_enabled ? 'text-green-700' : 'text-gray-600'}`}>
+                          {shop.trusted_devices_enabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                        <button
+                          onClick={() => setShowToggleTrustedDevicesModal(true)}
+                          className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                            shop.trusted_devices_enabled
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                          title="Critical setting - requires owner PIN and password"
+                        >
+                          {shop.trusted_devices_enabled ? 'Disable' : 'Enable'}
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">
                       Authorize devices (tablets, computers) that are always at your shop. 
                       Staff can clock in from trusted devices without GPS verification.
                     </p>
+                    {!shop.trusted_devices_enabled && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-yellow-800">
+                          <strong>⚠️ Trusted Devices is disabled.</strong> All clock-ins require GPS verification, 
+                          even from shop tablets. Enable this feature to allow trusted devices to bypass GPS.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Current Device Status */}
-                    <div className={`rounded-lg p-4 mb-4 ${currentDeviceIsTrusted ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
-                      <strong className={currentDeviceIsTrusted ? 'text-green-900' : 'text-yellow-900'}>This Device:</strong>
-                      {currentDeviceIsTrusted ? (
-                        <p className="mb-0 mt-2 text-green-800 text-sm">
-                          ✓ This device is trusted. Staff can clock in without GPS verification.
-                        </p>
-                      ) : (
-                        <>
-                          <p className="mb-2 mt-2 text-yellow-800 text-sm">
-                            ⚠️ This device is NOT trusted. Staff will need GPS verification to clock in.
+                    {shop.trusted_devices_enabled ? (
+                      <div className={`rounded-lg p-4 mb-4 ${currentDeviceIsTrusted ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+                        <strong className={currentDeviceIsTrusted ? 'text-green-900' : 'text-yellow-900'}>This Device:</strong>
+                        {currentDeviceIsTrusted ? (
+                          <p className="mb-0 mt-2 text-green-800 text-sm">
+                            ✓ This device is trusted. Staff can clock in without GPS verification.
                           </p>
-                          <button
-                            onClick={() => setShowAuthDeviceModal(true)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                          >
-                            Authorize This Device
-                          </button>
-                        </>
-                      )}
-                    </div>
+                        ) : (
+                          <>
+                            <p className="mb-2 mt-2 text-yellow-800 text-sm">
+                              ⚠️ This device is NOT trusted. Staff will need GPS verification to clock in.
+                            </p>
+                            <button
+                              onClick={() => setShowAuthDeviceModal(true)}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            >
+                              Authorize This Device
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-gray-600">
+                          Trusted devices feature is disabled. Enable it above to authorize devices.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Info Box */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -1475,7 +1574,7 @@ export default function SettingsPage() {
                       </div>
                     )}
 
-                    {trustedDevices.length === 0 && (
+                    {trustedDevices.length === 0 && shop.trusted_devices_enabled && (
                       <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
                         <p className="text-gray-600 mb-3">No trusted devices yet.</p>
                         <button
@@ -1484,6 +1583,11 @@ export default function SettingsPage() {
                         >
                           Authorize This Device
                         </button>
+                      </div>
+                    )}
+                    {trustedDevices.length === 0 && !shop.trusted_devices_enabled && (
+                      <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+                        <p className="text-gray-600">Enable trusted devices above to authorize devices.</p>
                       </div>
                     )}
                   </div>
@@ -1625,6 +1729,41 @@ export default function SettingsPage() {
           onSuccess={() => {
             setShowAuthDeviceModal(false);
             loadTrustedDevices();
+          }}
+        />
+      )}
+
+      {showResetShopPinModal && shopId && (
+        <ResetShopPinModal
+          isOpen={showResetShopPinModal}
+          onClose={() => setShowResetShopPinModal(false)}
+          shopId={shopId}
+          onSuccess={(newPin) => {
+            setShowResetShopPinModal(false);
+            loadShop();
+            setMessage({
+              type: 'success',
+              text: `Shop PIN reset successfully! New PIN: ${newPin}. Share this with your staff.`
+            });
+            setTimeout(() => setMessage(null), 5000);
+          }}
+        />
+      )}
+
+      {showToggleTrustedDevicesModal && shopId && (
+        <ToggleTrustedDevicesModal
+          isOpen={showToggleTrustedDevicesModal}
+          onClose={() => setShowToggleTrustedDevicesModal(false)}
+          shopId={shopId}
+          currentValue={shop.trusted_devices_enabled}
+          onSuccess={() => {
+            setShowToggleTrustedDevicesModal(false);
+            loadShop();
+            setMessage({
+              type: 'success',
+              text: `Trusted devices ${shop.trusted_devices_enabled ? 'disabled' : 'enabled'} successfully.`
+            });
+            setTimeout(() => setMessage(null), 5000);
           }}
         />
       )}
