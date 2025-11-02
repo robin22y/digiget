@@ -536,97 +536,111 @@ export default function SettingsPage() {
   return (
     <>
       <div className="page">
-      <div className="container">
-        <h1 className="mb-4">Settings</h1>
+      <div className="container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Settings</h1>
 
-        <div className="card">
-          {/* Tabs */}
-          <div className="tabs">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Tabs - Mobile scrollable */}
+          <div className="tabs overflow-x-auto flex-nowrap scrollbar-hide">
+            <style>{`
+              .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+              .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
             <button
               onClick={() => setActiveTab('business')}
-              className={`tab ${activeTab === 'business' ? 'active' : ''}`}
+              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'business' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
             >
               Business
             </button>
             <button
               onClick={() => setActiveTab('loyalty')}
-              className={`tab ${activeTab === 'loyalty' ? 'active' : ''}`}
+              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'loyalty' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
             >
               Loyalty
             </button>
             <button
               onClick={() => setActiveTab('subscription')}
-              className={`tab ${activeTab === 'subscription' ? 'active' : ''}`}
+              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'subscription' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
             >
               Subscription
             </button>
             <button
               onClick={() => setActiveTab('nfc')}
-              className={`tab ${activeTab === 'nfc' ? 'active' : ''}`}
+              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'nfc' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
             >
               NFC Clock-In
             </button>
             <button
               onClick={() => setActiveTab('security')}
-              className={`tab ${activeTab === 'security' ? 'active' : ''}`}
+              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'security' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
             >
               Security
             </button>
           </div>
 
-          {message && (
-            <div className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-error'}`}>
-              {message.text}
-            </div>
-          )}
-
-          {activeTab === 'business' && (
-            <div>
-              <h2 className="mb-3">Business Settings</h2>
-
-              <div className="form-group">
-                <label className="label">Shop Name</label>
-                <input
-                  type="text"
-                  value={shopName}
-                  onChange={(e) => setShopName(e.target.value)}
-                  className="input"
-                  placeholder="Enter your shop name"
-                />
+          <div className="p-4 sm:p-6">
+            {message && (
+              <div className={`mb-4 p-4 rounded-lg ${
+                message.type === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                {message.text}
               </div>
+            )}
 
-              <div className="form-group">
-                <label className="label">Owner Name</label>
-                <input
-                  type="text"
-                  value={ownerName}
-                  onChange={(e) => setOwnerName(e.target.value)}
-                  className="input"
-                  placeholder="Enter owner name"
-                />
-              </div>
+            {activeTab === 'business' && (
+              <div className="space-y-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Business Settings</h2>
 
-              <div className="form-group">
-                <label className="label">Business Category</label>
-                <select
-                  value={businessCategory}
-                  onChange={(e) => setBusinessCategory(e.target.value)}
-                  className="input"
-                  disabled
-                >
-                  <option value="hair_salon">Hair Salon / Barbershop</option>
-                </select>
-                <span className="help-text">Currently only available for Hair Salons / Barbershops</span>
-              </div>
+                <div className="form-group space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">Shop Name</label>
+                  <input
+                    type="text"
+                    value={shopName}
+                    onChange={(e) => setShopName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="Enter your shop name"
+                  />
+                </div>
 
-              <div className="form-group mt-6">
-                <h3 className="text-lg font-semibold mb-3">Shop Location (Geofencing)</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Set your shop's location to enable geofencing. Staff members will need approval to clock in from more than 100 meters away.
-                </p>
-                
-                {(latitude && longitude) ? (
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                <div className="form-group space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">Owner Name</label>
+                  <input
+                    type="text"
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                    placeholder="Enter owner name"
+                  />
+                </div>
+
+                <div className="form-group space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">Business Category</label>
+                  <select
+                    value={businessCategory}
+                    onChange={(e) => setBusinessCategory(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base bg-gray-50"
+                    disabled
+                  >
+                    <option value="hair_salon">Hair Salon / Barbershop</option>
+                  </select>
+                  <span className="text-sm text-gray-500">Currently only available for Hair Salons / Barbershops</span>
+                </div>
+
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">Shop Location (Geofencing)</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Set your shop's location to enable geofencing. Staff members will need approval to clock in from more than 100 meters away.
+                  </p>
+                  
+                  {(latitude && longitude) ? (
+                    <div className="bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200 mb-4">
                     <p className="font-semibold mb-2">Current Location:</p>
                     <p className="text-sm text-gray-600 mb-2">
                       Coordinates: {latitude}, {longitude}
@@ -668,17 +682,17 @@ export default function SettingsPage() {
               <button
                 onClick={saveBusinessSettings}
                 disabled={saving}
-                className="btn btn-primary"
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-5 h-5 mr-2" />
+                <Save className="w-5 h-5" />
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           )}
 
-          {activeTab === 'loyalty' && (
-            <div>
-              <h2 className="mb-3">Loyalty Program Settings</h2>
+            {activeTab === 'loyalty' && (
+              <div className="space-y-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Loyalty Program Settings</h2>
 
               <div className="checkbox-wrapper">
                 <input
@@ -724,26 +738,26 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label className="label">Points needed for reward</label>
+                  <div className="form-group space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Points needed for reward</label>
                     <input
                       type="number"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
                       min="1"
                       value={pointsNeeded}
                       onChange={(e) => setPointsNeeded(parseInt(e.target.value) || 1)}
-                      className="input"
                     />
                     <span className="help-text">Common values: 5, 6, 8, 10</span>
                   </div>
 
-                  <div className="form-group">
-                    <label className="label">Days between points</label>
+                  <div className="form-group space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Days between points</label>
                     <input
                       type="number"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
                       min="0"
                       value={daysBetweenPoints}
                       onChange={(e) => setDaysBetweenPoints(parseInt(e.target.value) || 0)}
-                      className="input"
                     />
                     <span className="help-text">
                       Minimum days a customer must wait before earning the next point. Default: 7 days. Set to 0 to allow daily points.
@@ -899,20 +913,20 @@ export default function SettingsPage() {
               <button
                 onClick={saveLoyaltySettings}
                 disabled={saving}
-                className="btn btn-primary"
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-5 h-5 mr-2" />
+                <Save className="w-5 h-5" />
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           )}
 
-          {activeTab === 'subscription' && (
-            <div className="space-y-4 md:space-y-6">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Subscription</h2>
+            {activeTab === 'subscription' && (
+              <div className="space-y-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Subscription</h2>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4 sm:p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Subscription Plan</p>
                     <p className="text-lg font-semibold text-gray-900">
@@ -996,9 +1010,9 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'nfc' && (
-            <div className="space-y-4 md:space-y-6">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">NFC Clock-In Setup</h2>
+            {activeTab === 'nfc' && (
+              <div className="space-y-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">NFC Clock-In Setup</h2>
 
               {shop.nfc_tag_id ? (
                 <>
@@ -1181,18 +1195,18 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'security' && (
-            <div className="space-y-4 md:space-y-6">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Security Settings</h2>
+            {activeTab === 'security' && (
+              <div className="space-y-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Security Settings</h2>
 
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <div className="flex items-start justify-between mb-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6">
+                  <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Owner PIN</h3>
                     <p className="text-sm text-gray-600 mb-4">
                       Your 6-digit PIN protects sensitive settings. Change it regularly for better security.
                     </p>
-                    {shop.owner_pin && shop.owner_pin !== '000000' ? (
+                    {shop?.owner_pin && shop.owner_pin !== '000000' ? (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                         <p className="text-sm text-blue-800">
                           <strong>Current Status:</strong> PIN is set and active. You can change it below.
@@ -1210,54 +1224,53 @@ export default function SettingsPage() {
 
                 <button
                   onClick={() => setShowChangePinModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                 >
                   <KeyRound className="w-4 h-4" />
-                  {shop.owner_pin && shop.owner_pin !== '000000' ? 'Change PIN' : 'Create PIN'}
+                  {shop?.owner_pin && shop.owner_pin !== '000000' ? 'Change PIN' : 'Create PIN'}
                 </button>
               </div>
 
               {/* SHOP PIN & PORTAL LINKS SECTION */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">🏪 Shop PIN & Portal Access</h3>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mt-6">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">🏪 Shop PIN & Portal Access</h3>
                 
                 {/* Shop PIN Configuration */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Shop PIN (6 digits)
                   </label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      {shop.shop_pin ? (
-                        <div className="flex items-center gap-3">
-                          <code className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-lg font-mono font-semibold">
-                            {shop.shop_pin}
-                          </code>
-                          <button
-                            onClick={async () => {
-                              const newPin = prompt('Enter new 6-digit shop PIN:');
-                              if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
-                                const { error } = await supabase
-                                  .from('shops')
-                                  .update({ shop_pin: newPin })
-                                  .eq('id', shopId);
-                                if (error) {
-                                  alert('Failed to update shop PIN');
-                                } else {
-                                  alert('Shop PIN updated successfully');
-                                  await loadShop();
-                                }
-                              } else if (newPin) {
-                                alert('PIN must be exactly 6 digits');
-                              }
-                            }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                          >
-                            Change Shop PIN
-                          </button>
-                        </div>
-                      ) : (
+                  <div className="space-y-3">
+                    {shop?.shop_pin ? (
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <code className="px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-lg font-mono font-semibold text-center">
+                          {shop.shop_pin}
+                        </code>
                         <button
+                          onClick={async () => {
+                            const newPin = prompt('Enter new 6-digit shop PIN:');
+                            if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
+                              const { error } = await supabase
+                                .from('shops')
+                                .update({ shop_pin: newPin })
+                                .eq('id', shopId);
+                              if (error) {
+                                alert('Failed to update shop PIN');
+                              } else {
+                                alert('Shop PIN updated successfully');
+                                await loadShop();
+                              }
+                            } else if (newPin) {
+                              alert('PIN must be exactly 6 digits');
+                            }
+                          }}
+                          className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                          Change Shop PIN
+                        </button>
+                      </div>
+                    ) : (
+                      <button
                           onClick={async () => {
                             const newPin = prompt('Enter 6-digit shop PIN for tablet access:');
                             if (newPin && newPin.length === 6 && /^\d{6}$/.test(newPin)) {
@@ -1275,98 +1288,97 @@ export default function SettingsPage() {
                               alert('PIN must be exactly 6 digits');
                             }
                           }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                        >
-                          Set Shop PIN
-                        </button>
-                      )}
-                    </div>
+                        className="w-full sm:w-auto px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Set Shop PIN
+                      </button>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-600 mt-3">
                     This PIN is used to unlock the shop tablet. All staff share this PIN to access the tablet, 
                     then enter their own PIN for each action (clock in, check in customer).
                   </p>
                 </div>
 
                 {/* Portal Links */}
-                {shop.short_code && (
+                {shop?.short_code && (
                   <div className="space-y-4">
                     {/* Shop Tablet Portal */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <div className="mb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-gray-900 text-base sm:text-lg flex items-center gap-2">
                             🏪 Shop Tablet Portal
-                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">For Shared Tablet</span>
                           </h4>
-                          <p className="text-sm text-gray-600 mb-3">
-                            Open this on your shop tablet. All staff use the same shop PIN to access, 
-                            then enter their own PIN for each action.
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={`${window.location.origin}/shop/${shop.short_code}`}
-                              readOnly
-                              className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono"
-                            />
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/shop/${shop.short_code}`);
-                                alert('Shop portal link copied!');
-                              }}
-                              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-                            >
-                              📋 Copy
-                            </button>
-                          </div>
-                          {shop.shop_pin && (
-                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                              <p className="text-sm text-blue-900">
-                                <strong>Shop PIN:</strong> <code className="font-mono font-semibold">{shop.shop_pin}</code>
-                              </p>
-                            </div>
-                          )}
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded w-fit">For Shared Tablet</span>
                         </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Open this on your shop tablet. All staff use the same shop PIN to access, 
+                          then enter their own PIN for each action.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <input
+                            type="text"
+                            value={`${window.location.origin}/shop/${shop.short_code}`}
+                            readOnly
+                            className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm font-mono break-all"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/shop/${shop.short_code}`);
+                              alert('Shop portal link copied!');
+                            }}
+                            className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap"
+                          >
+                            📋 Copy
+                          </button>
+                        </div>
+                        {shop?.shop_pin && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-900">
+                              <strong>Shop PIN:</strong> <code className="font-mono font-semibold">{shop.shop_pin}</code>
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Staff Personal Portal */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <div className="mb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-gray-900 text-base sm:text-lg flex items-center gap-2">
                             📱 Staff Personal Portal
-                            <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">For Personal Phones</span>
                           </h4>
-                          <p className="text-sm text-gray-600 mb-3">
-                            Staff use this on their personal phones to view their hours, wages, 
-                            and clock in/out remotely. Each staff logs in with their own PIN.
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={`${window.location.origin}/staff/${shop.short_code}`}
-                              readOnly
-                              className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono"
-                            />
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/staff/${shop.short_code}`);
-                                alert('Staff portal link copied!');
-                              }}
-                              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-                            >
-                              📋 Copy
-                            </button>
-                          </div>
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded w-fit">For Personal Phones</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Staff use this on their personal phones to view their hours, wages, 
+                          and clock in/out remotely. Each staff logs in with their own PIN.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <input
+                            type="text"
+                            value={`${window.location.origin}/staff/${shop.short_code}`}
+                            readOnly
+                            className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm font-mono break-all"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/staff/${shop.short_code}`);
+                              alert('Staff portal link copied!');
+                            }}
+                            className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap"
+                          >
+                            📋 Copy
+                          </button>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {!shop.short_code && (
+                {!shop?.short_code && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-sm text-yellow-800">
                       Short code not available. Portal links will be generated once short code is created.
@@ -1376,11 +1388,11 @@ export default function SettingsPage() {
               </div>
 
               {/* TRUSTED DEVICES SECTION */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mt-6">
                 <div className="flex items-start gap-3 mb-4">
-                  <Smartphone className="w-6 h-6 text-blue-600 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">📱 Trusted Devices</h3>
+                  <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mt-1 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">📱 Trusted Devices</h3>
                     <p className="text-sm text-gray-600 mb-4">
                       Authorize devices (tablets, computers) that are always at your shop. 
                       Staff can clock in from trusted devices without GPS verification.
@@ -1398,12 +1410,12 @@ export default function SettingsPage() {
                           <p className="mb-2 mt-2 text-yellow-800 text-sm">
                             ⚠️ This device is NOT trusted. Staff will need GPS verification to clock in.
                           </p>
-                          <button
-                            onClick={() => setShowAuthDeviceModal(true)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                          >
-                            Authorize This Device
-                          </button>
+                    <button
+                      onClick={() => setShowAuthDeviceModal(true)}
+                      className="w-full sm:w-auto px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      Authorize This Device
+                    </button>
                         </>
                       )}
                     </div>
@@ -1491,35 +1503,35 @@ export default function SettingsPage() {
               </div>
 
               {/* DANGER ZONE */}
-              <div className="danger-zone-section mt-8">
-                <div className="danger-zone-header">
-                  <h2 className="text-xl font-semibold mb-2">⚠️ Danger Zone</h2>
-                  <p className="text-sm text-gray-600">
+              <div className="mt-8 p-4 sm:p-6 bg-red-50 border-2 border-red-200 rounded-lg">
+                <div className="mb-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-red-900 mb-2">⚠️ Danger Zone</h2>
+                  <p className="text-sm text-red-700">
                     Irreversible actions. Please be careful.
                   </p>
                 </div>
 
-                <div className="danger-zone-content">
+                <div className="space-y-6">
                   {/* Cancel Subscription */}
-                  <div className="danger-action">
-                    <div className="danger-action-info">
-                      <h3 className="text-lg font-semibold mb-2">Cancel Subscription</h3>
-                      <p className="text-sm text-gray-600 mb-2">
-                        Stop your subscription to DigiGet. Access ends at the end of 
-                        your current billing period. Your data will be kept for 30 days 
-                        in case you want to reactivate.
-                      </p>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>✓ Data preserved for 30 days</li>
-                        <li>✓ Can reactivate anytime</li>
-                        <li>✓ No refund for unused time</li>
-                      </ul>
-                    </div>
-                    <div className="danger-action-button">
+                  <div className="bg-white rounded-lg p-4 sm:p-5 border border-red-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancel Subscription</h3>
+                        <p className="text-sm text-gray-600 mb-2">
+                          Stop your subscription to DigiGet. Access ends at the end of 
+                          your current billing period. Your data will be kept for 30 days 
+                          in case you want to reactivate.
+                        </p>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          <li>✓ Data preserved for 30 days</li>
+                          <li>✓ Can reactivate anytime</li>
+                          <li>✓ No refund for unused time</li>
+                        </ul>
+                      </div>
                       <button
                         onClick={() => setShowCancelModal(true)}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
-                        disabled={shop.subscription_status === 'cancelled'}
+                        className="w-full sm:w-auto px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold whitespace-nowrap"
+                        disabled={shop?.subscription_status === 'cancelled'}
                       >
                         Cancel Subscription
                       </button>
@@ -1527,25 +1539,25 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Delete Account */}
-                  <div className="danger-action">
-                    <div className="danger-action-info">
-                      <h3 className="text-lg font-semibold mb-2">Delete Account</h3>
-                      <p className="text-sm text-gray-600 mb-2">
-                        Permanently delete your shop account and all associated data. 
-                        This includes all staff, customers, clock history, and loyalty points. 
-                        This action CANNOT be undone.
-                      </p>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>❌ All staff deleted</li>
-                        <li>❌ All customers deleted</li>
-                        <li>❌ All clock history deleted</li>
-                        <li>❌ Cannot be recovered</li>
-                      </ul>
-                    </div>
-                    <div className="danger-action-button">
+                  <div className="bg-white rounded-lg p-4 sm:p-5 border border-red-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Account</h3>
+                        <p className="text-sm text-gray-600 mb-2">
+                          Permanently delete your shop account and all associated data. 
+                          This includes all staff, customers, clock history, and loyalty points. 
+                          This action CANNOT be undone.
+                        </p>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          <li>❌ All staff deleted</li>
+                          <li>❌ All customers deleted</li>
+                          <li>❌ All clock history deleted</li>
+                          <li>❌ Cannot be recovered</li>
+                        </ul>
+                      </div>
                       <button
                         onClick={() => setShowDeleteModal(true)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                        className="w-full sm:w-auto px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold whitespace-nowrap"
                       >
                         Delete Account
                       </button>
@@ -1554,20 +1566,22 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-      </div>
+    </div>
 
       {/* Lock Button - Show when unlocked */}
-      <div className="fixed bottom-6 right-6">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-10">
         <button
           onClick={handleLockSettings}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg"
+          className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg text-sm font-medium"
           title="Lock settings (requires PIN to unlock again)"
         >
           <Lock className="w-4 h-4" />
-          Lock Settings
+          <span className="hidden sm:inline">Lock Settings</span>
+          <span className="sm:hidden">Lock</span>
         </button>
       </div>
 
