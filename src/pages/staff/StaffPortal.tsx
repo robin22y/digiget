@@ -52,7 +52,8 @@ function parseTodayTime(hhmm?: string | null): Date | null {
 }
 
 export default function StaffPortal() {
-  const { shopSlug } = useParams();
+  const params = useParams();
+  const shopSlug = params.shopSlug || params.code; // Support both route patterns
   const [view, setView] = useState<View>('auth');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -69,8 +70,11 @@ export default function StaffPortal() {
   useEffect(() => {
     if (shopSlug) {
       loadShop();
+    } else {
+      setError('Shop code missing');
+      setLoading(false);
     }
-  }, [shopSlug]);
+  }, [shopSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodically check for clock entry status (for sync with staff access link)
   useEffect(() => {
@@ -139,7 +143,7 @@ export default function StaffPortal() {
       let shopData = null;
       let shopError = null;
 
-      // Check if it's a UUID or slug
+      // Check if it's a UUID or short_code/slug
       if (isUUID(trimmedIdentifier)) {
         // It's a UUID - query by ID
         console.log('Loading shop by UUID:', trimmedIdentifier);
@@ -151,13 +155,26 @@ export default function StaffPortal() {
         shopData = data;
         shopError = error;
       } else {
-        // It's a slug - query by slug
-        console.log('Loading shop by slug:', trimmedIdentifier);
-        const { data, error } = await supabase
+        // It's likely a short_code - try that first, then slug as fallback
+        console.log('Loading shop by short_code:', trimmedIdentifier);
+        let { data, error } = await supabase
           .from('shops')
           .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
-          .eq('slug', trimmedIdentifier)
+          .eq('short_code', trimmedIdentifier)
           .maybeSingle();
+        
+        // If not found by short_code and no error, try slug as fallback
+        if (!data && !error) {
+          console.log('Not found by short_code, trying slug:', trimmedIdentifier);
+          const slugResult = await supabase
+            .from('shops')
+            .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
+            .eq('slug', trimmedIdentifier)
+            .maybeSingle();
+          data = slugResult.data;
+          error = slugResult.error;
+        }
+        
         shopData = data;
         shopError = error;
       }
