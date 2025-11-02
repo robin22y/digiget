@@ -58,11 +58,12 @@ export function updateManifest(type: PWAType, shopCode?: string, shopName?: stri
 
     case 'shop':
       if (shopCode) {
-        // Use API endpoint for manifest (served by Netlify Function)
-        manifestLink.href = `/api/shop/${shopCode}/manifest.json`;
-        themeColorMeta.content = '#2563EB';
+        // For now, use static manifest - shop-specific can be added later
+        // Keep static manifest for basic PWA functionality
+        manifestLink.href = '/manifest.json';
+        themeColorMeta.content = '#007aff';
         appleTitle.content = shopName || 'DigiGet Shop';
-        appleIcon.href = `/api/shop/${shopCode}/icon?size=192`;
+        appleIcon.href = '/icon-192.png';
       }
       break;
 

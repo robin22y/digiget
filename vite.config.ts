@@ -10,10 +10,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png', 'offline.html'],
       manifest: {
-        name: 'DigiGet - Staff Tracking & Loyalty',
-        short_name: 'DigiGet',
-        description: 'Staff tracking and customer loyalty for barber shops',
-        theme_color: '#2563EB',
+        name: 'DigiGet Shop',
+        short_name: 'Shop',
+        description: 'Staff and customer management',
+        theme_color: '#007aff',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',
@@ -23,13 +23,13 @@ export default defineConfig({
             src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
             src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           }
         ],
         categories: ['business', 'productivity']

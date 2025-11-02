@@ -77,9 +77,11 @@ function ManifestUpdater() {
   useEffect(() => {
     const { type, shopCode } = detectPWAType(location.pathname);
     
+    // For now, use static manifest for all routes
+    // Shop-specific manifest can be added later when basic PWA is working
     if (type === 'shop' && shopCode) {
-      // Fetch shop name for manifest - do this immediately
-      const loadShopManifest = async () => {
+      // Optionally load shop name for Apple title, but use static manifest
+      const loadShopName = async () => {
         try {
           const { supabase } = await import('./lib/supabase');
           const { data: shop } = await supabase
@@ -88,18 +90,22 @@ function ManifestUpdater() {
             .eq('short_code', shopCode)
             .maybeSingle();
           
-          // Update manifest immediately with shop info
-          updateManifest('shop', shopCode, shop?.shop_name);
+          if (shop?.shop_name) {
+            // Update Apple title only - keep static manifest
+            const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]') as HTMLMetaElement;
+            if (appleTitle) {
+              appleTitle.content = shop.shop_name;
+            }
+          }
         } catch (error) {
-          console.error('Error loading shop for manifest:', error);
-          // Still update manifest with code even if name fetch fails
-          updateManifest('shop', shopCode);
+          console.error('Error loading shop name:', error);
         }
       };
-      loadShopManifest();
-    } else {
-      updateManifest(type);
+      loadShopName();
     }
+    
+    // Always use static manifest for now
+    updateManifest('default');
   }, [location.pathname, params.code]);
 
   return null;
