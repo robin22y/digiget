@@ -10,10 +10,12 @@ export function OfflineIndicator() {
   useEffect(() => {
     const handleOnline = () => {
       setOnline(true);
-      // Check sync status after coming online
+      // Check sync status after coming online (give it time for DB to be ready)
       setTimeout(() => {
         getSyncStatus().then(status => {
           setPendingCount(status.pending);
+        }).catch(() => {
+          // Silently ignore errors - component will retry on next interval
         });
       }, 1000);
     };
@@ -25,15 +27,21 @@ export function OfflineIndicator() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial check
-    getSyncStatus().then(status => {
-      setPendingCount(status.pending);
-    });
+    // Initial check with delay to allow DB initialization
+    setTimeout(() => {
+      getSyncStatus().then(status => {
+        setPendingCount(status.pending);
+      }).catch(() => {
+        // Silently ignore errors - component will retry on next interval
+      });
+    }, 500);
 
-    // Check periodically
+    // Check periodically (start after initial delay)
     const interval = setInterval(() => {
       getSyncStatus().then(status => {
         setPendingCount(status.pending);
+      }).catch(() => {
+        // Silently ignore errors and continue checking
       });
     }, 5000); // Every 5 seconds
 

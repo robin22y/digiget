@@ -66,6 +66,13 @@ export async function initOfflineStorage(): Promise<void> {
 }
 
 /**
+ * Check if IndexedDB is initialized
+ */
+export function isDBInitialized(): boolean {
+  return db !== null;
+}
+
+/**
  * Check if we have a database connection
  */
 function ensureDB(): IDBDatabase {

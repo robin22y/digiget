@@ -179,20 +179,59 @@ export function setupOfflineSync(): void {
 
 /**
  * Get sync status for UI display
+ * Waits for IndexedDB initialization if needed
  */
 export async function getSyncStatus(): Promise<{
   pending: number;
   isOnline: boolean;
 }> {
   try {
+    // Wait for IndexedDB to be initialized (with timeout)
+    await waitForDBInitialization();
+    
     const pending = await getPendingClockEntries().then((entries) => entries.length);
     return {
       pending,
       isOnline: isOnline(),
     };
-  } catch (error) {
+  } catch (error: any) {
+    // Silently handle "not initialized" errors - just return 0 pending
+    if (error?.message?.includes('not initialized')) {
+      return { pending: 0, isOnline: isOnline() };
+    }
     console.error('Failed to get sync status:', error);
     return { pending: 0, isOnline: isOnline() };
   }
+}
+
+/**
+ * Wait for IndexedDB to be initialized (with timeout)
+ */
+async function waitForDBInitialization(): Promise<void> {
+  // Import the storage module to check initialization
+  const { isDBInitialized } = await import('./offlineStorage');
+  
+  // If already initialized, return immediately
+  if (isDBInitialized()) {
+    return;
+  }
+  
+  // Wait up to 5 seconds for initialization
+  const maxWait = 5000;
+  const checkInterval = 100;
+  const startTime = Date.now();
+  
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      if (isDBInitialized()) {
+        resolve();
+      } else if (Date.now() - startTime > maxWait) {
+        reject(new Error('IndexedDB initialization timeout'));
+      } else {
+        setTimeout(check, checkInterval);
+      }
+    };
+    check();
+  });
 }
 
