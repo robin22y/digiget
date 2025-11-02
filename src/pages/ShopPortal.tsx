@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Lock, Clock, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ShopPINEntry } from '../components/ShopPINEntry';
 import { ShopClockInOutModal } from '../components/ShopClockInOutModal';
 import { ShopCustomerCheckInModal } from '../components/ShopCustomerCheckInModal';
 import { updateManifest } from '../utils/manifestManager';
+import { isDeviceTrusted } from '../lib/deviceFingerprint';
 
 export default function ShopPortal() {
   const { code } = useParams();
