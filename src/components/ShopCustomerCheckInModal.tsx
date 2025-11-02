@@ -79,9 +79,30 @@ export function ShopCustomerCheckInModal({
         // Move directly to PIN entry for existing customers
         setStep('pin');
       } else {
+        // Create new customer immediately (without name - will add later)
         setIsNewCustomer(true);
-        // For new customers, go to PIN entry first, then name after check-in
-        setStep('pin');
+        try {
+          const { data: newCustomer, error: createError } = await supabase
+            .from('customers')
+            .insert({
+              shop_id: shopId,
+              phone: cleanPhone,
+              name: null,
+              current_points: 0,
+              lifetime_points: 0,
+              total_visits: 0,
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setCustomer(newCustomer);
+          // Move to PIN entry now that customer exists
+          setStep('pin');
+        } catch (createErr: any) {
+          setError('Failed to create customer. Please try again.');
+          console.error('Customer creation error:', createErr);
+        }
       }
 
     } catch (error: any) {
@@ -169,6 +190,13 @@ export function ShopCustomerCheckInModal({
 
       setEmployee(staffData);
 
+      // Validate customer exists
+      if (!customer || !customer.id) {
+        setError('Customer not found. Please try again.');
+        setLoading(false);
+        return;
+      }
+
       // Check 30-minute cooldown for same phone number
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
       
@@ -250,7 +278,7 @@ export function ShopCustomerCheckInModal({
       }
 
       // If new customer and no name, show name input first
-      if (isNewCustomer && !customer.name) {
+      if (isNewCustomer && updatedCustomer && !updatedCustomer.name) {
         setError('');
         setStep('name');
       } else {
