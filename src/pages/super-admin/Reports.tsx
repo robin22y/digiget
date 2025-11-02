@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Download, Mail, Calendar, FileText } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { exportToCSV } from '../../lib/exportPayroll';
 
 interface ReportData {
   total_active_shops: number;
@@ -39,6 +41,11 @@ export default function Reports() {
   const [selectedShopIds, setSelectedShopIds] = useState<string[]>([]);
   const [selectedShopId, setSelectedShopId] = useState<string>('');
   const [selectedShopName, setSelectedShopName] = useState<string>('');
+  
+  // Chart data state
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [planDistribution, setPlanDistribution] = useState<any[]>([]);
+  const [dailyActivity, setDailyActivity] = useState<any[]>([]);
 
   useEffect(() => {
     loadShops();
@@ -73,8 +80,29 @@ export default function Reports() {
   };
 
   const handleExportCSV = () => {
-    // Placeholder - implement actual CSV export
-    alert('Exporting report data as CSV...');
+    if (!reportData) {
+      alert('Please generate a report first');
+      return;
+    }
+
+    const csvData = [
+      ['Metric', 'Value'],
+      ['Active Shops', reportData.total_active_shops],
+      ['Total Customers', reportData.total_customers],
+      ['Points Issued', reportData.total_points_issued],
+      ['Rewards Redeemed', reportData.total_rewards_redeemed],
+      ['Total Staff', reportData.total_staff],
+      ['New Shops (This Month)', reportData.new_shops_this_month],
+      [''],
+      ['Date Range', `${startDate} to ${endDate}`],
+      ['Generated', new Date().toISOString()]
+    ];
+
+    const filename = selectedShopName 
+      ? `report-${selectedShopName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.csv`
+      : `report-all-shops-${Date.now()}.csv`;
+
+    exportToCSV(csvData, filename);
   };
 
   const getRangeForFrequency = (): { start: string; end: string } => {
@@ -251,6 +279,9 @@ export default function Reports() {
           total_staff: shopStaff || 0,
           new_shops_this_month: 0,
         });
+        
+        // Load chart data for shop
+        await loadShopChartData(shopId);
       } else {
         // Global report
         const { count: activeShopsCount } = await supabase
@@ -289,12 +320,74 @@ export default function Reports() {
           total_staff: totalStaff || 0,
           new_shops_this_month: newShops || 0,
         });
+        
+        // Load chart data for global
+        await loadGlobalChartData();
       }
     } catch (error) {
       console.error('Error generating report:', error);
     } finally {
       setLoading(false);
     }
+  };
+  
+  const loadShopChartData = async (shopId: string) => {
+    try {
+      // Daily activity for shop
+      const { data: activity } = await supabase
+        .from('loyalty_transactions')
+        .select('created_at, transaction_type')
+        .eq('shop_id', shopId)
+        .gte('created_at', startDate)
+        .lte('created_at', `${endDate}T23:59:59`);
+      
+      if (activity) {
+        const daily = groupByDay(activity);
+        setDailyActivity(daily);
+      }
+    } catch (error) {
+      console.error('Error loading chart data:', error);
+    }
+  };
+  
+  const loadGlobalChartData = async () => {
+    try {
+      // Plan distribution
+      const basicCount = shops.filter(s => s.plan_type === 'basic').length;
+      const proCount = shops.filter(s => s.plan_type === 'pro').length;
+      setPlanDistribution([
+        { name: 'Basic', value: basicCount, color: '#3b82f6' },
+        { name: 'Pro', value: proCount, color: '#10b981' }
+      ]);
+      
+      // Daily activity across all shops
+      const { data: activity } = await supabase
+        .from('loyalty_transactions')
+        .select('created_at, transaction_type')
+        .gte('created_at', startDate)
+        .lte('created_at', `${endDate}T23:59:59`);
+      
+      if (activity) {
+        const daily = groupByDay(activity);
+        setDailyActivity(daily);
+      }
+    } catch (error) {
+      console.error('Error loading chart data:', error);
+    }
+  };
+  
+  const groupByDay = (transactions: any[]) => {
+    const grouped = transactions.reduce((acc, t) => {
+      const date = t.created_at.split('T')[0];
+      if (!acc[date]) {
+        acc[date] = { date, points: 0, rewards: 0 };
+      }
+      if (t.transaction_type === 'point_added') acc[date].points += 1;
+      if (t.transaction_type === 'reward_redeemed') acc[date].rewards += 1;
+      return acc;
+    }, {} as any);
+    
+    return Object.values(grouped).sort((a: any, b: any) => a.date.localeCompare(b.date));
   };
 
   return (
@@ -420,55 +513,104 @@ export default function Reports() {
 
       {/* Report Data */}
       {reportData && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <FileText className="w-5 h-5 mr-2 text-blue-600" />
-              <span className="font-medium">Active Shops</span>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center text-gray-600 text-sm mb-2">
+                <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                <span className="font-medium">Active Shops</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{reportData.total_active_shops}</div>
             </div>
-            <div className="text-2xl font-bold text-gray-900">{reportData.total_active_shops}</div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center text-gray-600 text-sm mb-2">
+                <FileText className="w-5 h-5 mr-2 text-purple-600" />
+                <span className="font-medium">Total Customers</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{reportData.total_customers.toLocaleString()}</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center text-gray-600 text-sm mb-2">
+                <FileText className="w-5 h-5 mr-2 text-green-600" />
+                <span className="font-medium">Points Issued</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-600">{reportData.total_points_issued.toLocaleString()}</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center text-gray-600 text-sm mb-2">
+                <FileText className="w-5 h-5 mr-2 text-green-600" />
+                <span className="font-medium">Rewards Redeemed</span>
+              </div>
+              <div className="text-2xl font-bold text-green-600">{reportData.total_rewards_redeemed.toLocaleString()}</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center text-gray-600 text-sm mb-2">
+                <FileText className="w-5 h-5 mr-2 text-indigo-600" />
+                <span className="font-medium">Total Staff</span>
+              </div>
+              <div className="text-2xl font-bold text-purple-600">{reportData.total_staff.toLocaleString()}</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center text-gray-600 text-sm mb-2">
+                <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                <span className="font-medium">New Shops (This Month)</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-600">{reportData.new_shops_this_month}</div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <FileText className="w-5 h-5 mr-2 text-purple-600" />
-              <span className="font-medium">Total Customers</span>
+          {/* Charts */}
+          {!selectedShopId && planDistribution.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={planDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {planDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-            <div className="text-2xl font-bold text-gray-900">{reportData.total_customers.toLocaleString()}</div>
-          </div>
+          )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <FileText className="w-5 h-5 mr-2 text-green-600" />
-              <span className="font-medium">Points Issued</span>
+          {dailyActivity.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Activity</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={dailyActivity}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="points" stroke="#3b82f6" name="Points Issued" strokeWidth={2} />
+                  <Line type="monotone" dataKey="rewards" stroke="#10b981" name="Rewards Redeemed" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-            <div className="text-2xl font-bold text-blue-600">{reportData.total_points_issued.toLocaleString()}</div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <FileText className="w-5 h-5 mr-2 text-green-600" />
-              <span className="font-medium">Rewards Redeemed</span>
-            </div>
-            <div className="text-2xl font-bold text-green-600">{reportData.total_rewards_redeemed.toLocaleString()}</div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <FileText className="w-5 h-5 mr-2 text-indigo-600" />
-              <span className="font-medium">Total Staff</span>
-            </div>
-            <div className="text-2xl font-bold text-purple-600">{reportData.total_staff.toLocaleString()}</div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center text-gray-600 text-sm mb-2">
-              <FileText className="w-5 h-5 mr-2 text-blue-600" />
-              <span className="font-medium">New Shops (This Month)</span>
-            </div>
-            <div className="text-2xl font-bold text-blue-600">{reportData.new_shops_this_month}</div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {/* Actions */}
