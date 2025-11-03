@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { generateSlug, generateUniqueSlug } from '../utils/slugGenerator';
+import { generateUniqueShortCode } from '../lib/shortCode';
 
 interface SignupData {
   businessCategory: string;
@@ -102,7 +103,6 @@ export default function SignupPage() {
       const uniqueSlug = await generateUniqueSlug(baseSlug);
 
       // Generate unique short code for the shop
-      const { generateUniqueShortCode } = await import('../lib/shortCode');
       const shortCode = await generateUniqueShortCode();
 
       // Create shop data
