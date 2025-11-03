@@ -43,6 +43,7 @@ import ShopPortal from './pages/ShopPortal';
 import { TabletSetup } from './pages/TabletSetup';
 import { ShopOwnerHome } from './pages/ShopOwnerHome';
 import { CustomerAnalytics } from './pages/CustomerAnalytics';
+import { OwnerAnalytics } from './pages/OwnerAnalytics';
 import StaffClockIn from './pages/staff/StaffClockIn';
 import CustomerCheckIn from './pages/staff/CustomerCheckIn';
 import NFCClockIn from './pages/NFCClockIn';
@@ -224,6 +225,7 @@ function App() {
             <Route path="flash-offers" element={<FlashOffersPage />} />
             <Route path="ratings" element={<RatingsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="analytics" element={<OwnerAnalytics />} />
           </Route>
 
           <Route

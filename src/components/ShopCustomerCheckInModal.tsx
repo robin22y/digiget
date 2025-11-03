@@ -15,17 +15,20 @@ export function ShopCustomerCheckInModal({
   shopId,
   onSuccess 
 }: ShopCustomerCheckInModalProps) {
-  const [step, setStep] = useState<'phone' | 'bill' | 'pin' | 'name' | 'success' | 'redeem'>('phone');
+  const [step, setStep] = useState<'phone' | 'staff' | 'bill' | 'pin' | 'name' | 'success' | 'redeem'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [staffPin, setStaffPin] = useState('');
+  const [staffId, setStaffId] = useState('');
   const [redeemPin, setRedeemPin] = useState('');
   const [customer, setCustomer] = useState<any>(null);
   const [shop, setShop] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [employee, setEmployee] = useState<any>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [autoCloseTimer, setAutoCloseTimer] = useState<NodeJS.Timeout | null>(null);
 
@@ -33,8 +36,35 @@ export function ShopCustomerCheckInModal({
   useEffect(() => {
     if (isOpen && shopId) {
       loadShop();
+      loadEmployees();
     }
   }, [isOpen, shopId]);
+
+  // Load active employees for staff selection
+  async function loadEmployees() {
+    try {
+      const { data } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, payment_type, commission_percentage, hourly_rate, base_hourly_rate')
+        .eq('shop_id', shopId)
+        .eq('active', true)
+        .order('first_name');
+      
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    }
+  }
+
+  // Update selected employee when staffId changes
+  useEffect(() => {
+    if (staffId) {
+      const selected = employees.find(e => e.id === staffId);
+      setSelectedEmployee(selected);
+    } else {
+      setSelectedEmployee(null);
+    }
+  }, [staffId, employees]);
 
   async function loadShop() {
     try {
@@ -77,8 +107,8 @@ export function ShopCustomerCheckInModal({
       if (existingCustomer) {
         setCustomer(existingCustomer);
         setIsNewCustomer(false);
-        // Move to bill amount entry for existing customers
-        setStep('bill');
+        // Move to staff selection for existing customers
+        setStep('staff');
       } else {
         // Create new customer immediately (without name - will add later)
         setIsNewCustomer(true);
@@ -98,8 +128,8 @@ export function ShopCustomerCheckInModal({
 
           if (createError) throw createError;
           setCustomer(newCustomer);
-          // Move to bill amount entry now that customer exists
-          setStep('bill');
+          // Move to staff selection now that customer exists
+          setStep('staff');
         } catch (createErr: any) {
           setError('Failed to create customer. Please try again.');
           console.error('Customer creation error:', createErr);
@@ -173,18 +203,51 @@ export function ShopCustomerCheckInModal({
     setError('');
 
     try {
-      // Verify staff PIN
-      const { data: staffData, error: staffError } = await supabase
-        .from('employees')
-        .select('*, payment_type, commission_percentage, base_hourly_rate, hourly_rate')
-        .eq('shop_id', shopId)
-        .eq('pin', staffPin)
-        .eq('active', true)
-        .maybeSingle();
+      // Verify staff PIN matches selected staff OR use selected staff directly
+      let staffData = selectedEmployee;
+      
+      // If staffId was set via dropdown, verify the PIN matches
+      if (staffId && staffPin) {
+        const { data: verifiedStaff, error: staffError } = await supabase
+          .from('employees')
+          .select('*, payment_type, commission_percentage, base_hourly_rate, hourly_rate')
+          .eq('shop_id', shopId)
+          .eq('id', staffId)
+          .eq('pin', staffPin)
+          .eq('active', true)
+          .maybeSingle();
 
-      if (staffError || !staffData) {
-        setError('Invalid staff PIN');
-        setStaffPin('');
+        if (staffError || !verifiedStaff) {
+          setError('Invalid PIN for selected staff member');
+          setStaffPin('');
+          setLoading(false);
+          return;
+        }
+
+        staffData = verifiedStaff;
+      } else if (staffPin && !staffId) {
+        // Fallback: allow PIN-only entry (for backward compatibility)
+        const { data: verifiedStaff, error: staffError } = await supabase
+          .from('employees')
+          .select('*, payment_type, commission_percentage, base_hourly_rate, hourly_rate')
+          .eq('shop_id', shopId)
+          .eq('pin', staffPin)
+          .eq('active', true)
+          .maybeSingle();
+
+        if (staffError || !verifiedStaff) {
+          setError('Invalid staff PIN');
+          setStaffPin('');
+          setLoading(false);
+          return;
+        }
+
+        staffData = verifiedStaff;
+        setStaffId(verifiedStaff.id);
+      }
+
+      if (!staffData) {
+        setError('Staff member not found');
         setLoading(false);
         return;
       }
@@ -262,8 +325,8 @@ export function ShopCustomerCheckInModal({
           staff_id: staffData.id, // Track who checked them in
           checked_in_by_employee_id: staffData.id, // Also store in new column
           visit_date: new Date().toISOString(),
-          bill_amount: bill > 0 ? bill : null,
-          commission_earned: commissionEarned > 0 ? commissionEarned : null,
+          bill_amount: bill > 0 ? bill : 0,
+          commission_earned: commissionEarned > 0 ? commissionEarned : 0,
         })
         .select()
         .single();
@@ -273,19 +336,31 @@ export function ShopCustomerCheckInModal({
         // Don't fail if visit record fails
       }
 
-      // Record employee contribution if bill amount or commission exists
-      if ((bill > 0 || commissionEarned > 0) && visitRecord) {
-        await supabase
-          .from('employee_contributions')
-          .insert({
+      // Record employee contribution if bill amount or commission exists (or always record for tracking)
+      if (visitRecord) {
+        // Try employee_contributions first, fallback to different column names if needed
+        try {
+          const contributionData: any = {
             shop_id: shopId,
             employee_id: staffData.id,
-            customer_checkin_id: visitRecord.id,
             contribution_date: new Date().toISOString().split('T')[0],
             bill_amount: bill > 0 ? bill : 0,
             commission_earned: commissionEarned,
             total_earnings: commissionEarned, // Will add hourly wages during payroll calculation
-          });
+          };
+          
+          // Add customer_checkin_id if column exists (this column can reference either customer_visits or customer_checkins)
+          if (visitRecord.id) {
+            contributionData.customer_checkin_id = visitRecord.id;
+          }
+          
+          await supabase
+            .from('employee_contributions')
+            .insert(contributionData);
+        } catch (contribError) {
+          // If table doesn't exist or has different structure, log but don't fail
+          console.warn('Could not record employee contribution:', contribError);
+        }
       }
 
       // Create loyalty transaction if point was added
@@ -422,9 +497,11 @@ export function ShopCustomerCheckInModal({
     setBillAmount('');
     setCustomerName('');
     setStaffPin('');
+    setStaffId('');
     setRedeemPin('');
     setCustomer(null);
     setEmployee(null);
+    setSelectedEmployee(null);
     setStep('phone');
     setError('');
     setIsNewCustomer(false);
@@ -485,6 +562,87 @@ export function ShopCustomerCheckInModal({
                 </button>
               </form>
             </>
+          ) : step === 'staff' ? (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-blue-900 mb-1">
+                  Customer: {customer?.name || customer?.phone || phoneNumber}
+                </p>
+                <p className="text-blue-800 text-sm">
+                  Current Points: {customer?.current_points || 0}
+                  {shop?.points_needed && ` / ${shop.points_needed} needed`}
+                </p>
+              </div>
+
+              <p className="text-gray-700 mb-4 text-center">
+                Select staff member who served this customer
+              </p>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (staffId) {
+                  setStep('bill');
+                }
+              }}>
+                <select
+                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                  value={staffId}
+                  onChange={(e) => setStaffId(e.target.value)}
+                  required
+                  autoFocus
+                >
+                  <option value="">Select staff member...</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.first_name} {emp.last_name}
+                      {emp.payment_type === 'commission' && ` (Commission ${emp.commission_percentage}%)`}
+                      {emp.payment_type === 'hybrid' && ` (Hybrid: £${emp.base_hourly_rate}/hr + ${emp.commission_percentage}%)`}
+                      {emp.payment_type === 'hourly' && ` (Hourly: £${emp.hourly_rate}/hr)`}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedEmployee && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-gray-700 mb-1">
+                      <strong>{selectedEmployee.first_name} {selectedEmployee.last_name}</strong>
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {selectedEmployee.payment_type === 'hourly' && 
+                        `Hourly rate: £${selectedEmployee.hourly_rate}/hr`}
+                      {selectedEmployee.payment_type === 'commission' && 
+                        `Commission: ${selectedEmployee.commission_percentage}% of sales`}
+                      {selectedEmployee.payment_type === 'hybrid' && 
+                        `Base: £${selectedEmployee.base_hourly_rate}/hr + ${selectedEmployee.commission_percentage}% commission`}
+                    </p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-red-800 text-sm">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!staffId}
+                >
+                  Continue to Bill Amount
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStaffId('');
+                    setStep('phone');
+                  }}
+                  className="w-full mt-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  ← Back
+                </button>
+              </form>
+            </>
           ) : step === 'bill' ? (
             <>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -531,6 +689,27 @@ export function ShopCustomerCheckInModal({
                   </div>
                 )}
 
+                {/* Commission Preview */}
+                {selectedEmployee && billAmount && parseFloat(billAmount) > 0 && 
+                 (selectedEmployee.payment_type === 'commission' || selectedEmployee.payment_type === 'hybrid') && (
+                  <div className="bg-green-50 border-2 border-green-500 rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl">💰</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-green-900 mb-1">
+                          Commission for {selectedEmployee.first_name}:
+                        </p>
+                        <p className="text-2xl font-bold text-green-700">
+                          £{((parseFloat(billAmount) || 0) * ((selectedEmployee.commission_percentage || 0) / 100)).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          {selectedEmployee.commission_percentage}% of £{parseFloat(billAmount).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
@@ -547,6 +726,16 @@ export function ShopCustomerCheckInModal({
                 >
                   Skip (no bill amount)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillAmount('');
+                    setStep('staff');
+                  }}
+                  className="w-full mt-2 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
+                >
+                  ← Back
+                </button>
               </form>
             </>
           ) : step === 'pin' ? (
@@ -559,10 +748,20 @@ export function ShopCustomerCheckInModal({
                   Current Points: {customer?.current_points || 0}
                   {shop?.points_needed && ` / ${shop.points_needed} needed`}
                 </p>
+                {selectedEmployee && (
+                  <p className="text-blue-800 text-sm mt-2">
+                    Staff: <strong>{selectedEmployee.first_name} {selectedEmployee.last_name}</strong>
+                    {billAmount && parseFloat(billAmount) > 0 && (
+                      <span> • Bill: £{parseFloat(billAmount).toFixed(2)}</span>
+                    )}
+                  </p>
+                )}
               </div>
 
               <p className="text-gray-700 mb-4 text-center">
-                Enter YOUR staff PIN to complete check-in
+                {selectedEmployee 
+                  ? `Enter PIN for ${selectedEmployee.first_name} ${selectedEmployee.last_name} to complete check-in`
+                  : 'Enter YOUR staff PIN to complete check-in'}
               </p>
 
               <form onSubmit={handleStaffPinSubmit}>
@@ -594,8 +793,8 @@ export function ShopCustomerCheckInModal({
 
               <button
                 onClick={() => {
-                  setStep('phone');
                   setStaffPin('');
+                  setStep('bill');
                   setError('');
                 }}
                 className="w-full mt-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
