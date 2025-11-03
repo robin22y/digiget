@@ -112,7 +112,7 @@ export default function StaffPage() {
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, phone, email, hourly_rate, role, active, photo_url, pin_expires_at')
+        .select('id, first_name, last_name, phone, email, hourly_rate, role, active, photo_url, pin_expires_at, payment_type, commission_percentage, base_hourly_rate, pin')
         .eq('shop_id', shopId)
         .eq('active', true)
         .order('created_at', { ascending: true });
@@ -471,7 +471,23 @@ export default function StaffPage() {
                         <span className="font-medium">This week:</span>{' '}
                         {(weeklyStats[employee.id]?.hours || 0).toFixed(1)}h
                       </p>
-                      {employee.hourly_rate && (
+                      {/* Payment Information */}
+                      {employee.payment_type === 'hourly' && employee.hourly_rate && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Payment:</span> £{employee.hourly_rate.toFixed(2)}/hour
+                        </p>
+                      )}
+                      {employee.payment_type === 'commission' && employee.commission_percentage !== null && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Payment:</span> {employee.commission_percentage}% commission
+                        </p>
+                      )}
+                      {employee.payment_type === 'hybrid' && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Payment:</span> £{employee.base_hourly_rate?.toFixed(2) || '0.00'}/hr + {employee.commission_percentage || 0}% commission
+                        </p>
+                      )}
+                      {!employee.payment_type && employee.hourly_rate && (
                         <p className="text-sm text-gray-700">
                           <span className="font-medium">Hourly rate:</span> £{employee.hourly_rate.toFixed(2)}
                         </p>

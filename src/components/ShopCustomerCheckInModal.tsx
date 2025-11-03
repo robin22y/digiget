@@ -656,13 +656,15 @@ export function ShopCustomerCheckInModal({
               </div>
 
               <p className="text-gray-700 mb-4 text-center">
-                Enter bill amount (optional)
+                Enter bill amount *
               </p>
 
               <form onSubmit={(e) => {
                 e.preventDefault();
-                if (billAmount === '' || parseFloat(billAmount || '0') >= 0) {
+                if (billAmount && parseFloat(billAmount) > 0) {
                   setStep('pin');
+                } else {
+                  setError('Please enter a valid bill amount');
                 }
               }}>
                 <div className="relative mb-4">
@@ -671,8 +673,9 @@ export function ShopCustomerCheckInModal({
                     type="number"
                     step="0.01"
                     min="0"
+                    required
                     className="w-full pl-8 pr-4 py-4 border-2 border-gray-300 rounded-xl text-center text-2xl font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="0.00"
+                    placeholder="25.00"
                     value={billAmount}
                     onChange={(e) => setBillAmount(e.target.value)}
                     autoFocus
@@ -680,7 +683,7 @@ export function ShopCustomerCheckInModal({
                 </div>
 
                 <p className="text-xs text-gray-500 mb-4 text-center">
-                  Bill amount helps track revenue and calculate commissions
+                  Bill amount is required to track revenue and calculate commissions
                 </p>
 
                 {error && (
@@ -713,18 +716,9 @@ export function ShopCustomerCheckInModal({
                 <button
                   type="submit"
                   className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!billAmount || parseFloat(billAmount || '0') <= 0}
                 >
                   Continue to Staff PIN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBillAmount('');
-                    setStep('pin');
-                  }}
-                  className="w-full py-2 mt-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
-                >
-                  Skip (no bill amount)
                 </button>
                 <button
                   type="button"

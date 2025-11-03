@@ -135,3 +135,41 @@ html, body {
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
+
+/* Commission Preview Styles for Shop Portal Check-In */
+.commission-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(52, 199, 89, 0.1), rgba(48, 209, 88, 0.1));
+  border: 2px solid #34c759;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+.commission-icon {
+  font-size: 32px;
+}
+
+.commission-details {
+  flex: 1;
+}
+
+.commission-label {
+  font-size: 13px;
+  color: var(--color-text-secondary, #6b7280);
+  margin-bottom: 4px;
+}
+
+.commission-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #34c759;
+  margin-bottom: 2px;
+}
+
+.commission-calc {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+}
