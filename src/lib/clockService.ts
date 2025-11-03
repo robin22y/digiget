@@ -61,12 +61,26 @@ export async function handleStaffClock(
 
     if (checkError) {
       console.error('Error checking clock status:', checkError);
+      console.error('Check error details:', {
+        code: checkError.code,
+        message: checkError.message,
+        details: checkError.details,
+        hint: checkError.hint
+      });
       
       // If error, try offline mode as fallback
-      if (!checkError.message?.includes('Network')) {
+      if (!checkError.message?.includes('Network') && !checkError.message?.includes('fetch')) {
+        // Not a network error - return specific error message
+        if (checkError.code === '42501' || checkError.message?.includes('permission')) {
+          return {
+            success: false,
+            error: 'Permission denied. Please contact your shop owner.'
+          };
+        }
+        
         return {
           success: false,
-          error: 'Failed to check clock status. Please try again.'
+          error: `Failed to check clock status: ${checkError.message || 'Unknown error'}. Please try again.`
         };
       }
       
@@ -176,40 +190,110 @@ async function performClockIn(
   }
 
   // Create clock-in record
+  // Build full data object with all possible fields
   const clockInData: any = {
     employee_id: employeeId,
     shop_id: shopId,
     clock_in_time: now.toISOString(),
-    clock_in_method: method,
-    clock_in_latitude: location?.latitude || null,
-    clock_in_longitude: location?.longitude || null,
     clock_out_time: null, // Important: explicitly set to null
-    clock_out_method: null,
-    clock_out_latitude: null,
-    clock_out_longitude: null,
-    nfc_tag_id: options?.nfcTagId || null,
-    verification_method: verificationMethod,
-    device_fingerprint: deviceFingerprint,
   };
 
-  const { data: clockEvent, error: insertError } = await supabase
+  // Add optional fields
+  if (location?.latitude !== undefined) {
+    clockInData.clock_in_latitude = location.latitude;
+  }
+  if (location?.longitude !== undefined) {
+    clockInData.clock_in_longitude = location.longitude;
+  }
+  
+  clockInData.clock_in_method = method;
+  clockInData.clock_out_method = null;
+  clockInData.clock_out_latitude = null;
+  clockInData.clock_out_longitude = null;
+  
+  if (options?.nfcTagId) {
+    clockInData.nfc_tag_id = options.nfcTagId;
+  }
+  if (verificationMethod) {
+    clockInData.verification_method = verificationMethod;
+  }
+  if (deviceFingerprint) {
+    clockInData.device_fingerprint = deviceFingerprint;
+  }
+
+  // Try insert with full data
+  let { data: clockEvent, error: insertError } = await supabase
     .from('clock_entries')
     .insert(clockInData)
     .select()
     .single();
 
+  // If insert fails due to missing columns, retry with minimal required fields only
+  if (insertError && (insertError.code === 'PGRST204' || 
+      (insertError.message?.includes('column') && insertError.message?.includes('does not exist')))) {
+    console.warn('Some columns may not exist, retrying with minimal fields:', insertError);
+    
+    // Retry with only core required fields
+    const minimalData: any = {
+      employee_id: employeeId,
+      shop_id: shopId,
+      clock_in_time: now.toISOString(),
+      clock_out_time: null,
+    };
+    
+    // Only add location if provided (these columns should exist based on migration)
+    if (location?.latitude !== undefined) {
+      minimalData.clock_in_latitude = location.latitude;
+    }
+    if (location?.longitude !== undefined) {
+      minimalData.clock_in_longitude = location.longitude;
+    }
+    
+    const retryResult = await supabase
+      .from('clock_entries')
+      .insert(minimalData)
+      .select()
+      .single();
+    
+    clockEvent = retryResult.data;
+    insertError = retryResult.error;
+    
+    if (!insertError) {
+      console.warn('Successfully clocked in with minimal fields. Some advanced features may not be available.');
+    }
+  }
+
   if (insertError) {
     console.error('Clock-in insert error:', insertError);
-    // Check if it's a duplicate constraint violation
+    console.error('Clock-in data attempted:', clockInData);
+    
+    // Check for specific error types and provide helpful messages
     if (insertError.code === '23505') {
       return {
         success: false,
         error: 'You are already clocked in. Please clock out first.'
       };
     }
+    
+    if (insertError.code === '42501' || insertError.message?.includes('permission') || insertError.message?.includes('policy')) {
+      return {
+        success: false,
+        error: 'Permission denied. Please contact your shop owner.'
+      };
+    }
+    
+    // Return more detailed error for debugging
+    const errorMessage = insertError.message || insertError.details || 'Unknown error';
+    console.error('Full error details:', {
+      code: insertError.code,
+      message: insertError.message,
+      details: insertError.details,
+      hint: insertError.hint
+    });
+    
     return {
       success: false,
-      error: 'Failed to clock in. Please try again.'
+      error: `Failed to clock in: ${errorMessage}. Please try again or contact support if the issue persists.`
     };
   }
 

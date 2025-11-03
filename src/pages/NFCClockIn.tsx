@@ -137,7 +137,16 @@ export default function NFCClockIn() {
           }
         }, 3000);
       } else {
-        setError(result.error || 'Failed to process clock operation');
+        // Show detailed error message to help debug
+        const errorMsg = result.error || 'Failed to process clock operation';
+        console.error('NFC Clock-in failed:', {
+          error: errorMsg,
+          employeeId: staffData.id,
+          shopId: shop.id,
+          method: 'nfc',
+          nfcTagId
+        });
+        setError(errorMsg);
         setPin('');
       }
 
@@ -145,7 +154,26 @@ export default function NFCClockIn() {
 
     } catch (err: any) {
       console.error('Clock in/out error:', err);
-      setError('Something went wrong. Please try again.');
+      console.error('Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+        employeeId: staff?.id,
+        shopId: shop?.id
+      });
+      
+      // Show more specific error messages
+      let errorMessage = 'Something went wrong. Please try again.';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.error?.message) {
+        errorMessage = err.error.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
       setPin('');
       setIsSubmitting(false);
     }
