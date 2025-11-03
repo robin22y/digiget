@@ -129,8 +129,20 @@ export async function exportAnalyticsToPDF(options: ExportOptions) {
 
   const payrollTotal = payrollBreakdown.total || 0;
   const payrollData = [
-    ['Hourly Wages', `£${payrollBreakdown.hourlyWages.toFixed(2)}`, payrollTotal > 0 ? `${((payrollBreakdown.hourlyWages / payrollTotal) * 100).toFixed(1)}%` : '0%'],
-    ['Commission', `£${payrollBreakdown.commission.toFixed(2)}`, payrollTotal > 0 ? `${((payrollBreakdown.commission / payrollTotal) * 100).toFixed(1)}%` : '0%`],
+    [
+      'Hourly Wages',
+      `£${payrollBreakdown.hourlyWages.toFixed(2)}`,
+      payrollTotal > 0
+        ? `${((payrollBreakdown.hourlyWages / payrollTotal) * 100).toFixed(2)}%`
+        : '-',
+    ],
+    [
+      'Commission',
+      `£${payrollBreakdown.commission.toFixed(2)}`,
+      payrollTotal > 0
+        ? `${((payrollBreakdown.commission / payrollTotal) * 100).toFixed(2)}%`
+        : '-',
+    ],
     ['Total Payroll', `£${payrollTotal.toFixed(2)}`, '100%']
   ];
 
