@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { handleStaffClock } from '../lib/clockService';
@@ -41,49 +41,62 @@ export default function NFCClockIn() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const verifyingRef = useRef(false);
 
   useEffect(() => {
-    if (nfcTagId) {
-      verifyNFCTag();
-    } else {
+    // Prevent multiple verification calls
+    if (verifyingRef.current || shop) return;
+    
+    if (!nfcTagId) {
       setError('Invalid NFC tag - no tag ID provided');
       setLoading(false);
+      return;
     }
-  }, [nfcTagId]);
 
-  async function verifyNFCTag() {
-    if (!nfcTagId) return;
+    // Mark as verifying to prevent duplicate calls
+    verifyingRef.current = true;
+    setLoading(true);
+    setError('');
 
-    try {
-      // Verify NFC tag exists and is active
-      const { data: shopData, error: shopError } = await supabase
-        .from('shops')
-        .select('*')
-        .eq('nfc_tag_id', nfcTagId)
-        .eq('nfc_tag_active', true)
-        .maybeSingle();
+    async function verifyNFCTag() {
+      try {
+        // Verify NFC tag exists and is active
+        const { data: shopData, error: shopError } = await supabase
+          .from('shops')
+          .select('*')
+          .eq('nfc_tag_id', nfcTagId)
+          .eq('nfc_tag_active', true)
+          .maybeSingle();
 
-      if (shopError) {
-        console.error('Error verifying NFC tag:', shopError);
-        setError('Failed to verify NFC tag. Please try again.');
+        if (shopError) {
+          console.error('Error verifying NFC tag:', shopError);
+          setError(`Failed to verify NFC tag: ${shopError.message || 'Please try again.'}`);
+          setLoading(false);
+          verifyingRef.current = false;
+          return;
+        }
+
+        if (!shopData) {
+          setError('Invalid or inactive NFC tag. Please contact your shop owner.');
+          setLoading(false);
+          verifyingRef.current = false;
+          return;
+        }
+
+        setShop(shopData as Shop);
         setLoading(false);
-        return;
-      }
-
-      if (!shopData) {
-        setError('Invalid or inactive NFC tag. Please contact your shop owner.');
+        // Don't reset verifyingRef - we've successfully verified
+      } catch (err: any) {
+        console.error('NFC tag verification error:', err);
+        setError(`Something went wrong: ${err.message || 'Please try again.'}`);
         setLoading(false);
-        return;
+        verifyingRef.current = false;
       }
-
-      setShop(shopData as Shop);
-      setLoading(false);
-    } catch (err: any) {
-      console.error('NFC tag verification error:', err);
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
     }
-  }
+
+    verifyNFCTag();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nfcTagId]); // Only depend on nfcTagId - shop check is handled in the effect
 
   async function handlePinSubmit() {
     if (!shop || pin.length !== 4) {
