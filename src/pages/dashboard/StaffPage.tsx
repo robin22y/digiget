@@ -27,6 +27,9 @@ interface Employee {
   photo_url: string | null;
   pin?: string;
   pin_expires_at?: string | null;
+  payment_type?: 'hourly' | 'commission' | 'hybrid' | null;
+  commission_percentage?: number | null;
+  base_hourly_rate?: number | null;
 }
 
 export default function StaffPage() {
@@ -586,6 +589,9 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
   const [email, setEmail] = useState(employee?.email || '');
   const [hourlyRate, setHourlyRate] = useState(employee?.hourly_rate?.toString() || '');
   const [role, setRole] = useState(employee?.role || 'staff');
+  const [paymentType, setPaymentType] = useState<'hourly' | 'commission' | 'hybrid'>(employee?.payment_type || 'hourly');
+  const [commissionRate, setCommissionRate] = useState(employee?.commission_percentage?.toString() || '');
+  const [baseHourlyRate, setBaseHourlyRate] = useState(employee?.base_hourly_rate?.toString() || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -608,6 +614,9 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
       setEmail(employee.email || '');
       setHourlyRate(employee.hourly_rate?.toString() || '');
       setRole(employee.role || 'staff');
+      setPaymentType(employee?.payment_type || 'hourly');
+      setCommissionRate(employee?.commission_percentage?.toString() || '');
+      setBaseHourlyRate(employee?.base_hourly_rate?.toString() || '');
       setError('');
     } else {
       // Reset form for new employee
@@ -617,6 +626,9 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
       setEmail('');
       setHourlyRate('');
       setRole('staff');
+      setPaymentType('hourly');
+      setCommissionRate('');
+      setBaseHourlyRate('');
       setError('');
     }
   }, [employee]);
@@ -636,10 +648,25 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
         last_name: lastName?.trim() || null,
         phone: phone?.trim() || null,
         email: email?.trim() || null,
-        hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
         role: role || 'staff',
+        payment_type: paymentType,
         updated_at: new Date().toISOString()
       };
+
+      // Set rates based on payment type
+      if (paymentType === 'hourly') {
+        employeeData.hourly_rate = hourlyRate ? parseFloat(hourlyRate) : null;
+        employeeData.commission_percentage = 0;
+        employeeData.base_hourly_rate = 0;
+      } else if (paymentType === 'commission') {
+        employeeData.hourly_rate = 0;
+        employeeData.commission_percentage = commissionRate ? parseFloat(commissionRate) : 0;
+        employeeData.base_hourly_rate = 0;
+      } else if (paymentType === 'hybrid') {
+        employeeData.hourly_rate = baseHourlyRate ? parseFloat(baseHourlyRate) : null;
+        employeeData.commission_percentage = commissionRate ? parseFloat(commissionRate) : 0;
+        employeeData.base_hourly_rate = baseHourlyRate ? parseFloat(baseHourlyRate) : 0;
+      }
 
       if (employee) {
         // Update existing employee
@@ -833,26 +860,137 @@ function EmployeeModal({ employee, shopId, onClose, onSave }: EmployeeModalProps
             )}
           </div>
 
+          {/* Payment Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hourly Rate (optional)
+              Payment Type *
             </label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-gray-500">£</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={hourlyRate}
-                onChange={(e) => setHourlyRate(e.target.value)}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentType('hourly')}
+                className={`px-4 py-3 border-2 rounded-lg font-medium transition-colors ${
+                  paymentType === 'hourly'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
                 disabled={loading}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                placeholder="12.50"
-              />
+              >
+                <div className="text-lg mb-1">💰</div>
+                <div className="text-xs">Hourly</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentType('commission')}
+                className={`px-4 py-3 border-2 rounded-lg font-medium transition-colors ${
+                  paymentType === 'commission'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                disabled={loading}
+              >
+                <div className="text-lg mb-1">📈</div>
+                <div className="text-xs">Commission</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentType('hybrid')}
+                className={`px-4 py-3 border-2 rounded-lg font-medium transition-colors ${
+                  paymentType === 'hybrid'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                disabled={loading}
+              >
+                <div className="text-lg mb-1">💎</div>
+                <div className="text-xs">Hybrid</div>
+              </button>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Used for payroll calculations
-            </p>
+          </div>
+
+          {/* Hourly Rate (for hourly or hybrid) */}
+          {(paymentType === 'hourly' || paymentType === 'hybrid') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {paymentType === 'hybrid' ? 'Base Hourly Rate *' : 'Hourly Rate *'}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-gray-500">£</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={paymentType === 'hybrid' ? baseHourlyRate : hourlyRate}
+                  onChange={(e) => {
+                    if (paymentType === 'hybrid') {
+                      setBaseHourlyRate(e.target.value);
+                    } else {
+                      setHourlyRate(e.target.value);
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="12.50"
+                  required={paymentType === 'hourly' || paymentType === 'hybrid'}
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {paymentType === 'hybrid' ? 'Base hourly wage (commission added on top)' : 'Used for payroll calculations'}
+              </p>
+            </div>
+          )}
+
+          {/* Commission Rate (for commission or hybrid) */}
+          {(paymentType === 'commission' || paymentType === 'hybrid') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Commission Rate *
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={commissionRate}
+                  onChange={(e) => setCommissionRate(e.target.value)}
+                  disabled={loading}
+                  className="w-full pl-4 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="50"
+                  required
+                />
+                <span className="absolute right-3 top-2 text-gray-500">%</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {paymentType === 'commission' 
+                  ? 'Staff earns this % of total bill amounts'
+                  : 'Staff earns hourly wage + this % of bill amounts'}
+              </p>
+            </div>
+          )}
+
+          {/* Payment Summary */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800 font-semibold mb-1">Payment Summary:</p>
+            {paymentType === 'hourly' && (
+              <p className="text-sm text-blue-700">
+                <strong>{firstName || 'Staff'}</strong> will earn{' '}
+                <strong>£{hourlyRate || '0.00'}/hour</strong>
+              </p>
+            )}
+            {paymentType === 'commission' && (
+              <p className="text-sm text-blue-700">
+                <strong>{firstName || 'Staff'}</strong> will earn{' '}
+                <strong>{commissionRate || '0'}%</strong> commission on all sales
+              </p>
+            )}
+            {paymentType === 'hybrid' && (
+              <p className="text-sm text-blue-700">
+                <strong>{firstName || 'Staff'}</strong> will earn{' '}
+                <strong>£{baseHourlyRate || '0.00'}/hour</strong> +{' '}
+                <strong>{commissionRate || '0'}%</strong> commission
+              </p>
+            )}
           </div>
 
           <div>

@@ -15,8 +15,9 @@ export function ShopCustomerCheckInModal({
   shopId,
   onSuccess 
 }: ShopCustomerCheckInModalProps) {
-  const [step, setStep] = useState<'phone' | 'pin' | 'name' | 'success' | 'redeem'>('phone');
+  const [step, setStep] = useState<'phone' | 'bill' | 'pin' | 'name' | 'success' | 'redeem'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [billAmount, setBillAmount] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [staffPin, setStaffPin] = useState('');
   const [redeemPin, setRedeemPin] = useState('');
@@ -76,8 +77,8 @@ export function ShopCustomerCheckInModal({
       if (existingCustomer) {
         setCustomer(existingCustomer);
         setIsNewCustomer(false);
-        // Move directly to PIN entry for existing customers
-        setStep('pin');
+        // Move to bill amount entry for existing customers
+        setStep('bill');
       } else {
         // Create new customer immediately (without name - will add later)
         setIsNewCustomer(true);
@@ -97,8 +98,8 @@ export function ShopCustomerCheckInModal({
 
           if (createError) throw createError;
           setCustomer(newCustomer);
-          // Move to PIN entry now that customer exists
-          setStep('pin');
+          // Move to bill amount entry now that customer exists
+          setStep('bill');
         } catch (createErr: any) {
           setError('Failed to create customer. Please try again.');
           console.error('Customer creation error:', createErr);
@@ -175,7 +176,7 @@ export function ShopCustomerCheckInModal({
       // Verify staff PIN
       const { data: staffData, error: staffError } = await supabase
         .from('employees')
-        .select('*')
+        .select('*, payment_type, commission_percentage, base_hourly_rate, hourly_rate')
         .eq('shop_id', shopId)
         .eq('pin', staffPin)
         .eq('active', true)
@@ -195,6 +196,15 @@ export function ShopCustomerCheckInModal({
         setError('Customer not found. Please try again.');
         setLoading(false);
         return;
+      }
+
+      // Calculate commission if bill amount provided and staff has commission
+      const bill = parseFloat(billAmount || '0');
+      let commissionEarned = 0;
+
+      if (bill > 0 && (staffData.payment_type === 'commission' || staffData.payment_type === 'hybrid')) {
+        const commissionPct = staffData.commission_percentage || 0;
+        commissionEarned = (bill * commissionPct) / 100;
       }
 
       // Check 30-minute cooldown for same phone number
@@ -243,19 +253,39 @@ export function ShopCustomerCheckInModal({
         setCustomer(updatedCustomer);
       }
 
-      // Create customer visit record (track who checked them in)
-      const { error: visitError } = await supabase
+      // Create customer visit record (track who checked them in, bill amount, commission)
+      const { data: visitRecord, error: visitError } = await supabase
         .from('customer_visits')
         .insert({
           customer_id: customer.id,
           shop_id: shopId,
           staff_id: staffData.id, // Track who checked them in
+          checked_in_by_employee_id: staffData.id, // Also store in new column
           visit_date: new Date().toISOString(),
-        });
+          bill_amount: bill > 0 ? bill : null,
+          commission_earned: commissionEarned > 0 ? commissionEarned : null,
+        })
+        .select()
+        .single();
 
       if (visitError) {
         console.error('Visit error:', visitError);
         // Don't fail if visit record fails
+      }
+
+      // Record employee contribution if bill amount or commission exists
+      if ((bill > 0 || commissionEarned > 0) && visitRecord) {
+        await supabase
+          .from('employee_contributions')
+          .insert({
+            shop_id: shopId,
+            employee_id: staffData.id,
+            customer_checkin_id: visitRecord.id,
+            contribution_date: new Date().toISOString().split('T')[0],
+            bill_amount: bill > 0 ? bill : 0,
+            commission_earned: commissionEarned,
+            total_earnings: commissionEarned, // Will add hourly wages during payroll calculation
+          });
       }
 
       // Create loyalty transaction if point was added
@@ -389,6 +419,7 @@ export function ShopCustomerCheckInModal({
 
     // Reset all state
     setPhoneNumber('');
+    setBillAmount('');
     setCustomerName('');
     setStaffPin('');
     setRedeemPin('');
@@ -451,6 +482,70 @@ export function ShopCustomerCheckInModal({
                   disabled={phoneNumber.replace(/\s/g, '').length < 10 || loading}
                 >
                   {loading ? 'Loading...' : 'Continue'}
+                </button>
+              </form>
+            </>
+          ) : step === 'bill' ? (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-blue-900 mb-1">
+                  Customer: {customer?.name || customer?.phone || phoneNumber}
+                </p>
+                <p className="text-blue-800 text-sm">
+                  Current Points: {customer?.current_points || 0}
+                  {shop?.points_needed && ` / ${shop.points_needed} needed`}
+                </p>
+              </div>
+
+              <p className="text-gray-700 mb-4 text-center">
+                Enter bill amount (optional)
+              </p>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (billAmount === '' || parseFloat(billAmount || '0') >= 0) {
+                  setStep('pin');
+                }
+              }}>
+                <div className="relative mb-4">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 text-xl font-semibold">£</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-8 pr-4 py-4 border-2 border-gray-300 rounded-xl text-center text-2xl font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0.00"
+                    value={billAmount}
+                    onChange={(e) => setBillAmount(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                <p className="text-xs text-gray-500 mb-4 text-center">
+                  Bill amount helps track revenue and calculate commissions
+                </p>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-red-800 text-sm">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Continue to Staff PIN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillAmount('');
+                    setStep('pin');
+                  }}
+                  className="w-full py-2 mt-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
+                >
+                  Skip (no bill amount)
                 </button>
               </form>
             </>
