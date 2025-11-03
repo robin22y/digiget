@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Lock, X, AlertCircle, RefreshCw } from 'lucide-react';
+import { Lock, X, AlertCircle } from 'lucide-react';
 import { validateOwnerPIN, isWeakOwnerPIN, getWeakPINReason } from '../utils/pinValidation';
 import { supabase } from '../lib/supabase';
 
