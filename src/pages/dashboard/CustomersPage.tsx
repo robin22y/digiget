@@ -46,10 +46,18 @@ export default function CustomersPage() {
     }
   };
 
-  const filteredCustomers = customers.filter(c =>
-    (c.name?.toLowerCase().includes(search.toLowerCase())) ||
-    c.phone.includes(search)
-  );
+  const filteredCustomers = customers.filter(c => {
+    // Skip null/undefined customers
+    if (!c) return false;
+    
+    if (!search.trim()) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      (c.name && c.name.toLowerCase().includes(searchLower)) ||
+      (c.phone && typeof c.phone === 'string' && c.phone.includes(search)) ||
+      (c.id && typeof c.id === 'string' && c.id.toLowerCase().includes(searchLower))
+    );
+  });
 
   if (loading) {
     return <div>Loading...</div>;
@@ -95,13 +103,18 @@ export default function CustomersPage() {
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {(customer.name || customer.phone).charAt(0).toUpperCase()}
+                    {(() => {
+                      const displayName = customer.name || customer.phone || `Guest ${customer.id?.slice(0, 6) || ''}`;
+                      return displayName.charAt(0).toUpperCase();
+                    })()}
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900 group-hover:text-blue-600">
-                      {customer.name || 'Unnamed Customer'}
+                      {customer.name || (customer.phone ? 'Unnamed Customer' : `Guest Customer`)}
                     </h3>
-                    <p className="text-sm text-gray-600">{maskPhone(customer.phone)}</p>
+                    <p className="text-sm text-gray-600">
+                      {customer.phone ? maskPhone(customer.phone) : `Guest ID: ${customer.id?.slice(0, 8) || 'N/A'}`}
+                    </p>
                     <div className="flex items-center mt-1">
                       {Array.from({ length: Math.min(customer.current_points, 6) }).map((_, i) => (
                         <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />

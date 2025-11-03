@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useParams, NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, CheckCircle, UserCheck, ClipboardList, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star, Receipt, Bell } from 'lucide-react';
+import { Home, Users, CheckCircle, UserCheck, ClipboardList, AlertTriangle, Settings, LogOut, Tablet, MapPin, Zap, Navigation, Clock, Package, QrCode, Menu, X, Star, Receipt, Bell, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
@@ -165,6 +165,9 @@ export default function DashboardLayout() {
       (isOwnerOrAdmin || isFeatureEnabled('reportProblem', user)) && { to: `/dashboard/${shopId}/incidents`, icon: AlertTriangle, label: 'Report a Problem', feature: 'reportProblem' as const },
       (isOwnerOrAdmin || isFeatureEnabled('fixTimeEntries', user)) && { to: `/dashboard/${shopId}/clock-requests`, icon: Clock, label: 'Fix Time Entries', feature: 'fixTimeEntries' as const },
     ].filter(Boolean) as any[],
+    
+    // Revenue Report (available to all shops)
+    { to: `/dashboard/${shopId}/revenue`, icon: DollarSign, label: 'Revenue', feature: undefined },
     
     // Payroll Reports (available to all shops)
     { to: `/dashboard/${shopId}/payroll`, icon: Receipt, label: 'Payroll Report', feature: undefined },

@@ -19,17 +19,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Get session and handle refresh token errors gracefully
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      // Silently handle invalid refresh token errors - these are expected when user is not logged in
+      if (error && error.message?.includes('Invalid Refresh Token')) {
+        // User is not authenticated, which is fine - just set to null
+        console.log('No valid session - user needs to log in');
+        setSession(null);
+        setUser(null);
+      } else if (error) {
+        // Log other errors but don't fail silently
+        console.warn('Session error:', error.message);
+        setSession(null);
+        setUser(null);
+      } else {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+      setLoading(false);
+    }).catch((error) => {
+      // Catch any unexpected errors during session retrieval
+      if (error?.message?.includes('Invalid Refresh Token') || 
+          error?.message?.includes('Refresh Token Not Found')) {
+        // Expected error when no valid session exists
+        console.log('No valid session found');
+      } else {
+        console.warn('Error getting session:', error);
+      }
+      setSession(null);
+      setUser(null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setSession(session);
-        setUser(session?.user ?? null);
-      })();
+      setSession(session);
+      setUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();

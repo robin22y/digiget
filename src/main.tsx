@@ -1,7 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import './index.css';
+import './index.css'
+import './styles/revenue.css';
 import './styles/analytics.css';
 import './i18n/config'; // Initialize i18n BEFORE rendering App
 

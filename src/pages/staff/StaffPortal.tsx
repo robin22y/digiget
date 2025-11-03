@@ -145,6 +145,8 @@ export default function StaffPortal() {
     }
 
     try {
+      setLoading(true);
+      setError('');
       let shopData = null;
       let shopError = null;
 
@@ -160,12 +162,13 @@ export default function StaffPortal() {
         shopData = data;
         shopError = error;
       } else {
-        // It's likely a short_code - try that first, then slug as fallback
-        console.log('Loading shop by short_code:', trimmedIdentifier);
+        // It's likely a short_code - try that first (case-insensitive), then slug as fallback
+        const upperCode = trimmedIdentifier.toUpperCase();
+        console.log('Loading shop by short_code:', upperCode);
         let { data, error } = await supabase
           .from('shops')
           .select('id, shop_name, owner_name, auto_logout_hours, latitude, longitude, open_time, close_time')
-          .eq('short_code', trimmedIdentifier)
+          .eq('short_code', upperCode)
           .maybeSingle();
         
         // If not found by short_code and no error, try slug as fallback
@@ -255,10 +258,22 @@ export default function StaffPortal() {
       }
 
       if (!shopData) {
-        setError(`Shop not found with identifier: ${trimmedIdentifier}. Please check the URL.`);
+        console.error('Shop not found:', {
+          identifier: trimmedIdentifier,
+          upperCode: trimmedIdentifier.toUpperCase(),
+          triedUUID: isUUID(trimmedIdentifier),
+          triedShortCode: !isUUID(trimmedIdentifier)
+        });
+        setError(`Shop not found with code: ${trimmedIdentifier}. Please check the URL and ensure the shop code is correct.`);
         setLoading(false);
         return;
       }
+
+      console.log('Shop loaded successfully:', {
+        id: shopData.id,
+        shop_name: shopData.shop_name,
+        identifier: trimmedIdentifier
+      });
 
       // Set shop with all data
       setShop({

@@ -15,7 +15,7 @@ export function ShopCustomerCheckInModal({
   shopId,
   onSuccess 
 }: ShopCustomerCheckInModalProps) {
-  const [step, setStep] = useState<'phone' | 'staff' | 'bill' | 'pin' | 'name' | 'success' | 'redeem'>('phone');
+  const [step, setStep] = useState<'phone' | 'staff' | 'bill' | 'name' | 'success' | 'redeem'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -30,6 +30,7 @@ export function ShopCustomerCheckInModal({
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
   const [autoCloseTimer, setAutoCloseTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Load shop data on mount
@@ -203,56 +204,16 @@ export function ShopCustomerCheckInModal({
     setError('');
 
     try {
-      // Verify staff PIN matches selected staff OR use selected staff directly
-      let staffData = selectedEmployee;
+      // Get already verified staff member (from previous step)
+      let staffData = selectedEmployee || employee;
       
-      // If staffId was set via dropdown, verify the PIN matches
-      if (staffId && staffPin) {
-        const { data: verifiedStaff, error: staffError } = await supabase
-          .from('employees')
-          .select('*, payment_type, commission_percentage, base_hourly_rate, hourly_rate')
-          .eq('shop_id', shopId)
-          .eq('id', staffId)
-          .eq('pin', staffPin)
-          .eq('active', true)
-          .maybeSingle();
-
-        if (staffError || !verifiedStaff) {
-          setError('Invalid PIN for selected staff member');
-          setStaffPin('');
-          setLoading(false);
-          return;
-        }
-
-        staffData = verifiedStaff;
-      } else if (staffPin && !staffId) {
-        // Fallback: allow PIN-only entry (for backward compatibility)
-        const { data: verifiedStaff, error: staffError } = await supabase
-          .from('employees')
-          .select('*, payment_type, commission_percentage, base_hourly_rate, hourly_rate')
-          .eq('shop_id', shopId)
-          .eq('pin', staffPin)
-          .eq('active', true)
-          .maybeSingle();
-
-        if (staffError || !verifiedStaff) {
-          setError('Invalid staff PIN');
-          setStaffPin('');
-          setLoading(false);
-          return;
-        }
-
-        staffData = verifiedStaff;
-        setStaffId(verifiedStaff.id);
-      }
-
-      if (!staffData) {
-        setError('Staff member not found');
+      if (!staffData || !staffId) {
+        setError('Staff member not verified. Please go back and enter staff PIN first.');
         setLoading(false);
         return;
       }
 
-      setEmployee(staffData);
+      // Staff is already verified from previous step, continue with check-in
 
       // Validate customer exists
       if (!customer || !customer.id) {
@@ -261,43 +222,78 @@ export function ShopCustomerCheckInModal({
         return;
       }
 
+      // Check if this is a guest customer (no phone number)
+      const isGuestCustomer = !customer.phone;
+
       // Calculate commission if bill amount provided and staff has commission
+      // Re-fetch employee data to ensure we have latest commission_percentage from database
       const bill = parseFloat(billAmount || '0');
       let commissionEarned = 0;
 
-      if (bill > 0 && (staffData.payment_type === 'commission' || staffData.payment_type === 'hybrid')) {
-        const commissionPct = staffData.commission_percentage || 0;
-        commissionEarned = (bill * commissionPct) / 100;
+      if (bill > 0 && staffData.id) {
+        // Get latest employee data to ensure accurate commission rate
+        const { data: latestEmployee } = await supabase
+          .from('employees')
+          .select('payment_type, commission_percentage, first_name, last_name')
+          .eq('id', staffData.id)
+          .maybeSingle();
+
+        const employeeForCommission = latestEmployee || staffData;
+
+        if (employeeForCommission && 
+            (employeeForCommission.payment_type === 'commission' || employeeForCommission.payment_type === 'hybrid')) {
+          // Ensure we have the latest commission_percentage from the employee record
+          const commissionPct = parseFloat(employeeForCommission.commission_percentage?.toString() || '0');
+          
+          if (commissionPct > 0 && commissionPct <= 100) {
+            commissionEarned = (bill * commissionPct) / 100;
+            // Round to 2 decimal places for currency
+            commissionEarned = Math.round(commissionEarned * 100) / 100;
+            
+            console.log('Commission calculation:', {
+              bill,
+              commissionPct,
+              commissionEarned,
+              paymentType: employeeForCommission.payment_type,
+              employeeName: `${employeeForCommission.first_name} ${employeeForCommission.last_name}`,
+              employeeId: staffData.id
+            });
+          } else {
+            console.warn('Invalid commission percentage:', commissionPct, 'for employee:', staffData.id);
+          }
+        }
       }
 
-      // Check 30-minute cooldown for same phone number
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      
-      const { data: recentTransaction } = await supabase
-        .from('loyalty_transactions')
-        .select('created_at')
-        .eq('shop_id', shopId)
-        .eq('customer_id', customer.id)
-        .eq('transaction_type', 'point_added')
-        .gte('created_at', thirtyMinutesAgo)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Check 30-minute cooldown for same phone number (only for non-guest customers)
+      if (!isGuestCustomer) {
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        
+        const { data: recentTransaction } = await supabase
+          .from('loyalty_transactions')
+          .select('created_at')
+          .eq('shop_id', shopId)
+          .eq('customer_id', customer.id)
+          .eq('transaction_type', 'point_added')
+          .gte('created_at', thirtyMinutesAgo)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (recentTransaction) {
-        const lastCheckInTime = new Date(recentTransaction.created_at);
-        const now = new Date();
-        const minutesSince = Math.ceil((now.getTime() - lastCheckInTime.getTime()) / (1000 * 60));
-        const remainingMinutes = 30 - minutesSince;
-        setError(`Please wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} before adding points again.`);
-        setLoading(false);
-        return;
+        if (recentTransaction) {
+          const lastCheckInTime = new Date(recentTransaction.created_at);
+          const now = new Date();
+          const minutesSince = Math.ceil((now.getTime() - lastCheckInTime.getTime()) / (1000 * 60));
+          const remainingMinutes = 30 - minutesSince;
+          setError(`Please wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} before adding points again.`);
+          setLoading(false);
+          return;
+        }
       }
 
-      // Award loyalty point if enabled
-      const newPoints = customer.current_points + 1;
+      // Award loyalty point if enabled (guests don't get points)
+      const newPoints = isGuestCustomer ? customer.current_points : customer.current_points + 1;
       const newTotalVisits = customer.total_visits + 1;
-      const canEarnPoint = shop?.loyalty_enabled !== false;
+      const canEarnPoint = shop?.loyalty_enabled !== false && !isGuestCustomer;
 
       // Update customer
       const { data: updatedCustomer } = await supabase
@@ -505,6 +501,7 @@ export function ShopCustomerCheckInModal({
     setStep('phone');
     setError('');
     setIsNewCustomer(false);
+    setIsGuest(false);
     onClose();
   }
 
@@ -534,17 +531,176 @@ export function ShopCustomerCheckInModal({
           {step === 'phone' ? (
             <>
               <p className="text-gray-700 mb-4 text-center">
-                Enter customer's phone number
+                Enter customer's phone number or check in as guest
               </p>
 
               <form onSubmit={handlePhoneSubmit}>
                 <input
                   type="tel"
-                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-                  placeholder="07123 456 789"
+                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-center text-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
+                  placeholder="07123 456 789 (Optional for guests)"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
+                  onChange={(e) => {
+                    setPhoneNumber(formatPhone(e.target.value));
+                    setIsGuest(false);
+                  }}
                   autoFocus
+                />
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-red-800 text-sm">{error}</p>
+                  </div>
+                )}
+
+                {phoneNumber.replace(/\s/g, '').length >= 10 && (
+                  <button
+                    type="submit"
+                    className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed mb-3"
+                    disabled={loading}
+                  >
+                    {loading ? 'Loading...' : 'Continue'}
+                  </button>
+                )}
+
+                {/* Guest Check-in Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsGuest(true);
+                    setLoading(true);
+                    setError('');
+                    setPhoneNumber('');
+                    
+                    try {
+                      // Create guest customer
+                      const { data: newGuest, error: createError } = await supabase
+                        .from('customers')
+                        .insert({
+                          shop_id: shopId,
+                          phone: null,
+                          name: null,
+                          current_points: 0, // Guests don't get points
+                          lifetime_points: 0,
+                          total_visits: 0,
+                          classification: 'New',
+                        })
+                        .select()
+                        .single();
+
+                      if (createError) throw createError;
+                      
+                      setCustomer(newGuest);
+                      setIsNewCustomer(true);
+                      setStep('staff');
+                    } catch (err: any) {
+                      console.error('Error creating guest:', err);
+                      setError('Failed to create guest customer');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-semibold text-lg border-2 border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading || phoneNumber.replace(/\s/g, '').length > 0}
+                >
+                  {loading ? 'Creating Guest...' : '👤 Check In as Guest'}
+                </button>
+              </form>
+            </>
+          ) : step === 'staff' ? (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-blue-900 mb-1">
+                  {customer?.phone ? (
+                    <>Customer: {customer?.name || customer?.phone || phoneNumber}</>
+                  ) : (
+                    <>Guest Customer: {customer?.name || `Guest ${customer?.id?.slice(0, 8) || ''}`}</>
+                  )}
+                </p>
+                {customer?.phone ? (
+                  <p className="text-blue-800 text-sm">
+                    Current Points: {customer?.current_points || 0}
+                    {shop?.points_needed && ` / ${shop.points_needed} needed`}
+                  </p>
+                ) : (
+                  <p className="text-blue-800 text-sm">
+                    Guest customer • No points awarded
+                  </p>
+                )}
+              </div>
+
+              <p className="text-gray-700 mb-4 text-center">
+                Enter YOUR staff PIN who served this customer
+              </p>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError('');
+
+                try {
+                  // Verify staff PIN
+                  const { data: verifiedStaff, error: staffError } = await supabase
+                    .from('employees')
+                    .select('*, payment_type, commission_percentage, base_hourly_rate, hourly_rate')
+                    .eq('shop_id', shopId)
+                    .eq('pin', staffPin)
+                    .eq('active', true)
+                    .maybeSingle();
+
+                  if (staffError || !verifiedStaff) {
+                    setError('Invalid staff PIN');
+                    setStaffPin('');
+                    setLoading(false);
+                    return;
+                  }
+
+                  // Check if staff is clocked in
+                  const { data: clockEntry, error: clockError } = await supabase
+                    .from('clock_entries')
+                    .select('id, clock_in_time')
+                    .eq('employee_id', verifiedStaff.id)
+                    .eq('shop_id', shopId)
+                    .is('clock_out_time', null)
+                    .order('clock_in_time', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                  if (clockError) {
+                    console.error('Error checking clock status:', clockError);
+                    setError('Unable to verify clock status. Please try again.');
+                    setLoading(false);
+                    return;
+                  }
+
+                  if (!clockEntry) {
+                    setError('You must clock in before checking in customers. Please clock in first.');
+                    setStaffPin('');
+                    setLoading(false);
+                    return;
+                  }
+
+                  setStaffId(verifiedStaff.id);
+                  setSelectedEmployee(verifiedStaff);
+                  setEmployee(verifiedStaff);
+                  setStep('bill');
+                } catch (err: any) {
+                  console.error('Staff PIN error:', err);
+                  setError('Failed to verify staff PIN');
+                } finally {
+                  setLoading(false);
+                }
+              }}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  className="w-full px-4 py-6 border-2 border-gray-300 rounded-xl text-center text-4xl font-semibold tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                  placeholder="••••"
+                  value={staffPin}
+                  onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, ''))}
+                  autoFocus
+                  required
                 />
 
                 {error && (
@@ -556,85 +712,16 @@ export function ShopCustomerCheckInModal({
                 <button
                   type="submit"
                   className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={phoneNumber.replace(/\s/g, '').length < 10 || loading}
+                  disabled={staffPin.length !== 4 || loading}
                 >
-                  {loading ? 'Loading...' : 'Continue'}
-                </button>
-              </form>
-            </>
-          ) : step === 'staff' ? (
-            <>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-blue-900 mb-1">
-                  Customer: {customer?.name || customer?.phone || phoneNumber}
-                </p>
-                <p className="text-blue-800 text-sm">
-                  Current Points: {customer?.current_points || 0}
-                  {shop?.points_needed && ` / ${shop.points_needed} needed`}
-                </p>
-              </div>
-
-              <p className="text-gray-700 mb-4 text-center">
-                Select staff member who served this customer
-              </p>
-
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (staffId) {
-                  setStep('bill');
-                }
-              }}>
-                <select
-                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-                  value={staffId}
-                  onChange={(e) => setStaffId(e.target.value)}
-                  required
-                  autoFocus
-                >
-                  <option value="">Select staff member...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name}
-                      {emp.payment_type === 'commission' && ` (Commission ${emp.commission_percentage}%)`}
-                      {emp.payment_type === 'hybrid' && ` (Hybrid: £${emp.base_hourly_rate}/hr + ${emp.commission_percentage}%)`}
-                      {emp.payment_type === 'hourly' && ` (Hourly: £${emp.hourly_rate}/hr)`}
-                    </option>
-                  ))}
-                </select>
-
-                {selectedEmployee && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-gray-700 mb-1">
-                      <strong>{selectedEmployee.first_name} {selectedEmployee.last_name}</strong>
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      {selectedEmployee.payment_type === 'hourly' && 
-                        `Hourly rate: £${selectedEmployee.hourly_rate}/hr`}
-                      {selectedEmployee.payment_type === 'commission' && 
-                        `Commission: ${selectedEmployee.commission_percentage}% of sales`}
-                      {selectedEmployee.payment_type === 'hybrid' && 
-                        `Base: £${selectedEmployee.base_hourly_rate}/hr + ${selectedEmployee.commission_percentage}% commission`}
-                    </p>
-                  </div>
-                )}
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                    <p className="text-red-800 text-sm">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!staffId}
-                >
-                  Continue to Bill Amount
+                  {loading ? 'Verifying...' : 'Continue to Bill Amount'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
+                    setStaffPin('');
                     setStaffId('');
+                    setSelectedEmployee(null);
                     setStep('phone');
                   }}
                   className="w-full mt-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
@@ -647,25 +734,45 @@ export function ShopCustomerCheckInModal({
             <>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-blue-900 mb-1">
-                  Customer: {customer?.name || customer?.phone || phoneNumber}
+                  {customer?.phone ? (
+                    <>Customer: {customer?.name || customer?.phone || phoneNumber}</>
+                  ) : (
+                    <>Guest Customer: {customer?.name || `Guest ${customer?.id?.slice(0, 8) || ''}`}</>
+                  )}
                 </p>
-                <p className="text-blue-800 text-sm">
-                  Current Points: {customer?.current_points || 0}
-                  {shop?.points_needed && ` / ${shop.points_needed} needed`}
-                </p>
+                {customer?.phone ? (
+                  <p className="text-blue-800 text-sm">
+                    Current Points: {customer?.current_points || 0}
+                    {shop?.points_needed && ` / ${shop.points_needed} needed`}
+                  </p>
+                ) : (
+                  <p className="text-blue-800 text-sm">
+                    Guest customer • No points awarded
+                  </p>
+                )}
               </div>
 
               <p className="text-gray-700 mb-4 text-center">
                 Enter bill amount *
               </p>
 
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                if (billAmount && parseFloat(billAmount) > 0) {
-                  setStep('pin');
-                } else {
+                if (!billAmount || parseFloat(billAmount) <= 0) {
                   setError('Please enter a valid bill amount');
+                  return;
                 }
+                
+                // Use the already verified staff from previous step
+                if (!selectedEmployee || !staffId) {
+                  setError('Staff not verified. Please go back and enter staff PIN.');
+                  return;
+                }
+
+                // Set staffPin to the verified staff's PIN to complete check-in
+                setStaffPin(selectedEmployee.pin || '');
+                // Call handleStaffPinSubmit with the form event
+                await handleStaffPinSubmit(e);
               }}>
                 <div className="relative mb-4">
                   <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 text-xl font-semibold">£</span>
@@ -686,115 +793,39 @@ export function ShopCustomerCheckInModal({
                   Bill amount is required to track revenue and calculate commissions
                 </p>
 
+                {selectedEmployee && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-gray-700">
+                      Staff: <strong>{selectedEmployee.first_name} {selectedEmployee.last_name}</strong>
+                    </p>
+                  </div>
+                )}
+
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                     <p className="text-red-800 text-sm">{error}</p>
                   </div>
                 )}
 
-                {/* Commission Preview */}
-                {selectedEmployee && billAmount && parseFloat(billAmount) > 0 && 
-                 (selectedEmployee.payment_type === 'commission' || selectedEmployee.payment_type === 'hybrid') && (
-                  <div className="bg-green-50 border-2 border-green-500 rounded-xl p-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="text-3xl">💰</div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-green-900 mb-1">
-                          Commission for {selectedEmployee.first_name}:
-                        </p>
-                        <p className="text-2xl font-bold text-green-700">
-                          £{((parseFloat(billAmount) || 0) * ((selectedEmployee.commission_percentage || 0) / 100)).toFixed(2)}
-                        </p>
-                        <p className="text-xs text-green-600 mt-1">
-                          {selectedEmployee.commission_percentage}% of £{parseFloat(billAmount).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 <button
                   type="submit"
                   className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!billAmount || parseFloat(billAmount || '0') <= 0}
+                  disabled={!billAmount || parseFloat(billAmount || '0') <= 0 || loading}
                 >
-                  Continue to Staff PIN
+                  {loading ? 'Checking In...' : 'Check In Customer'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setBillAmount('');
                     setStep('staff');
+                    setError('');
                   }}
                   className="w-full mt-2 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
                 >
                   ← Back
                 </button>
               </form>
-            </>
-          ) : step === 'pin' ? (
-            <>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-blue-900 mb-1">
-                  Customer: {customer?.name || customer?.phone || phoneNumber}
-                </p>
-                <p className="text-blue-800 text-sm">
-                  Current Points: {customer?.current_points || 0}
-                  {shop?.points_needed && ` / ${shop.points_needed} needed`}
-                </p>
-                {selectedEmployee && (
-                  <p className="text-blue-800 text-sm mt-2">
-                    Staff: <strong>{selectedEmployee.first_name} {selectedEmployee.last_name}</strong>
-                    {billAmount && parseFloat(billAmount) > 0 && (
-                      <span> • Bill: £{parseFloat(billAmount).toFixed(2)}</span>
-                    )}
-                  </p>
-                )}
-              </div>
-
-              <p className="text-gray-700 mb-4 text-center">
-                {selectedEmployee 
-                  ? `Enter PIN for ${selectedEmployee.first_name} ${selectedEmployee.last_name} to complete check-in`
-                  : 'Enter YOUR staff PIN to complete check-in'}
-              </p>
-
-              <form onSubmit={handleStaffPinSubmit}>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  className="w-full px-4 py-6 border-2 border-gray-300 rounded-xl text-center text-4xl font-semibold tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-                  placeholder="••••"
-                  value={staffPin}
-                  onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, ''))}
-                  autoFocus
-                />
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                    <p className="text-red-800 text-sm">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={staffPin.length !== 4 || loading}
-                >
-                  {loading ? 'Checking In...' : 'Check In Customer'}
-                </button>
-              </form>
-
-              <button
-                onClick={() => {
-                  setStaffPin('');
-                  setStep('bill');
-                  setError('');
-                }}
-                className="w-full mt-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                ← Back
-              </button>
             </>
           ) : step === 'name' ? (
             <>
@@ -853,49 +884,66 @@ export function ShopCustomerCheckInModal({
                   <span className="text-4xl">✓</span>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  {customer?.name ? `Welcome, ${customer.name}!` : 'Customer Checked In!'}
+                  {customer?.name ? `Welcome, ${customer.name}!` : customer?.phone ? 'Customer Checked In!' : 'Guest Checked In!'}
                 </h3>
                 {customer?.name && (
                   <p className="text-lg text-gray-700 mb-2">
                     Thank you for visiting us!
                   </p>
                 )}
-                {!customer?.name && (
+                {!customer?.name && customer?.phone && (
                   <p className="text-gray-600">
                     {customer?.phone}
                   </p>
                 )}
-              </div>
-
-              {/* Points Display */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 mb-4">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-                  <span className="text-3xl font-bold text-gray-900">
-                    {customer?.current_points || 0}
-                  </span>
-                  <span className="text-xl text-gray-600">points</span>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-700 font-semibold mb-1">
-                    {pointsRemaining > 0 ? (
-                      <span>
-                        {pointsRemaining} more point{pointsRemaining !== 1 ? 's' : ''} for reward
-                      </span>
-                    ) : (
-                      <span className="text-green-600">🎉 Ready to redeem!</span>
-                    )}
+                {!customer?.name && !customer?.phone && (
+                  <p className="text-gray-600">
+                    Guest Customer
                   </p>
-                  {shop?.reward_description && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      Reward: {shop.reward_description}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
 
-              {/* Progress Bar */}
-              {pointsNeeded > 0 && (
+              {/* Points Display - Only show for non-guest customers */}
+              {customer?.phone && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 mb-4">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                    <span className="text-3xl font-bold text-gray-900">
+                      {customer?.current_points || 0}
+                    </span>
+                    <span className="text-xl text-gray-600">points</span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-700 font-semibold mb-1">
+                      {pointsRemaining > 0 ? (
+                        <span>
+                          {pointsRemaining} more point{pointsRemaining !== 1 ? 's' : ''} for reward
+                        </span>
+                      ) : (
+                        <span className="text-green-600">🎉 Ready to redeem!</span>
+                      )}
+                    </p>
+                    {shop?.reward_description && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        Reward: {shop.reward_description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Guest Notice */}
+              {!customer?.phone && (
+                <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 mb-4 text-center">
+                  <p className="text-gray-700 font-semibold mb-2">👤 Guest Customer</p>
+                  <p className="text-sm text-gray-600">
+                    No loyalty points awarded for guest customers
+                  </p>
+                </div>
+              )}
+
+              {/* Progress Bar - Only show for non-guest customers */}
+              {customer?.phone && pointsNeeded > 0 && (
                 <div className="mb-6">
                   <div className="flex justify-between text-sm text-gray-600 mb-2">
                     <span>Progress to reward</span>

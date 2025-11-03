@@ -21,6 +21,7 @@ import CustomersPage from './pages/dashboard/CustomersPage';
 import CustomerDetail from './pages/dashboard/CustomerDetail';
 import StaffPage from './pages/dashboard/StaffPage';
 import PayrollPage from './pages/dashboard/PayrollPage';
+import RevenuePage from './pages/dashboard/RevenuePage';
 import TasksPage from './pages/dashboard/TasksPage';
 import TaskHistoryPage from './pages/dashboard/TaskHistoryPage';
 import DiaryPage from './pages/dashboard/DiaryPage';
@@ -211,6 +212,7 @@ function App() {
             <Route path="customers" element={<CustomersPage />} />
             <Route path="customers/:customerId" element={<CustomerDetail />} />
             <Route path="staff" element={<StaffPage />} />
+            <Route path="revenue" element={<RevenuePage />} />
             <Route path="payroll" element={<PayrollPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="staff-requests" element={<StaffRequestsPage />} />

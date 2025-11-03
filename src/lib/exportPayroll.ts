@@ -17,6 +17,8 @@ export interface PayrollRow {
   hours: number;
   hourlyRate: number;
   pay: number;
+  commission?: number;
+  totalEarnings?: number;
   notes?: string;
 }
 
@@ -27,44 +29,92 @@ export function exportPayrollToCSV(
   payrollData: PayrollRow[],
   filename?: string
 ) {
+  // Check if commission data exists
+  const hasCommission = payrollData.some(row => row.commission !== undefined && row.commission > 0);
+  
   // Headers
-  const headers = [
-    'Employee',
-    'Date',
-    'Clock In',
-    'Clock Out',
-    'Hours',
-    'Hourly Rate (GBP)',
-    'Pay (GBP)',
-    'Notes'
-  ];
+  const headers = hasCommission
+    ? [
+        'Employee',
+        'Date',
+        'Clock In',
+        'Clock Out',
+        'Hours',
+        'Hourly Rate (GBP)',
+        'Hourly Pay (GBP)',
+        'Commission (GBP)',
+        'Total Earnings (GBP)',
+        'Notes'
+      ]
+    : [
+        'Employee',
+        'Date',
+        'Clock In',
+        'Clock Out',
+        'Hours',
+        'Hourly Rate (GBP)',
+        'Pay (GBP)',
+        'Notes'
+      ];
 
   // Data rows
-  const rows = payrollData.map(row => [
-    row.employeeName,
-    formatDate(row.date),
-    row.clockIn,
-    row.clockOut,
-    formatNumber(row.hours),
-    formatNumber(row.hourlyRate),
-    formatNumber(row.pay),
-    row.notes || ''
-  ]);
+  const rows = payrollData.map(row => {
+    if (hasCommission) {
+      return [
+        row.employeeName,
+        formatDate(row.date),
+        row.clockIn,
+        row.clockOut,
+        formatNumber(row.hours),
+        formatNumber(row.hourlyRate),
+        formatNumber(row.pay),
+        formatNumber(row.commission || 0),
+        formatNumber(row.totalEarnings || row.pay),
+        row.notes || ''
+      ];
+    } else {
+      return [
+        row.employeeName,
+        formatDate(row.date),
+        row.clockIn,
+        row.clockOut,
+        formatNumber(row.hours),
+        formatNumber(row.hourlyRate),
+        formatNumber(row.pay),
+        row.notes || ''
+      ];
+    }
+  });
 
   // Add summary row
   const totalHours = payrollData.reduce((sum, row) => sum + row.hours, 0);
   const totalPay = payrollData.reduce((sum, row) => sum + row.pay, 0);
+  const totalCommission = payrollData.reduce((sum, row) => sum + (row.commission || 0), 0);
+  const totalEarnings = payrollData.reduce((sum, row) => sum + (row.totalEarnings || row.pay), 0);
   
-  const summaryRow = [
-    'TOTAL',
-    '',
-    '',
-    '',
-    formatNumber(totalHours),
-    '',
-    formatNumber(totalPay),
-    ''
-  ];
+  const summaryRow = hasCommission
+    ? [
+        'TOTAL',
+        '',
+        '',
+        '',
+        formatNumber(totalHours),
+        '',
+        formatNumber(totalPay),
+        formatNumber(totalCommission),
+        formatNumber(totalEarnings),
+        ''
+      ]
+    : [
+        'TOTAL',
+        '',
+        '',
+        '',
+        formatNumber(totalHours),
+        '',
+        formatNumber(totalPay),
+        ''
+      ];
 
   // Combine all rows
   const allRows = [

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { generateSlug, generateUniqueSlug } from '../utils/slugGenerator';
@@ -318,6 +318,15 @@ export default function SignupPage() {
             ⭐ 14 days free • No card required
           </div>
         </form>
+
+        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+          <p className="text-gray-600 mb-3">
+            Already have an account?
+          </p>
+          <Link to="/login" className="inline-block px-6 py-3 bg-gradient-to-r from-modern-blue/10 to-modern-indigo/10 text-modern-blue hover:from-modern-blue/20 hover:to-modern-indigo/20 font-bold rounded-modern transition-all duration-300 border-2 border-modern-blue/30 hover:border-modern-blue/50">
+            Log In
+          </Link>
+        </div>
       </div>
     </div>
   );

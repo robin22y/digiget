@@ -222,7 +222,6 @@ export default function ShopQRCode({ shopId, shopName }: ShopQRCodeProps) {
                 value={qrUrl}
                 size={200}
                 level="H"
-                includeMargin={true}
                 fgColor="#1f2937"
                 bgColor="#ffffff"
               />

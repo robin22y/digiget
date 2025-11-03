@@ -54,12 +54,16 @@ export function InstallPrompt({ shopName }: InstallPromptProps) {
           return; // Not a valid install prompt
         }
 
-        // Prevent default browser install prompt
-        e.preventDefault();
-        
-        // Verify the event hasn't been consumed by checking if it's still cancelable
-        if (!e.cancelable) {
+        // Check if user already dismissed before preventing default
+        const dismissed = localStorage.getItem('install-prompt-dismissed');
+        if (dismissed) {
+          // Don't prevent default if user dismissed - let browser handle it
           return;
+        }
+
+        // Prevent default browser install prompt only if we plan to use it
+        if (e.cancelable) {
+          e.preventDefault();
         }
         
         // Store in both state and ref (ref for timeout callback)
@@ -74,9 +78,13 @@ export function InstallPrompt({ shopName }: InstallPromptProps) {
         // Show our custom prompt after a delay
         timeoutRef.current = setTimeout(() => {
           // Check if already dismissed and prompt is still valid
-          const dismissed = localStorage.getItem('install-prompt-dismissed');
-          if (!dismissed && promptRef.current) {
+          const stillDismissed = localStorage.getItem('install-prompt-dismissed');
+          if (!stillDismissed && promptRef.current) {
             setShowPrompt(true);
+          } else if (stillDismissed && promptRef.current) {
+            // Clean up if dismissed during delay
+            promptRef.current = null;
+            setDeferredPrompt(null);
           }
         }, 30000); // Show after 30 seconds
       } catch (error: any) {
@@ -92,7 +100,10 @@ export function InstallPrompt({ shopName }: InstallPromptProps) {
         if (error?.message?.includes('beforeinstallprompt')) {
           return;
         }
-        console.debug('Install prompt handler error:', error);
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Install prompt handler error:', error);
+        }
       }
     };
 

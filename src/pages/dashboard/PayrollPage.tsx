@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Calendar, Download, ChevronDown, ChevronUp, MapPin, Lock } from 'lucide-react';
@@ -11,6 +11,9 @@ interface Employee {
   first_name: string;
   last_name: string | null;
   hourly_rate: number | null;
+  payment_type?: string | null;
+  commission_percentage?: number | null;
+  base_hourly_rate?: number | null;
 }
 
 interface PayrollData {
@@ -18,6 +21,8 @@ interface PayrollData {
   totalHours: number;
   daysWorked: number;
   totalPay: number;
+  commissionEarned: number;
+  totalEarnings: number;
   dailyBreakdown: Array<{
     date: string;
     clockIn: string;
@@ -40,6 +45,7 @@ export default function PayrollPage() {
   const [period, setPeriod] = useState<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth'>('thisWeek');
   const [loading, setLoading] = useState(true);
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Use currentShop.id from context (secure)
   const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
@@ -60,11 +66,78 @@ export default function PayrollPage() {
     }
   }, [paramShopId, hasAccess, shopLoading, navigate]);
 
+  const loadPayrollDataRef = useRef<(() => Promise<void>) | null>(null);
+
   useEffect(() => {
-    if (shopId && isUnlocked) {
-      loadPayrollData();
+    loadPayrollDataRef.current = loadPayrollData;
+  }, [shopId, period]);
+
+  useEffect(() => {
+    if (shopId && isUnlocked && loadPayrollDataRef.current) {
+      loadPayrollDataRef.current();
+      
+      // Set up real-time subscriptions for automatic updates
+      const channel = supabase
+        .channel(`payroll-updates-${shopId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'employee_contributions',
+            filter: `shop_id=eq.${shopId}`
+          },
+          (payload) => {
+            console.log('Employee contribution changed:', payload);
+            // Reload payroll data when contributions change
+            if (loadPayrollDataRef.current) {
+              setRefreshing(true);
+              loadPayrollDataRef.current().finally(() => setRefreshing(false));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'clock_entries',
+            filter: `shop_id=eq.${shopId}`
+          },
+          (payload) => {
+            console.log('Clock entry changed:', payload);
+            // Reload payroll data when clock entries change
+            if (loadPayrollDataRef.current) {
+              setRefreshing(true);
+              loadPayrollDataRef.current().finally(() => setRefreshing(false));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'customer_visits',
+            filter: `shop_id=eq.${shopId}`
+          },
+          (payload) => {
+            console.log('Customer visit changed:', payload);
+            // Reload payroll data when customer visits change (may affect commission)
+            if (loadPayrollDataRef.current) {
+              setRefreshing(true);
+              loadPayrollDataRef.current().finally(() => setRefreshing(false));
+            }
+          }
+        )
+        .subscribe();
+
+      // Cleanup subscription on unmount
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-  }, [shopId, period, isUnlocked]);
+  }, [shopId, isUnlocked]);
 
   const getDateRange = () => {
     const now = new Date();
@@ -110,7 +183,10 @@ export default function PayrollPage() {
   const loadPayrollData = async () => {
     if (!shopId) return;
     
-    setLoading(true);
+    // Only show full loading on initial load, use refreshing indicator for updates
+    if (!refreshing) {
+      setLoading(true);
+    }
     try {
       const { start, end } = getDateRange();
 
@@ -132,9 +208,33 @@ export default function PayrollPage() {
           .not('clock_out_time', 'is', null)
           .order('clock_in_time', { ascending: true });
 
+        // Fetch commission data from employee_contributions
+        // Commission is calculated from bill_amount entered during customer check-in
+        const { data: contributions } = await supabase
+          .from('employee_contributions')
+          .select('commission_earned, bill_amount, contribution_date')
+          .eq('employee_id', employee.id)
+          .gte('contribution_date', start.toISOString().split('T')[0])
+          .lte('contribution_date', end.toISOString().split('T')[0]);
+
         const totalHours = clockEntries?.reduce((sum, entry) => sum + (entry.hours_worked || 0), 0) || 0;
         const daysWorked = new Set(clockEntries?.map(e => new Date(e.clock_in_time).toDateString())).size;
-        const totalPay = totalHours * (employee.hourly_rate || 0);
+        
+        // Calculate hourly wages based on payment type
+        let hourlyWages = 0;
+        if (employee.payment_type === 'hourly') {
+          hourlyWages = totalHours * (employee.hourly_rate || 0);
+        } else if (employee.payment_type === 'hybrid') {
+          hourlyWages = totalHours * (employee.base_hourly_rate || 0);
+        }
+        // commission-only employees get 0 hourly wages
+        
+        // Calculate total commission earned
+        const commissionEarned = contributions?.reduce((sum, c) => sum + parseFloat(c.commission_earned?.toString() || '0'), 0) || 0;
+        
+        // Total pay = hourly wages + commission
+        const totalPay = hourlyWages;
+        const totalEarnings = hourlyWages + commissionEarned;
 
         const dailyBreakdown = clockEntries?.map(entry => ({
           date: new Date(entry.clock_in_time).toLocaleDateString('en-GB'),
@@ -154,6 +254,8 @@ export default function PayrollPage() {
           totalHours,
           daysWorked,
           totalPay,
+          commissionEarned,
+          totalEarnings,
           dailyBreakdown
         };
       });
@@ -173,16 +275,32 @@ export default function PayrollPage() {
       // Transform payroll data to PayrollRow format
       const exportData: import('../../lib/exportPayroll').PayrollRow[] = [];
 
-      payrollData.forEach(({ employee, dailyBreakdown }) => {
-        dailyBreakdown.forEach(day => {
+      payrollData.forEach(({ employee, commissionEarned, dailyBreakdown }) => {
+        // Get hourly rate based on payment type
+        const hourlyRate = employee.payment_type === 'hybrid' 
+          ? (employee.base_hourly_rate || 0)
+          : (employee.hourly_rate || 0);
+        
+        // Calculate commission per day (evenly distributed - this is approximate)
+        const daysCount = dailyBreakdown.length;
+        const commissionPerDay = daysCount > 0 ? (commissionEarned / daysCount) : 0;
+        
+        dailyBreakdown.forEach((day, index) => {
+          const hourlyPay = hourlyRate * day.hours;
+          const dayCommission = index === daysCount - 1 
+            ? commissionEarned - (commissionPerDay * (daysCount - 1)) // Last day gets remainder
+            : commissionPerDay;
+          
           exportData.push({
             employeeName: `${employee.first_name} ${employee.last_name || ''}`.trim(),
             date: day.date,
             clockIn: day.clockIn,
             clockOut: day.clockOut,
             hours: day.hours,
-            hourlyRate: employee.hourly_rate || 0,
-            pay: employee.hourly_rate ? day.hours * employee.hourly_rate : 0,
+            hourlyRate: hourlyRate,
+            pay: hourlyPay,
+            commission: commissionEarned > 0 ? dayCommission : undefined,
+            totalEarnings: commissionEarned > 0 ? hourlyPay + dayCommission : undefined,
             notes: ''
           });
         });
@@ -196,6 +314,8 @@ export default function PayrollPage() {
 
   const totalHours = payrollData.reduce((sum, d) => sum + d.totalHours, 0);
   const totalPay = payrollData.reduce((sum, d) => sum + d.totalPay, 0);
+  const totalCommission = payrollData.reduce((sum, d) => sum + d.commissionEarned, 0);
+  const totalEarnings = payrollData.reduce((sum, d) => sum + d.totalEarnings, 0);
 
   // Helper functions for method display
   function getMethodIcon(method: string): string {
@@ -260,7 +380,15 @@ export default function PayrollPage() {
       <PinProtectionModal />
       <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Payroll Report</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900">Payroll Report</h1>
+          {refreshing && (
+            <div className="flex items-center gap-2 text-sm text-blue-600">
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span>Updating...</span>
+            </div>
+          )}
+        </div>
         <button
           onClick={exportToCSV}
           className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
@@ -287,7 +415,7 @@ export default function PayrollPage() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
           <div>
             <p className="text-sm text-gray-600">Total Hours</p>
             <p className="text-2xl font-bold text-gray-900">{totalHours.toFixed(1)}h</p>
@@ -297,8 +425,18 @@ export default function PayrollPage() {
             <p className="text-2xl font-bold text-gray-900">{payrollData.length}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Total Payroll</p>
+            <p className="text-sm text-gray-600">Hourly Wages</p>
             <p className="text-2xl font-bold text-gray-900">£{totalPay.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Commission</p>
+            <p className="text-2xl font-bold text-blue-600">£{totalCommission.toFixed(2)}</p>
+          </div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex justify-between items-center">
+            <p className="text-lg font-semibold text-gray-900">Total Payroll</p>
+            <p className="text-2xl font-bold text-green-600">£{totalEarnings.toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -309,7 +447,7 @@ export default function PayrollPage() {
             <p className="text-gray-600">No clock entries for this period</p>
           </div>
         ) : (
-          payrollData.map(({ employee, totalHours, daysWorked, totalPay, dailyBreakdown }) => (
+          payrollData.map(({ employee, totalHours, daysWorked, commissionEarned, totalEarnings, dailyBreakdown }) => (
             <div key={employee.id} className="bg-white rounded-lg shadow">
               <div
                 className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
@@ -320,7 +458,7 @@ export default function PayrollPage() {
                     <h3 className="text-lg font-semibold text-gray-900">
                       {employee.first_name} {employee.last_name || ''}
                     </h3>
-                    <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="mt-2 grid grid-cols-2 md:grid-cols-5 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Total Hours</p>
                         <p className="font-semibold text-gray-900">{totalHours.toFixed(1)}h</p>
@@ -329,18 +467,24 @@ export default function PayrollPage() {
                         <p className="text-sm text-gray-600">Days Worked</p>
                         <p className="font-semibold text-gray-900">{daysWorked}</p>
                       </div>
-                      {employee.hourly_rate && (
-                        <>
-                          <div>
-                            <p className="text-sm text-gray-600">Hourly Rate</p>
-                            <p className="font-semibold text-gray-900">£{employee.hourly_rate.toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Total Pay</p>
-                            <p className="font-semibold text-green-600">£{totalPay.toFixed(2)}</p>
-                          </div>
-                        </>
+                      {(employee.hourly_rate || employee.base_hourly_rate) && (
+                        <div>
+                          <p className="text-sm text-gray-600">Hourly Rate</p>
+                          <p className="font-semibold text-gray-900">
+                            £{(employee.payment_type === 'hybrid' ? employee.base_hourly_rate : employee.hourly_rate)?.toFixed(2) || '0.00'}
+                          </p>
+                        </div>
                       )}
+                      {commissionEarned > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-600">Commission Earned</p>
+                          <p className="font-semibold text-blue-600">£{commissionEarned.toFixed(2)}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm text-gray-600">Total Earnings</p>
+                        <p className="font-semibold text-green-600">£{totalEarnings.toFixed(2)}</p>
+                      </div>
                     </div>
                   </div>
                   <div>
