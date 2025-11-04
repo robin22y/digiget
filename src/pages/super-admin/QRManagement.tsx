@@ -228,7 +228,6 @@ export default function QRManagement() {
                             value={checkInUrl}
                             size={60}
                             level="H"
-                            includeMargin={false}
                           />
                         </div>
                       </td>
@@ -346,7 +345,6 @@ export default function QRManagement() {
                 value={selectedShop.qr_url || `${window.location.origin}/customer/${selectedShop.id}/login`}
                 size={200}
                 level="H"
-                includeMargin={true}
               />
             </div>
 

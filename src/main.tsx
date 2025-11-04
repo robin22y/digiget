@@ -4,6 +4,7 @@ import App from './App.tsx';
 import './index.css'
 import './styles/revenue.css';
 import './styles/analytics.css';
+import './styles/ios-settings.css';
 import './i18n/config'; // Initialize i18n BEFORE rendering App
 
 // Initialize offline storage and sync

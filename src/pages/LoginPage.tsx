@@ -9,10 +9,40 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [redirecting, setRedirecting] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, user } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
+
+  // Redirect if already logged in (but not if we're currently processing a login)
+  useEffect(() => {
+    if (!authLoading && user && !loading && !redirecting) {
+      // Check if user is super admin
+      const emailLower = user.email?.toLowerCase() || '';
+      const isSuperAdmin = emailLower.endsWith('@digiget.uk') || 
+                          user.user_metadata?.role === 'super' || 
+                          user.user_metadata?.is_super_admin === true;
+      
+      if (isSuperAdmin) {
+        setRedirecting(true);
+        navigate('/super-admin/dashboard', { replace: true });
+      } else {
+        // Check for shops and redirect to dashboard
+        supabase
+          .from('shops')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .then(({ data: shops }) => {
+            if (shops && shops.length > 0) {
+              setRedirecting(true);
+              navigate(`/dashboard/${shops[0].id}`, { replace: true });
+            }
+          });
+      }
+    }
+  }, [user, authLoading, loading, redirecting, navigate]);
 
   // Show success message if redirected from password reset
   useEffect(() => {
@@ -53,61 +83,37 @@ export default function LoginPage() {
         return;
       }
 
-      // Wait for auth state to update (important for mobile browsers)
-      // Get the current user after signIn completes
-      let currentUser = user;
+      // Wait for auth state to update via onAuthStateChange
+      // The useEffect hook will handle the redirect once user state is updated
+      // Give it time to propagate (important for mobile browsers)
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // If user not immediately available, wait a bit and check again
-      if (!currentUser) {
-        // Wait for auth state to propagate
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const { data: { user: fetchedUser } } = await supabase.auth.getUser();
-        currentUser = fetchedUser;
-      }
-
+      // Verify user was set by checking auth state directly
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
       if (!currentUser) {
         setError('Unable to verify user. Please try again.');
+        setLoading(false);
         return;
       }
 
-      // Check if user is super admin
-      // Check email ending with @digiget.uk (case-insensitive)
+      // The useEffect above will handle redirect based on user state
+      // But we can also do a direct redirect here as a fallback
       const emailLower = currentUser.email?.toLowerCase() || '';
-      const isSuperAdminByEmail = emailLower.endsWith('@digiget.uk');
-      const isSuperAdminByMetadata = currentUser.user_metadata?.role === 'super' || 
-                                     currentUser.user_metadata?.is_super_admin === true;
-      const isSuperAdmin = isSuperAdminByEmail || isSuperAdminByMetadata;
+      const isSuperAdmin = emailLower.endsWith('@digiget.uk') || 
+                          currentUser.user_metadata?.role === 'super' || 
+                          currentUser.user_metadata?.is_super_admin === true;
 
-      console.log('Login check:', {
-        email: currentUser.email,
-        emailLower,
-        isSuperAdminByEmail,
-        isSuperAdminByMetadata,
-        user_metadata: currentUser.user_metadata,
-        isSuperAdmin
-      });
-
+      // Mark as redirecting to prevent useEffect from also redirecting
+      setRedirecting(true);
+      
       if (isSuperAdmin) {
-        // Redirect super admin to super admin dashboard
-        console.log('Redirecting super admin to dashboard');
-        
-        // Wait a bit more to ensure auth state is fully updated
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Use window.location.href for a hard redirect to ensure clean state
-        // This bypasses React Router and ensures auth state is fresh
-        try {
-          window.location.href = '/super-admin/dashboard';
-        } catch (error) {
-          console.error('Redirect error:', error);
-          // Fallback to navigate
-          navigate('/super-admin/dashboard', { replace: true });
-        }
+        // Use window.location for hard redirect to avoid routing issues
+        window.location.href = '/super-admin/dashboard';
         return;
       }
 
-      // For regular users, check for shops
+      // For regular users, check for shops and redirect
       const { data: shops, error: shopsError } = await supabase
         .from('shops')
         .select('id')
@@ -116,7 +122,7 @@ export default function LoginPage() {
 
       if (shopsError) {
         console.error('Shops query error:', shopsError);
-        // Provide more specific error message
+        setRedirecting(false);
         if (shopsError.code === 'PGRST116') {
           setError('Database tables not set up. Please contact support.');
         } else if (shopsError.code === '42501') {
@@ -124,14 +130,15 @@ export default function LoginPage() {
         } else {
           setError(`Unable to load your shop: ${shopsError.message}`);
         }
+        setLoading(false);
         return;
       }
 
       if (shops && shops.length > 0) {
-        // Wait a bit for auth state to update before redirecting
-        await new Promise(resolve => setTimeout(resolve, 100));
-        navigate(`/dashboard/${shops[0].id}`, { replace: true });
+        window.location.href = `/dashboard/${shops[0].id}`;
+        return;
       } else {
+        setRedirecting(false);
         setError('No shop found. Please sign up first.');
       }
     } catch (err: any) {

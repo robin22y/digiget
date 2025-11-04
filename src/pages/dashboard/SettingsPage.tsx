@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Save, CheckCircle, Lock, KeyRound, Smartphone, Trash2, RotateCcw } from 'lucide-react';
+import { Save, CheckCircle, Lock, KeyRound, Smartphone, Trash2, RotateCcw, Building2, Heart, CreditCard, Shield, MapPin, ChevronRight, Clock } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import ShopLocationSetup from '../../components/ShopLocationSetup';
 import OwnerPinModal from '../../components/OwnerPinModal';
@@ -10,6 +10,7 @@ import { CancelSubscriptionModal } from '../../components/CancelSubscriptionModa
 import { DeleteAccountModal } from '../../components/DeleteAccountModal';
 import { AuthorizeDeviceModal } from '../../components/AuthorizeDeviceModal';
 import { storeDeviceFingerprint } from '../../lib/deviceFingerprint';
+import MobileSettings from '../../components/mobile/Settings/MobileSettings';
 
 interface Shop {
   id: string;
@@ -47,7 +48,7 @@ export default function SettingsPage() {
   const { shopId: paramShopId } = useParams();
   const { currentShop, hasAccess, loading: shopLoading } = useShop();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'subscription' | 'nfc' | 'security'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'loyalty' | 'subscription' | 'nfc' | 'security' | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,6 +62,33 @@ export default function SettingsPage() {
   const [trustedDevices, setTrustedDevices] = useState<any[]>([]);
   const [currentDeviceFingerprint, setCurrentDeviceFingerprint] = useState<string>('');
   const [reactivatingSubscription, setReactivatingSubscription] = useState(false);
+  
+  // Use currentShop.id from context (secure)
+  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
+
+  // Mobile detection hooks - MUST be before any conditional returns
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileActiveTab, setMobileActiveTab] = useState<string | null>(null);
+
+  // Mobile detection effect - MUST be before any conditional returns
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Validate access
+  useEffect(() => {
+    if (!shopLoading && paramShopId) {
+      if (!hasAccess(paramShopId)) {
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [paramShopId, hasAccess, shopLoading, navigate]);
 
   const handlePinSuccess = () => {
     setIsUnlocked(true);
@@ -75,19 +103,6 @@ export default function SettingsPage() {
       setShowPinModal(true);
     }
   };
-
-  // Use currentShop.id from context (secure)
-  const shopId = currentShop?.id || (paramShopId && hasAccess(paramShopId) ? paramShopId : null);
-
-  // Validate access
-  useEffect(() => {
-    if (!shopLoading && paramShopId) {
-      if (!hasAccess(paramShopId)) {
-        navigate('/dashboard');
-        return;
-      }
-    }
-  }, [paramShopId, hasAccess, shopLoading, navigate]);
 
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -597,58 +612,261 @@ export default function SettingsPage() {
     );
   }
 
+  // Mobile Settings Component - Conditional render AFTER all hooks
+  if (isMobile && !isUnlocked) {
+    return (
+      <>
+        {showPinModal && (
+          <OwnerPinModal
+            shopId={shopId || ''}
+            onSuccess={handlePinSuccess}
+            onCancel={() => navigate(`/dashboard/${shopId}`)}
+          />
+        )}
+        {showChangePinModal && (
+          <ChangeOwnerPinModal
+            shopId={shopId || ''}
+            currentPin=""
+            onSuccess={() => {
+              setShowChangePinModal(false);
+              setIsUnlocked(true);
+            }}
+            onCancel={() => navigate(`/dashboard/${shopId}`)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Mobile Settings View
+  if (isMobile && isUnlocked) {
+    return (
+      <>
+        <MobileSettings
+          shopId={shopId || ''}
+          shopName={shopName}
+          ownerName={ownerName}
+          businessCategory={businessCategory}
+          latitude={latitude}
+          longitude={longitude}
+          loyaltyEnabled={loyaltyEnabled}
+          pointsType={pointsType}
+          pointsNeeded={pointsNeeded}
+          daysBetweenPoints={daysBetweenPoints}
+          rewardType={rewardType}
+          rewardValue={rewardValue}
+          rewardDescription={rewardDescription}
+          qrCodeEnabled={qrCodeEnabled}
+          nfcEnabled={nfcEnabled}
+          tabletPinEnabled={tabletPinEnabled}
+          gpsEnabled={gpsEnabled}
+          planType={shop?.plan_type || 'basic'}
+          subscriptionStatus={shop?.subscription_status || ''}
+          trialEndsAt={shop?.trial_ends_at}
+          subscriptionStartedAt={shop?.subscription_started_at}
+          trustedDevices={trustedDevices}
+          currentDeviceFingerprint={currentDeviceFingerprint}
+          onNavigateToSubPage={(tab) => {
+            setMobileActiveTab(tab);
+            if (tab === 'cancel-subscription') {
+              setShowCancelModal(true);
+            } else if (tab === 'delete-account') {
+              setShowDeleteModal(true);
+            }
+          }}
+          onCancelSubscription={() => setShowCancelModal(true)}
+        />
+        {showCancelModal && shop && (
+          <CancelSubscriptionModal
+            isOpen={showCancelModal}
+            shop={shop}
+            onClose={() => {
+              setShowCancelModal(false);
+              setMobileActiveTab(null);
+              loadShop();
+            }}
+          />
+        )}
+        {showDeleteModal && shop && (
+          <DeleteAccountModal
+            isOpen={showDeleteModal}
+            shop={shop}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setMobileActiveTab(null);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Desktop Settings View (existing)
   return (
     <>
-      <div className="page">
-      <div className="container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Settings</h1>
+      <div className="ios-settings hidden md:block">
+        <div className="ios-settings-header">
+          <h1>Settings</h1>
+        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* Tabs - Mobile scrollable */}
-          <div className="tabs overflow-x-auto flex-nowrap scrollbar-hide">
-            <style>{`
-              .scrollbar-hide {
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-              }
-              .scrollbar-hide::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
-            <button
-              onClick={() => setActiveTab('business')}
-              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'business' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
-            >
-              Business
-            </button>
-            <button
-              onClick={() => setActiveTab('loyalty')}
-              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'loyalty' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
-            >
-              Loyalty
-            </button>
-            <button
-              onClick={() => setActiveTab('subscription')}
-              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'subscription' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
-            >
-              Subscription
-            </button>
-            <button
-              onClick={() => setActiveTab('nfc')}
-              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'nfc' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
-            >
-              NFC Clock-In
-            </button>
-            <button
-              onClick={() => setActiveTab('security')}
-              className={`tab flex-shrink-0 px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${activeTab === 'security' ? 'active border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
-            >
-              Security
-            </button>
+        {/* BUSINESS INFORMATION */}
+        <div className="ios-settings-group">
+          <div className="ios-settings-group-header">BUSINESS</div>
+          <div className="ios-settings-item" onClick={() => setActiveTab('business')}>
+            <div className="ios-settings-item-icon blue">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div className="ios-settings-item-content">
+              <div className="ios-settings-item-title">Business Information</div>
+              <div className="ios-settings-item-subtitle">{shopName || 'Shop name'}</div>
+            </div>
+            <div className="ios-settings-item-action">
+              <ChevronRight className="chevron" />
+            </div>
           </div>
+        </div>
 
-          <div className="p-4 sm:p-6">
-            {message && (
+        {/* LOYALTY PROGRAM */}
+        <div className="ios-settings-group">
+          <div className="ios-settings-group-header">LOYALTY</div>
+          <div className="ios-settings-item" onClick={() => setActiveTab('loyalty')}>
+            <div className="ios-settings-item-icon orange">
+              <Heart className="w-4 h-4" />
+            </div>
+            <div className="ios-settings-item-content">
+              <div className="ios-settings-item-title">Loyalty Program</div>
+              <div className="ios-settings-item-subtitle">
+                {loyaltyEnabled ? `${pointsNeeded} points = ${rewardDescription || 'reward'}` : 'Disabled'}
+              </div>
+            </div>
+            <div className="ios-settings-item-action">
+              <ChevronRight className="chevron" />
+            </div>
+          </div>
+        </div>
+
+        {/* CLOCK-IN METHODS */}
+        <div className="ios-settings-group">
+          <div className="ios-settings-group-header">CLOCK-IN</div>
+          <div className="ios-settings-item" onClick={() => setActiveTab('nfc')}>
+            <div className="ios-settings-item-icon purple">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="ios-settings-item-content">
+              <div className="ios-settings-item-title">Clock-In Methods</div>
+              <div className="ios-settings-item-subtitle">
+                {qrCodeEnabled && 'QR Code'} {qrCodeEnabled && nfcEnabled && '• '} {nfcEnabled && 'NFC'} {tabletPinEnabled && (qrCodeEnabled || nfcEnabled ? '• ' : '') + 'Tablet PIN'} {gpsEnabled && '• GPS'}
+              </div>
+            </div>
+            <div className="ios-settings-item-action">
+              <ChevronRight className="chevron" />
+            </div>
+          </div>
+        </div>
+
+        {/* LOCATION & SECURITY */}
+        <div className="ios-settings-group">
+          <div className="ios-settings-group-header">SECURITY</div>
+          <div className="ios-settings-item" onClick={() => setActiveTab('security')}>
+            <div className="ios-settings-item-icon indigo">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div className="ios-settings-item-content">
+              <div className="ios-settings-item-title">Security & Location</div>
+              <div className="ios-settings-item-subtitle">
+                Trusted devices, PIN, location
+              </div>
+            </div>
+            <div className="ios-settings-item-action">
+              <ChevronRight className="chevron" />
+            </div>
+          </div>
+          {latitude && longitude && (
+            <div className="ios-settings-item">
+              <div className="ios-settings-item-icon green">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div className="ios-settings-item-content">
+                <div className="ios-settings-item-title">Shop Location</div>
+                <div className="ios-settings-item-subtitle">
+                  {latitude.slice(0, 7)}, {longitude.slice(0, 7)}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SUBSCRIPTION */}
+        <div className="ios-settings-group">
+          <div className="ios-settings-group-header">SUBSCRIPTION</div>
+          <div className="ios-settings-item" onClick={() => setActiveTab('subscription')}>
+            <div className="ios-settings-item-icon green">
+              <CreditCard className="w-4 h-4" />
+            </div>
+            <div className="ios-settings-item-content">
+              <div className="ios-settings-item-title">Subscription</div>
+              <div className="ios-settings-item-subtitle">
+                {shop?.plan_type === 'pro' ? 'Pro Plan' : 'Basic Plan'} • {shop?.subscription_status === 'active' ? 'Active' : shop?.subscription_status === 'trial' ? 'Trial' : 'Cancelled'}
+              </div>
+            </div>
+            <div className="ios-settings-item-action">
+              <ChevronRight className="chevron" />
+            </div>
+          </div>
+        </div>
+
+        {/* DANGER ZONE */}
+        <div className="ios-settings-group danger">
+          <div className="ios-settings-group-header">DANGER ZONE</div>
+          <div className="ios-settings-item" onClick={() => setShowCancelModal(true)}>
+            <div className="ios-settings-item-icon red">
+              <CreditCard className="w-4 h-4" />
+            </div>
+            <div className="ios-settings-item-content">
+              <div className="ios-settings-item-title">Cancel Subscription</div>
+              <div className="ios-settings-item-subtitle">
+                End subscription at billing period
+              </div>
+            </div>
+            <div className="ios-settings-item-action">
+              <ChevronRight className="chevron" />
+            </div>
+          </div>
+          <div className="ios-settings-item" onClick={() => setShowDeleteModal(true)}>
+            <div className="ios-settings-item-icon red">
+              <Trash2 className="w-4 h-4" />
+            </div>
+            <div className="ios-settings-item-content">
+              <div className="ios-settings-item-title">Delete Account</div>
+              <div className="ios-settings-item-subtitle">
+                Permanently delete all data
+              </div>
+            </div>
+            <div className="ios-settings-item-action">
+              <ChevronRight className="chevron" />
+            </div>
+          </div>
+        </div>
+
+        {/* Detail Content - Shows when a tab is selected */}
+        {activeTab && (
+          <div className="ios-detail-view active">
+            <div className="ios-detail-header">
+              <button className="ios-detail-back md:hidden" onClick={() => setActiveTab(null as any)}>
+                ← Settings
+              </button>
+              <div className="ios-detail-title">
+                {activeTab === 'business' && 'Business Information'}
+                {activeTab === 'loyalty' && 'Loyalty Program'}
+                {activeTab === 'subscription' && 'Subscription'}
+                {activeTab === 'nfc' && 'Clock-In Methods'}
+                {activeTab === 'security' && 'Security & Location'}
+              </div>
+            </div>
+            <div className="ios-detail-content md:mt-6">
+              <div className="container max-w-4xl mx-auto">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-4 sm:p-6">
+                  {message && (
               <div className={`mb-4 p-4 rounded-lg ${
                 message.type === 'success' 
                   ? 'bg-green-50 border border-green-200 text-green-800' 
@@ -1763,24 +1981,26 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+                </div>
+              </div>
+            </div>
+            </div>
+          )}
 
-      {/* Lock Button - Show when unlocked */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-10">
-        <button
-          onClick={handleLockSettings}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg text-sm font-medium"
-          title="Lock settings (requires PIN to unlock again)"
-        >
-          <Lock className="w-4 h-4" />
-          <span className="hidden sm:inline">Lock Settings</span>
-          <span className="sm:hidden">Lock</span>
-        </button>
+        {/* Lock Button - Show when unlocked */}
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-10">
+          <button
+            onClick={handleLockSettings}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg text-sm font-medium"
+            title="Lock settings (requires PIN to unlock again)"
+          >
+            <Lock className="w-4 h-4" />
+            <span className="hidden sm:inline">Lock Settings</span>
+            <span className="sm:hidden">Lock</span>
+          </button>
+        </div>
       </div>
 
       {/* Cancel Subscription Modal */}

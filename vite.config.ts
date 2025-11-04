@@ -5,7 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      jsxRuntime: 'automatic',
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png', 'offline.html'],
@@ -53,14 +55,25 @@ export default defineConfig({
       }
     })
   ],
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
+    include: ['react', 'react-dom', 'react/jsx-runtime'],
+    force: true,
+    esbuildOptions: {
+      plugins: [],
+    },
   },
   publicDir: 'public',
   server: {
     host: true, // Allow external connections
     port: 5173,
     strictPort: false, // Try next available port if 5173 is taken
+    hmr: {
+      clientPort: 5173,
+    },
   },
   build: {
     outDir: 'dist',

@@ -375,8 +375,9 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
             <input
               key={index}
               ref={(el) => (pinInputRefs.current[index] = el)}
-              type="password"
+              type="tel"
               inputMode="numeric"
+              pattern="[0-9]*"
               maxLength={1}
               value={pin[index] || ''}
               readOnly
@@ -385,6 +386,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
               className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
               style={{
                 borderColor: pin[index] ? '#3B82F6' : '#D1D5DB',
+                WebkitAppearance: 'none',
               }}
             />
           ))}
@@ -557,8 +559,9 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                       <input
                         key={index}
                         ref={(el) => (newPinInputRefs.current[index] = el)}
-                        type="password"
+                        type="tel"
                         inputMode="numeric"
+                        pattern="[0-9]*"
                         maxLength={1}
                         value={newPin[index] || ''}
                         readOnly
@@ -574,6 +577,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                         className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                         style={{
                           borderColor: newPin[index] ? '#3B82F6' : '#D1D5DB',
+                          WebkitAppearance: 'none',
                         }}
                       />
                     ))}
@@ -609,8 +613,9 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                     {[0, 1, 2, 3, 4, 5].map((index) => (
                       <input
                         key={index}
-                        type="password"
+                        type="tel"
                         inputMode="numeric"
+                        pattern="[0-9]*"
                         maxLength={1}
                         value={confirmNewPin[index] || ''}
                         readOnly
@@ -630,6 +635,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                           borderColor: confirmNewPin[index] 
                             ? (newPin === confirmNewPin ? '#10B981' : '#EF4444')
                             : '#D1D5DB',
+                          WebkitAppearance: 'none',
                         }}
                       />
                     ))}
