@@ -143,7 +143,7 @@
     "revoke_access": "Revoke Access",
     "device_name": "Device Name",
     "not_owner": "You are not the owner of this shop",
-    "authorize_description": "This will allow this tablet to access the shop portal without requiring the shop PIN each time.",
+    "authorize_description": "This allows staff to clock in/out and check in customers from this shared shop device without GPS verification. PIN entry is still required for security.",
     "important": "Important"
   },
   "language": {

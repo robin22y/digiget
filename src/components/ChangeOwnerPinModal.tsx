@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Lock, X, AlertCircle } from 'lucide-react';
 import { validateOwnerPIN, isWeakOwnerPIN, getWeakPINReason } from '../utils/pinValidation';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ChangeOwnerPinModalProps {
   shopId: string;
@@ -12,16 +13,99 @@ interface ChangeOwnerPinModalProps {
 }
 
 export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onCancel, isFirstTime = false }: ChangeOwnerPinModalProps) {
-  // Skip verify step if first time or PIN is null/default
-  const needsVerification = !isFirstTime && currentPin && currentPin !== '000000' && currentPin !== null;
-  const [step, setStep] = useState<'verify' | 'newpin'>(needsVerification ? 'verify' : 'newpin');
+  const { signIn } = useAuth();
+  
+  // SECURITY: Always require current PIN verification before allowing new PIN entry
+  // Only skip verification if it's truly the first time (no PIN exists) or PIN is explicitly null/empty
+  const hasCurrentPin = currentPin && currentPin !== null && currentPin.trim() !== '' && currentPin !== '000000';
+  const needsVerification = !isFirstTime && hasCurrentPin;
+  
+  // SECURITY: Minimal debug logging - no sensitive data
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ChangeOwnerPinModal Debug (sanitized):', {
+      hasCurrentPin,
+      isFirstTime,
+      needsVerification
+      // All sensitive data hidden for security
+    });
+  }
+  
+  const [step, setStep] = useState<'verify' | 'password' | 'newpin'>(() => {
+    // SECURITY: Password is mandatory for PIN changes - always start with password verification
+    if (needsVerification) {
+      return 'password'; // Require password instead of PIN
+    }
+    return 'newpin';
+  });
   const [verifyPin, setVerifyPin] = useState('');
+  const [password, setPassword] = useState('');
+  const [shopEmail, setShopEmail] = useState<string | null>(null);
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const verifyPinInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const newPinInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  
+  // Load shop email on mount for password verification
+  useEffect(() => {
+    if (needsVerification && !shopEmail) {
+      supabase
+        .from('shops')
+        .select('owner_email')
+        .eq('id', shopId)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setShopEmail(data.owner_email);
+          }
+        });
+    }
+  }, [shopId, needsVerification, shopEmail]);
+
+  // CRITICAL: Always enforce verification step when needed - this runs on mount and when props change
+  useEffect(() => {
+    const shouldVerify = !isFirstTime && hasCurrentPin;
+    // SECURITY: Minimal debug logging - no sensitive data
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ChangeOwnerPinModal useEffect (sanitized):', {
+        shouldVerify,
+        isFirstTime,
+        hasCurrentPin,
+        currentStep: step
+        // All sensitive data hidden for security
+      });
+    }
+    
+    if (shouldVerify) {
+      // SECURITY: Password is mandatory for PIN changes - always require password verification
+      if (step !== 'password' && step !== 'newpin') {
+        // SECURITY: Minimal logging
+        if (process.env.NODE_ENV === 'development') {
+          console.log('FORCING password verification step');
+        }
+        setStep('password'); // Always use password verification
+        setVerifyPin('');
+        setPassword('');
+        setNewPin('');
+        setConfirmNewPin('');
+        setError('');
+      }
+    } else if (!shouldVerify) {
+      // Only allow new PIN step if verification not needed
+      // SECURITY: Minimal logging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Allowing new PIN step - no verification needed');
+      }
+      setStep('newpin');
+      setVerifyPin('');
+      setPassword('');
+      setNewPin('');
+      setConfirmNewPin('');
+      setError('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFirstTime, hasCurrentPin, currentPin]);
 
   const handleVerifyPinPad = (digit: string) => {
     if (verifyPin.length < 6 && !loading) {
@@ -71,9 +155,19 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
       return;
     }
 
+    // SECURITY: Always verify current PIN matches before allowing PIN change
+    if (!currentPin) {
+      setError('No current PIN found. Please use password verification instead.');
+      return;
+    }
+
     if (verifyPin !== currentPin) {
-      setError('Incorrect PIN. Please try again.');
+      setError('Incorrect PIN. Please try again or use password verification.');
       setVerifyPin('');
+      // Clear all input refs
+      verifyPinInputRefs.current.forEach(ref => {
+        if (ref) ref.value = '';
+      });
       return;
     }
 
@@ -81,9 +175,69 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
     setStep('newpin');
     setError('');
     setVerifyPin('');
+    // Clear verify PIN input refs
+    verifyPinInputRefs.current.forEach(ref => {
+      if (ref) ref.value = '';
+    });
+  };
+
+  const handleVerifyPassword = async () => {
+    if (!password) {
+      setError('Please enter your password');
+      return;
+    }
+
+    if (!shopEmail) {
+      setError('Unable to verify password. Please try PIN verification instead.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Verify password by attempting to sign in
+      const { error: signInError } = await signIn(shopEmail, password);
+
+      if (signInError) {
+        if (signInError.message?.includes('Invalid login credentials') || signInError.message?.includes('invalid_credentials')) {
+          setError('Incorrect password. Please try again.');
+        } else {
+          setError('Failed to verify password. Please try again.');
+        }
+        setPassword('');
+        setLoading(false);
+        return;
+      }
+
+      // Password verified - move to new PIN step
+      setStep('newpin');
+      setError('');
+      setPassword(''); // Clear password for security
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Password verification error:', err);
+      setError('Failed to verify password. Please try again.');
+      setPassword('');
+      setLoading(false);
+    }
   };
 
   const handleSetNewPin = async () => {
+    // SECURITY: Password verification is mandatory for PIN changes
+    if (!isFirstTime && hasCurrentPin && step !== 'newpin') {
+      console.error('SECURITY: Attempted to set new PIN without password verification!');
+      setError('Password verification is required. Please verify your password first.');
+      setStep('password'); // Always require password
+      return;
+    }
+    
+    // Double-check: if we need verification but step is wrong, enforce password verification
+    if (!isFirstTime && hasCurrentPin && step === 'password') {
+      setError('Please complete password verification first');
+      return;
+    }
+
     // Validate PIN
     if (!validateOwnerPIN(newPin)) {
       setError('PIN must be exactly 6 digits');
@@ -110,10 +264,13 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
     setError('');
 
     try {
-      console.log('Attempting to update PIN for shop:', shopId);
+      // SECURITY: Minimal logging - no sensitive data
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Attempting to update PIN (shop ID hidden)');
+      }
       
       // Update PIN in database
-      const { data, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('shops')
         .update({ owner_pin: newPin })
         .eq('id', shopId)
@@ -125,7 +282,10 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
         throw updateError;
       }
 
-      console.log('PIN updated successfully:', data);
+      // SECURITY: Success confirmation only - no data logged
+      if (process.env.NODE_ENV === 'development') {
+        console.log('PIN updated successfully (all data hidden for security)');
+      }
 
       // Success
       onSuccess();
@@ -144,7 +304,11 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
           <div className="flex items-center gap-2 sm:gap-3">
             <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
-              {isFirstTime ? 'Create Your PIN' : step === 'verify' ? 'Verify Current PIN' : 'Set New PIN'}
+              {isFirstTime 
+                ? 'Create Your PIN' 
+                : step === 'password'
+                  ? 'Verify Password (Required)'
+                  : 'Set New PIN'}
             </h2>
           </div>
           <button
@@ -156,31 +320,35 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
           </button>
         </div>
 
-        {step === 'verify' && !isFirstTime ? (
+        {/* SECURITY: Password is mandatory for PIN changes - always require password verification */}
+        {(!isFirstTime && hasCurrentPin && step === 'password') ? (
           <>
             <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
-              Enter your current 6-digit owner PIN to continue
+              <strong className="text-red-600">Password is required</strong> to change your PIN. Please enter your account password to verify your identity.
             </p>
 
-            {/* Verify PIN Display */}
-            <div className="flex justify-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-              {[0, 1, 2, 3, 4, 5].map((index) => (
-                <input
-                  key={index}
-                  ref={(el) => (verifyPinInputRefs.current[index] = el)}
-                  type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={1}
-                  value={verifyPin[index] || ''}
-                  readOnly
-                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                  style={{
-                    borderColor: verifyPin[index] ? '#3B82F6' : '#D1D5DB',
-                    WebkitAppearance: 'none',
-                  }}
-                />
-              ))}
+            {/* Password Input */}
+            <div className="mb-4">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && password) {
+                    handleVerifyPassword();
+                  }
+                }}
+                placeholder="Enter your login password"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base min-h-[44px]"
+                autoFocus
+                disabled={loading}
+              />
             </div>
 
             {error && (
@@ -190,51 +358,39 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
               </div>
             )}
 
-            {/* Number Pad */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3 sm:mb-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
-                <button
-                  key={digit}
-                  onClick={() => handleVerifyPinPad(digit.toString())}
-                  disabled={loading || verifyPin.length >= 6}
-                  className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
-                >
-                  {digit}
-                </button>
-              ))}
+            <div className="flex gap-2 sm:gap-3">
               <button
-                onClick={() => handleVerifyPinPad('0')}
-                disabled={loading || verifyPin.length >= 6}
-                className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
+                onClick={handleVerifyPassword}
+                disabled={loading || !password}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px]"
+                type="button"
               >
-                0
-              </button>
-              <button
-                onClick={handleVerifyBackspace}
-                disabled={loading || verifyPin.length === 0}
-                className="py-3 px-4 sm:py-4 sm:px-6 text-lg sm:text-xl font-semibold bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px]"
-              >
-                ⌫
+                {loading ? 'Verifying...' : 'Verify Password & Continue'}
               </button>
             </div>
-
-            {/* Auto-submit when 6 digits entered */}
-            {verifyPin.length === 6 && !loading && (
-              <button
-                onClick={handleVerifyPin}
-                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-              >
-                Verify PIN
-              </button>
-            )}
           </>
         ) : (
           <>
-            <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-              {isFirstTime 
-                ? 'Create a 6-digit PIN to protect your shop settings. Make sure it\'s something memorable but secure.'
-                : 'Enter your new 6-digit PIN. Make sure it\'s something memorable but secure.'}
-            </p>
+            {/* Only show new PIN screen if verification is not needed OR verification has been completed */}
+            {(!isFirstTime && hasCurrentPin && step === 'newpin') ? (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-xs sm:text-sm text-red-800 font-semibold">
+                  ⚠️ SECURITY ERROR: You must verify your current PIN first!
+                </p>
+                <button
+                  onClick={() => setStep('verify')}
+                  className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+                >
+                  Go to Verification
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
+                {isFirstTime 
+                  ? 'Create a 6-digit PIN to protect your shop settings. Make sure it\'s something memorable but secure.'
+                  : 'Enter your new 6-digit PIN. Make sure it\'s something memorable but secure.'}
+              </p>
+            )}
 
             {/* New PIN Display */}
             <div className="mb-3 sm:mb-4">
@@ -246,7 +402,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                   <input
                     key={index}
                     ref={(el) => (newPinInputRefs.current[index] = el)}
-                    type="tel"
+                    type="password"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={1}
@@ -265,6 +421,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                     style={{
                       borderColor: newPin[index] ? '#3B82F6' : '#D1D5DB',
                       WebkitAppearance: 'none',
+                      letterSpacing: '0.1em',
                     }}
                   />
                 ))}
@@ -300,7 +457,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                 {[0, 1, 2, 3, 4, 5].map((index) => (
                   <input
                     key={index}
-                    type="tel"
+                    type="password"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={1}
@@ -323,6 +480,7 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                         ? (newPin === confirmNewPin ? '#10B981' : '#EF4444')
                         : '#D1D5DB',
                       WebkitAppearance: 'none',
+                      letterSpacing: '0.1em',
                     }}
                   />
                 ))}
@@ -381,7 +539,8 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
             )}
 
             <div className="flex gap-2 sm:gap-3">
-              {!isFirstTime && step !== 'verify' && (
+              {/* Only show back button if verification was completed and we're on new PIN step */}
+              {(!isFirstTime && hasCurrentPin && step === 'newpin') && (
                 <button
                   onClick={() => {
                     setStep('verify');
@@ -393,13 +552,13 @@ export default function ChangeOwnerPinModal({ shopId, currentPin, onSuccess, onC
                   disabled={loading}
                   type="button"
                 >
-                  Back
+                  Back to Verify
                 </button>
               )}
               <button
                 onClick={handleSetNewPin}
                 disabled={loading || newPin.length !== 6 || confirmNewPin.length !== 6 || !validateOwnerPIN(newPin) || newPin !== confirmNewPin || isWeakOwnerPIN(newPin)}
-                className={`${!isFirstTime && step !== 'verify' ? 'flex-1' : 'w-full'} px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px]`}
+                className={`${needsVerification && step === 'newpin' ? 'flex-1' : 'w-full'} px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px]`}
                 title={
                   loading ? 'Saving...' :
                   newPin.length !== 6 ? 'Enter 6-digit PIN' :

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
+import { useParams, useOutletContext, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Users, Clock, Receipt,
   Settings,
@@ -22,6 +22,7 @@ export default function DashboardHome() {
   const { shop: outletShop } = useOutletContext<{ shop: Shop }>();
   const { currentShop, hasAccess } = useShop();
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const [pendingClockRequests, setPendingClockRequests] = useState(0);
 
   const shop = currentShop ? {
@@ -56,6 +57,29 @@ export default function DashboardHome() {
       return () => clearInterval(interval);
     }
   }, [shopId]);
+
+  // Security: Clear owner PIN unlock when returning from external pages (shop portal, tablet)
+  // This ensures PIN is required again after navigating away
+  useEffect(() => {
+    if (shopId && routeLocation.pathname === `/dashboard/${shopId}`) {
+      // Check if we're returning from an external page by checking document referrer
+      // or by checking if the unlock was set recently (within last second)
+      const unlockTime = sessionStorage.getItem(`owner_unlock_time_${shopId}`);
+      if (unlockTime) {
+        const timeSinceUnlock = Date.now() - parseInt(unlockTime, 10);
+        // If unlock was set more than 5 seconds ago, we likely navigated away and back
+        // Clear it to force PIN re-entry
+        if (timeSinceUnlock > 5000) {
+          // Check if we came from shop or tablet pages
+          const referrer = document.referrer;
+          if (referrer && (referrer.includes('/shop/') || referrer.includes('/tablet/') || referrer.includes('/staff/'))) {
+            sessionStorage.removeItem(`owner_unlocked_${shopId}`);
+            sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+          }
+        }
+      }
+    }
+  }, [routeLocation.pathname, shopId]);
 
   const loadShopShortCode = async () => {
     try {
@@ -199,14 +223,8 @@ export default function DashboardHome() {
   const MobileDashboard = () => (
     <div className="md:hidden bg-[#f7f8fa] min-h-screen pb-6">
       {/* Header Bar */}
-      <div className="sticky top-0 z-50 bg-[#222] text-white px-4 py-3 flex items-center justify-between shadow-md">
-        <h1 className="text-lg font-bold">Digiget</h1>
-        <button
-          onClick={() => navigate(`/dashboard/${shopId}/settings`)}
-          className="p-2 hover:bg-gray-700 rounded-full transition-colors"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
+      <div className="sticky top-0 z-50 bg-[#222] text-white px-4 py-3 flex items-center justify-center shadow-md">
+        <h1 className="text-lg font-bold text-white">Digiget</h1>
       </div>
 
       <div className="px-4 py-6 space-y-4">
@@ -266,17 +284,23 @@ export default function DashboardHome() {
           <h2 className="text-sm font-semibold text-gray-700 mb-3 px-1">Quick Actions</h2>
           <div className="grid grid-cols-3 gap-3">
             {/* Check-in Customer - Blue */}
-            <button
-              onClick={() => {
-                if (shopShortCode) {
-                  navigate(`/shop/${shopShortCode}`);
-                } else {
-                  // Fallback to tablet portal if no short code
-                  navigate(`/tablet/${shopId}`);
-                }
-              }}
-              className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 shadow-sm border border-blue-200 flex flex-col items-center gap-2 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95"
-            >
+                          <button
+                            onClick={() => {
+                              // Clear owner PIN unlock when navigating to shop portal
+                              // This ensures PIN is required again when returning
+                              if (shopId) {
+                                sessionStorage.removeItem(`owner_unlocked_${shopId}`);
+                                sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+                              }
+                              if (shopShortCode) {
+                                navigate(`/shop/${shopShortCode}`);
+                              } else {
+                                // Fallback to tablet portal if no short code
+                                navigate(`/tablet/${shopId}`);
+                              }
+                            }}
+                            className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 shadow-sm border border-blue-200 flex flex-col items-center gap-2 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95"
+                          >
               <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                 <Phone className="w-5 h-5 text-white" />
               </div>
@@ -287,10 +311,18 @@ export default function DashboardHome() {
             </button>
 
             {/* Clock In/Out - Indigo */}
-            <button
-              onClick={() => navigate(`/tablet/${shopId}`)}
-              className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-4 shadow-sm border border-indigo-200 flex flex-col items-center gap-2 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95"
-            >
+                          <button
+                            onClick={() => {
+                              // Clear owner PIN unlock when navigating to tablet portal
+                              // This ensures PIN is required again when returning
+                              if (shopId) {
+                                sessionStorage.removeItem(`owner_unlocked_${shopId}`);
+                                sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+                              }
+                              navigate(`/tablet/${shopId}`);
+                            }}
+                            className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-4 shadow-sm border border-indigo-200 flex flex-col items-center gap-2 hover:shadow-md hover:scale-[1.02] transition-all active:scale-95"
+                          >
               <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
                 <Clock className="w-5 h-5 text-white" />
               </div>

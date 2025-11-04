@@ -408,15 +408,11 @@ export default function StaffCustomerManagement({ employeeId, shopId }: StaffCus
             // Round to 2 decimal places for currency
             commissionEarned = Math.round(commissionEarned * 100) / 100;
             
-            console.log('Commission calculation (Staff Portal):', {
-              billValue,
-              commissionRate,
-              commissionEarned,
-              paymentType: employeeData.payment_type,
-              employeeId
-            });
+            // SECURITY: Don't log employee IDs or commission details
+            console.log('Commission calculation completed (details hidden for security)');
           } else {
-            console.warn('Invalid commission percentage:', commissionRate, 'for employee:', employeeId);
+            // SECURITY: Don't log employee IDs
+            console.warn('Invalid commission percentage (employee details hidden)');
           }
         }
       }

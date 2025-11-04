@@ -65,7 +65,7 @@ export default function RevenuePage() {
             filter: `shop_id=eq.${shopId}`
           },
           (payload) => {
-            console.log('Customer visit changed:', payload);
+            // SECURITY: Don't log customer visit data
             if (loadRevenueDataRef.current) {
               setRefreshing(true);
               loadRevenueDataRef.current().finally(() => setRefreshing(false));
@@ -81,7 +81,7 @@ export default function RevenuePage() {
             filter: `shop_id=eq.${shopId}`
           },
           (payload) => {
-            console.log('Employee contribution changed:', payload);
+            // SECURITY: Don't log employee contribution data
             if (loadRevenueDataRef.current) {
               setRefreshing(true);
               loadRevenueDataRef.current().finally(() => setRefreshing(false));

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Save, CheckCircle, Lock, KeyRound, Smartphone, Trash2, RotateCcw, Building2, Heart, CreditCard, Shield, MapPin, ChevronRight, Clock } from 'lucide-react';
+import { Save, CheckCircle, Lock, KeyRound, Smartphone, Trash2, RotateCcw, Building2, Heart, CreditCard, Shield, MapPin, ChevronRight, ChevronDown, Clock } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import ShopLocationSetup from '../../components/ShopLocationSetup';
 import OwnerPinModal from '../../components/OwnerPinModal';
@@ -9,7 +9,7 @@ import ChangeOwnerPinModal from '../../components/ChangeOwnerPinModal';
 import { CancelSubscriptionModal } from '../../components/CancelSubscriptionModal';
 import { DeleteAccountModal } from '../../components/DeleteAccountModal';
 import { AuthorizeDeviceModal } from '../../components/AuthorizeDeviceModal';
-import { storeDeviceFingerprint } from '../../lib/deviceFingerprint';
+import { storeDeviceFingerprint, revokeDevice } from '../../lib/deviceFingerprint';
 import MobileSettings from '../../components/mobile/Settings/MobileSettings';
 
 interface Shop {
@@ -59,6 +59,7 @@ export default function SettingsPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAuthDeviceModal, setShowAuthDeviceModal] = useState(false);
+  const [showAllDevices, setShowAllDevices] = useState(false);
   const [trustedDevices, setTrustedDevices] = useState<any[]>([]);
   const [currentDeviceFingerprint, setCurrentDeviceFingerprint] = useState<string>('');
   const [reactivatingSubscription, setReactivatingSubscription] = useState(false);
@@ -160,27 +161,12 @@ export default function SettingsPage() {
         return;
       }
 
-      // PIN is set - check unlock status
-      const unlocked = sessionStorage.getItem(`owner_unlocked_${shopId}`);
-      const unlockTime = sessionStorage.getItem(`owner_unlock_time_${shopId}`);
-
-      if (unlocked === 'true' && unlockTime) {
-        // Check if unlock is still valid (30 minutes)
-        const timeSinceUnlock = Date.now() - parseInt(unlockTime, 10);
-        const UNLOCK_DURATION = 30 * 60 * 1000; // 30 minutes
-
-        if (timeSinceUnlock < UNLOCK_DURATION) {
-          setIsUnlocked(true);
-          setShowPinModal(false);
-          return;
-        } else {
-          // Unlock expired
-          sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-          sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
-        }
-      }
-
-      // Not unlocked or expired - show PIN modal
+      // SECURITY: Always require PIN verification - no session storage bypass
+      // Clear any existing unlock status to force fresh PIN entry
+      sessionStorage.removeItem(`owner_unlocked_${shopId}`);
+      sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+      
+      // Always require PIN entry for settings access
       setIsUnlocked(false);
       setShowPinModal(true);
     };
@@ -328,6 +314,8 @@ export default function SettingsPage() {
   };
 
   const handleRevokeDevice = async (deviceId: string) => {
+    if (!shopId) return;
+    
     const confirmed = confirm(
       'Revoke access for this device?\n\n' +
       'Staff will no longer be able to clock in from this device without GPS verification.'
@@ -336,18 +324,17 @@ export default function SettingsPage() {
     if (!confirmed) return;
 
     try {
-      const { error } = await supabase
-        .from('trusted_devices')
-        .update({ is_active: false })
-        .eq('id', deviceId);
-
-      if (error) throw error;
+      const result = await revokeDevice(shopId, deviceId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to revoke device');
+      }
 
       setMessage({ type: 'success', text: '✓ Device access revoked' });
       setTimeout(() => setMessage(null), 3000);
       await loadTrustedDevices();
     } catch (error: any) {
-      setMessage({ type: 'error', text: 'Failed to revoke device' });
+      setMessage({ type: 'error', text: error.message || 'Failed to revoke device' });
       setTimeout(() => setMessage(null), 3000);
     }
   };
@@ -614,8 +601,8 @@ export default function SettingsPage() {
 
   // Mobile Settings Component - Conditional render AFTER all hooks
   if (isMobile && !isUnlocked) {
-    return (
-      <>
+  return (
+    <>
         {showPinModal && (
           <OwnerPinModal
             shopId={shopId || ''}
@@ -704,10 +691,11 @@ export default function SettingsPage() {
   // Desktop Settings View (existing)
   return (
     <>
-      <div className="ios-settings hidden md:block">
-        <div className="ios-settings-header">
-          <h1>Settings</h1>
-        </div>
+      <div className="ios-settings hidden md:flex">
+        <div className="flex flex-col gap-4 flex-shrink-0" style={{ width: '320px' }}>
+          <div className="ios-settings-header">
+            <h1>Settings</h1>
+          </div>
 
         {/* BUSINESS INFORMATION */}
         <div className="ios-settings-group">
@@ -847,6 +835,7 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* Detail Content - Shows when a tab is selected */}
         {activeTab && (
@@ -866,62 +855,62 @@ export default function SettingsPage() {
             <div className="ios-detail-content md:mt-6">
               <div className="container max-w-4xl mx-auto">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-4 sm:p-6">
-                  {message && (
+          {message && (
               <div className={`mb-4 p-4 rounded-lg ${
                 message.type === 'success' 
                   ? 'bg-green-50 border border-green-200 text-green-800' 
                   : 'bg-red-50 border border-red-200 text-red-800'
               }`}>
-                {message.text}
-              </div>
-            )}
+              {message.text}
+            </div>
+          )}
 
-            {activeTab === 'business' && (
+          {activeTab === 'business' && (
               <div className="space-y-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Business Settings</h2>
 
                 <div className="form-group space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Shop Name</label>
-                  <input
-                    type="text"
-                    value={shopName}
-                    onChange={(e) => setShopName(e.target.value)}
+                <input
+                  type="text"
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="Enter your shop name"
-                  />
-                </div>
+                  placeholder="Enter your shop name"
+                />
+              </div>
 
                 <div className="form-group space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Owner Name</label>
-                  <input
-                    type="text"
-                    value={ownerName}
-                    onChange={(e) => setOwnerName(e.target.value)}
+                <input
+                  type="text"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-                    placeholder="Enter owner name"
-                  />
-                </div>
+                  placeholder="Enter owner name"
+                />
+              </div>
 
                 <div className="form-group space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Business Category</label>
-                  <select
-                    value={businessCategory}
-                    onChange={(e) => setBusinessCategory(e.target.value)}
+                <select
+                  value={businessCategory}
+                  onChange={(e) => setBusinessCategory(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base bg-gray-50"
-                    disabled
-                  >
-                    <option value="hair_salon">Hair Salon / Barbershop</option>
-                  </select>
+                  disabled
+                >
+                  <option value="hair_salon">Hair Salon / Barbershop</option>
+                </select>
                   <span className="text-sm text-gray-500">Currently only available for Hair Salons / Barbershops</span>
-                </div>
+              </div>
 
                 <div className="border-t border-gray-200 pt-6 mt-6">
                   <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">Shop Location (Geofencing)</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Set your shop's location to enable geofencing. Staff members will need approval to clock in from more than 100 meters away.
-                  </p>
-                  
-                  {(latitude && longitude) ? (
+                <p className="text-sm text-gray-600 mb-4">
+                  Set your shop's location to enable geofencing. Staff members will need approval to clock in from more than 100 meters away.
+                </p>
+                
+                {(latitude && longitude) ? (
                     <div className="bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200 mb-4">
                     <p className="font-semibold mb-2">Current Location:</p>
                     <p className="text-sm text-gray-600 mb-2">
@@ -972,7 +961,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-            {activeTab === 'loyalty' && (
+          {activeTab === 'loyalty' && (
               <div className="space-y-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Loyalty Program Settings</h2>
 
@@ -1203,7 +1192,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-            {activeTab === 'subscription' && (
+          {activeTab === 'subscription' && (
               <div className="space-y-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Subscription</h2>
 
@@ -1311,7 +1300,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-            {activeTab === 'nfc' && (
+          {activeTab === 'nfc' && (
               <div className="space-y-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">NFC Clock-In Setup</h2>
 
@@ -1496,12 +1485,12 @@ export default function SettingsPage() {
             </div>
           )}
 
-            {activeTab === 'security' && (
+          {activeTab === 'security' && (
               <div className="space-y-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Security Settings</h2>
 
                 <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6">
-                  <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Owner PIN</h3>
                     <p className="text-sm text-gray-600 mb-4">
@@ -1810,8 +1799,9 @@ export default function SettingsPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">📱 Trusted Devices</h3>
                     <p className="text-sm text-gray-600 mb-4">
-                      Authorize devices (tablets, computers) that are always at your shop. 
-                      Staff can clock in from trusted devices without GPS verification.
+                      Authorize shared shop devices (tablets, computers) that are physically at your shop. 
+                      Staff can clock in/out and check in customers from these devices without GPS verification 
+                      since the device location is fixed at your shop. PIN entry is still required for security.
                     </p>
 
                     {/* Current Device Status */}
@@ -1819,19 +1809,24 @@ export default function SettingsPage() {
                       <strong className={currentDeviceIsTrusted ? 'text-green-900' : 'text-yellow-900'}>This Device:</strong>
                       {currentDeviceIsTrusted ? (
                         <p className="mb-0 mt-2 text-green-800 text-sm">
-                          ✓ This device is trusted. Staff can clock in without GPS verification.
+                          ✓ This device is trusted. Staff can clock in/out and check in customers without GPS verification. PIN entry is still required.
                         </p>
                       ) : (
                         <>
                           <p className="mb-2 mt-2 text-yellow-800 text-sm">
-                            ⚠️ This device is NOT trusted. Staff will need GPS verification to clock in.
+                            ⚠️ This device is NOT trusted. Staff will need GPS verification to clock in/out. PIN entry is still required.
                           </p>
-                    <button
-                      onClick={() => setShowAuthDeviceModal(true)}
-                      className="w-full sm:w-auto px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                    >
-                      Authorize This Device
-                    </button>
+                          <button
+                            onClick={() => {
+                              if (shopId) {
+                                setShowAuthDeviceModal(true);
+                              }
+                            }}
+                            disabled={!shopId}
+                            className="w-full sm:w-auto px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Authorize This Device
+                          </button>
                         </>
                       )}
                     </div>
@@ -1840,16 +1835,43 @@ export default function SettingsPage() {
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                       <strong className="text-blue-900">💡 When to use trusted devices:</strong>
                       <ul className="mb-0 mt-2 text-blue-800 text-sm space-y-1">
-                        <li><strong>Shop tablet/computer:</strong> Always at counter → Authorize it</li>
-                        <li><strong>Staff personal phones:</strong> They take home → Don't authorize (use GPS)</li>
+                        <li><strong>Shop tablet/computer:</strong> Fixed at counter for staff clock-in and customer check-in → Authorize it</li>
+                        <li><strong>Staff personal phones:</strong> They take home and move around → Don't authorize (use GPS verification)</li>
+                        <li><strong>Purpose:</strong> Allows clock-in/out and customer check-in without GPS tracking on shared shop devices</li>
                       </ul>
                     </div>
 
-                    {/* List of Trusted Devices */}
+                    {/* View All Devices Button */}
                     {trustedDevices.length > 0 && (
+                      <div className="mt-4 mb-4">
+                        <button
+                          onClick={() => setShowAllDevices(!showAllDevices)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
+                        >
+                          <Smartphone className="w-4 h-4" />
+                          <span>{showAllDevices ? 'Hide' : 'View'} All Devices</span>
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                            {trustedDevices.filter(d => d.is_active).length} active
+                          </span>
+                          {trustedDevices.filter(d => !d.is_active).length > 0 && (
+                            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-semibold">
+                              {trustedDevices.filter(d => !d.is_active).length} revoked
+                            </span>
+                          )}
+                          {showAllDevices ? (
+                            <ChevronDown className="w-4 h-4 ml-auto" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 ml-auto" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* List of Trusted Devices */}
+                    {trustedDevices.length > 0 && showAllDevices && (
                       <div className="mt-4">
                         <h4 className="font-semibold text-gray-900 mb-3">
-                          Authorized Devices ({trustedDevices.filter(d => d.is_active).length})
+                          All Authorized Devices ({trustedDevices.filter(d => d.is_active).length} active, {trustedDevices.filter(d => !d.is_active).length} revoked)
                         </h4>
                         
                         <div className="space-y-3">
@@ -1907,8 +1929,13 @@ export default function SettingsPage() {
                       <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
                         <p className="text-gray-600 mb-3">No trusted devices yet.</p>
                         <button
-                          onClick={() => setShowAuthDeviceModal(true)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                          onClick={() => {
+                            if (shopId) {
+                              setShowAuthDeviceModal(true);
+                            }
+                          }}
+                          disabled={!shopId}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Authorize This Device
                         </button>
@@ -1933,17 +1960,17 @@ export default function SettingsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancel Subscription</h3>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Stop your subscription to DigiGet. Access ends at the end of 
-                          your current billing period. Your data will be kept for 30 days 
-                          in case you want to reactivate.
-                        </p>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          <li>✓ Data preserved for 30 days</li>
-                          <li>✓ Can reactivate anytime</li>
-                          <li>✓ No refund for unused time</li>
-                        </ul>
-                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Stop your subscription to DigiGet. Access ends at the end of 
+                        your current billing period. Your data will be kept for 30 days 
+                        in case you want to reactivate.
+                      </p>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        <li>✓ Data preserved for 30 days</li>
+                        <li>✓ Can reactivate anytime</li>
+                        <li>✓ No refund for unused time</li>
+                      </ul>
+                    </div>
                       <button
                         onClick={() => setShowCancelModal(true)}
                         className="w-full sm:w-auto px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold whitespace-nowrap"
@@ -1959,18 +1986,18 @@ export default function SettingsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Account</h3>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Permanently delete your shop account and all associated data. 
-                          This includes all staff, customers, clock history, and loyalty points. 
-                          This action CANNOT be undone.
-                        </p>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          <li>❌ All staff deleted</li>
-                          <li>❌ All customers deleted</li>
-                          <li>❌ All clock history deleted</li>
-                          <li>❌ Cannot be recovered</li>
-                        </ul>
-                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Permanently delete your shop account and all associated data. 
+                        This includes all staff, customers, clock history, and loyalty points. 
+                        This action CANNOT be undone.
+                      </p>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        <li>❌ All staff deleted</li>
+                        <li>❌ All customers deleted</li>
+                        <li>❌ All clock history deleted</li>
+                        <li>❌ Cannot be recovered</li>
+                      </ul>
+                    </div>
                       <button
                         onClick={() => setShowDeleteModal(true)}
                         className="w-full sm:w-auto px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold whitespace-nowrap"
@@ -1981,25 +2008,25 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-              </div>
-            )}
-                </div>
-              </div>
             </div>
+          )}
+        </div>
+      </div>
+      </div>
             </div>
           )}
 
-        {/* Lock Button - Show when unlocked */}
+      {/* Lock Button - Show when unlocked */}
         <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-10">
-          <button
-            onClick={handleLockSettings}
+        <button
+          onClick={handleLockSettings}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg text-sm font-medium"
-            title="Lock settings (requires PIN to unlock again)"
-          >
-            <Lock className="w-4 h-4" />
+          title="Lock settings (requires PIN to unlock again)"
+        >
+          <Lock className="w-4 h-4" />
             <span className="hidden sm:inline">Lock Settings</span>
             <span className="sm:hidden">Lock</span>
-          </button>
+        </button>
         </div>
       </div>
 

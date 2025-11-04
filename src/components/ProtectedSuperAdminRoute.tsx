@@ -69,7 +69,8 @@ export default function ProtectedSuperAdminRoute({ children }: ProtectedSuperAdm
   }
 
   if (!isSuperAdmin) {
-    console.warn('Super admin access denied for:', currentUser.email);
+    // SECURITY: Don't log email addresses
+    console.warn('Super admin access denied (user details hidden for security)');
     return <Navigate to="/login" replace />;
   }
 

@@ -21,7 +21,8 @@ export default function ShopPortal() {
 
   const navigate = useNavigate();
 
-  // Check if device is trusted OR shop PIN is stored in session
+  // Check if shop PIN is stored in session
+  // SECURITY: Trusted devices still require PIN entry - they only skip GPS verification for clock-in/out
   useEffect(() => {
     if (!code) return;
     
@@ -35,18 +36,10 @@ export default function ShopPortal() {
 
       if (data) {
         setShop(data);
-        
-        // Check if device is trusted
-        const trusted = await isDeviceTrusted(data.id);
-        if (trusted) {
-          setIsUnlocked(true);
-          loadCurrentlyWorking();
-          loadTodayCustomers();
-          return;
-        }
       }
       
-      // If not trusted, check session PIN
+      // PIN is ALWAYS required for security, regardless of trusted device status
+      // Trusted devices only affect GPS verification for clock-in/out, not PIN entry
       const unlocked = sessionStorage.getItem(`shop_unlocked_${code}`);
       if (unlocked === 'true') {
         setIsUnlocked(true);

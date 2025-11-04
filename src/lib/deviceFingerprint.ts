@@ -145,3 +145,52 @@ export async function authorizeDevice(
   }
 }
 
+/**
+ * Revoke/Deauthorize a trusted device
+ */
+export async function revokeDevice(
+  shopId: string,
+  deviceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Update device to inactive - revoked_at column may not exist, so we only update is_active
+    const { error: updateError } = await supabase
+      .from('trusted_devices')
+      .update({ 
+        is_active: false
+      })
+      .eq('id', deviceId)
+      .eq('shop_id', shopId);
+
+    if (updateError) throw updateError;
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error revoking device:', error);
+    return { success: false, error: error.message || 'Failed to revoke device' };
+  }
+}
+
+/**
+ * Revoke all trusted devices for a shop
+ */
+export async function revokeAllDevices(
+  shopId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Revoke all active devices - revoked_at column may not exist, so we only update is_active
+    const { error: updateError } = await supabase
+      .from('trusted_devices')
+      .update({ 
+        is_active: false
+      })
+      .eq('shop_id', shopId)
+      .eq('is_active', true);
+
+    if (updateError) throw updateError;
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error revoking all devices:', error);
+    return { success: false, error: error.message || 'Failed to revoke devices' };
+  }
+}
+

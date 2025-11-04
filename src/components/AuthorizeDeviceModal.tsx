@@ -123,15 +123,17 @@ export function AuthorizeDeviceModal({
 
         <div className="p-6">
           <p className="mb-4 text-gray-700">
-            Authorize this device as a trusted shop device. Staff will be able 
-            to clock in from this device without GPS verification.
+            Authorize this shared shop device (tablet/computer) as a trusted device. 
+            Staff will be able to clock in/out from this device without GPS verification 
+            since it's physically located at your shop.
           </p>
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <strong className="text-yellow-900">⚠️ Important:</strong>
             <p className="mb-0 mt-2 text-yellow-800 text-sm">
-              Only authorize devices that are physically at your shop 
-              (like the counter tablet). Don't authorize staff personal phones.
+              Only authorize devices that are physically at your shop (like the counter tablet). 
+              This allows staff to clock in/out and check in customers without GPS tracking. 
+              Don't authorize staff personal phones - they should use GPS verification.
             </p>
           </div>
 

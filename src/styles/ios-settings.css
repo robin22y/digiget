@@ -52,6 +52,14 @@
   cursor: pointer;
   transition: background-color 0.15s;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.ios-settings-item:hover {
+  background-color: #f5f5f7;
 }
 
 .ios-settings-item:last-child {
@@ -247,14 +255,32 @@
 
 /* Desktop: Detail view should be inline, not overlay */
 @media (min-width: 768px) {
+  .ios-settings {
+    display: flex;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .ios-settings > .ios-settings-header {
+    display: none;
+  }
+  
+  .ios-settings-group {
+    flex: 0 0 320px;
+  }
+  
   .ios-detail-view {
     position: relative;
+    flex: 1;
     width: 100%;
     height: auto;
     background: transparent;
     transform: none;
     z-index: 1;
-    margin-top: 2rem;
+    margin-top: 0;
+    min-height: 0;
   }
   
   .ios-detail-view.active {

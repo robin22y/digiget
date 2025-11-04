@@ -150,7 +150,7 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
       let employee;
       
       if (propEmployeeId) {
-        console.log('[TabletInterface] Verifying PIN for specific employee:', { propEmployeeId, shopId, pinLength: pin.length });
+        // SECURITY: Don't log PIN or sensitive employee data
         // Verify PIN for specific employee
         const { data: specificEmployee, error: empError } = await supabase
           .from('employees')
@@ -161,7 +161,10 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
           .eq('active', true)
           .maybeSingle();
 
-        console.log('[TabletInterface] Employee lookup result:', { specificEmployee, empError });
+        // SECURITY: Only log non-sensitive data
+        if (empError) {
+          console.error('[TabletInterface] Employee lookup error (no sensitive data logged)');
+        }
 
         if (empError || !specificEmployee) {
           throw new Error('Invalid PIN. Please try again.');
@@ -183,27 +186,28 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
         employee = employees[0];
       }
 
-      console.log('[TabletInterface] Employee authenticated:', employee.first_name);
+      // SECURITY: Don't log employee personal data
+      console.log('[TabletInterface] Employee authenticated successfully');
 
       // Check for PIN expiry (30 days after last change)
       const now = new Date();
       const pinExpiry = employee.pin_expires_at ? new Date(employee.pin_expires_at) : null;
       const isPinExpired = pinExpiry && now > pinExpiry;
 
-      console.log('[TabletInterface] PIN expiry check:', { isPinExpired, pinExpiry });
+      // SECURITY: Don't log PIN expiry details
 
       // Only force PIN change if expired (not on first use)
       if (isPinExpired) {
-        console.log('[TabletInterface] PIN expired, showing change PIN view');
+        // PIN expired, showing change PIN view
         setPin('');
         setView('changepin');
         return;
       }
 
       // Check GPS consent - show modal if consent is null (first time)
-      console.log('[TabletInterface] GPS consent:', employee.gps_location_consent);
+      // SECURITY: Don't log employee consent details
       if (employee.gps_location_consent === null) {
-        console.log('[TabletInterface] No GPS consent, showing consent modal');
+        // No GPS consent, showing consent modal
         setPendingEmployee(employee);
         setShowConsentModal(true);
         setPin('');
@@ -229,7 +233,7 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
         .is('clock_out_time', null)
         .maybeSingle();
 
-      console.log('[TabletInterface] Active entry check:', { activeEntry });
+      // SECURITY: Don't log active entry details
 
       if (activeEntry) {
         setCurrentEntry(activeEntry);
@@ -251,7 +255,8 @@ export default function TabletInterface({ shopId: propShopId, employeeId: propEm
 
       setPin('');
     } catch (err: any) {
-      console.error('[TabletInterface] PIN submit error:', err);
+      // SECURITY: Don't log PIN or error details that might expose sensitive data
+      console.error('[TabletInterface] PIN verification failed (error details hidden for security)');
       setError(err.message);
     } finally {
       setLoading(false);

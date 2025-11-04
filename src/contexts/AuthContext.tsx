@@ -76,10 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password
     });
     if (error) {
-      console.error('AuthContext signIn error:', {
-        message: error.message,
+      // SECURITY: Don't log detailed auth errors that might expose sensitive information
+      console.error('AuthContext signIn error (error details sanitized for security):', {
         status: error.status,
         name: error.name
+        // message hidden - may contain sensitive info
       });
     }
     return { data, error };

@@ -308,10 +308,13 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
     setError('');
 
     try {
-      console.log('Attempting to reset PIN for shop:', shopId);
+      // SECURITY: Minimal logging - no sensitive data
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Attempting to reset PIN (shop ID hidden)');
+      }
       
       // Update PIN in database
-      const { data, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('shops')
         .update({ owner_pin: newPin })
         .eq('id', shopId)
@@ -323,7 +326,10 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
         throw updateError;
       }
 
-      console.log('PIN reset successfully:', data);
+      // SECURITY: Success confirmation only - no data logged
+      if (process.env.NODE_ENV === 'development') {
+        console.log('PIN reset successfully (all data hidden for security)');
+      }
 
       // Success - clear reset flow and unlock
       recordSuccessfulAttempt(identifier);
@@ -375,7 +381,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
             <input
               key={index}
               ref={(el) => (pinInputRefs.current[index] = el)}
-              type="tel"
+              type="password"
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={1}
@@ -387,6 +393,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
               style={{
                 borderColor: pin[index] ? '#3B82F6' : '#D1D5DB',
                 WebkitAppearance: 'none',
+                letterSpacing: '0.1em',
               }}
             />
           ))}
@@ -559,7 +566,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                       <input
                         key={index}
                         ref={(el) => (newPinInputRefs.current[index] = el)}
-                        type="tel"
+                        type="password"
                         inputMode="numeric"
                         pattern="[0-9]*"
                         maxLength={1}
@@ -578,6 +585,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                         style={{
                           borderColor: newPin[index] ? '#3B82F6' : '#D1D5DB',
                           WebkitAppearance: 'none',
+                          letterSpacing: '0.1em',
                         }}
                       />
                     ))}
@@ -613,7 +621,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                     {[0, 1, 2, 3, 4, 5].map((index) => (
                       <input
                         key={index}
-                        type="tel"
+                        type="password"
                         inputMode="numeric"
                         pattern="[0-9]*"
                         maxLength={1}
@@ -636,6 +644,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
                             ? (newPin === confirmNewPin ? '#10B981' : '#EF4444')
                             : '#D1D5DB',
                           WebkitAppearance: 'none',
+                          letterSpacing: '0.1em',
                         }}
                       />
                     ))}

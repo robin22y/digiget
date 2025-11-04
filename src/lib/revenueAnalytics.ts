@@ -40,12 +40,12 @@ export async function getDailyRevenue(shopId: string, date: string) {
   
   // Get commission from employee_contributions table for accurate payroll tracking
   // This ensures consistency with payroll reports
+  // Use consistent date format (YYYY-MM-DD) for DATE column comparison
   const { data: contributions } = await supabase
     .from('employee_contributions')
     .select('commission_earned')
     .eq('shop_id', shopId)
-    .gte('contribution_date', date)
-    .lte('contribution_date', date);
+    .eq('contribution_date', date); // Use eq for exact date match instead of gte/lte
   
   const totalCommission = contributions?.reduce((sum, c) => sum + parseFloat(c.commission_earned?.toString() || '0'), 0) || 0;
   const totalCustomers = visitsWithEmployees?.length || 0;
@@ -71,12 +71,12 @@ export async function getDailyRevenue(shopId: string, date: string) {
   }, {});
 
   // Add commission from employee_contributions for each staff member
+  // Use consistent date format for DATE column comparison
   const { data: contributionDetails } = await supabase
     .from('employee_contributions')
     .select('employee_id, commission_earned')
     .eq('shop_id', shopId)
-    .gte('contribution_date', date)
-    .lte('contribution_date', date);
+    .eq('contribution_date', date); // Use eq for exact date match
 
   contributionDetails?.forEach((contrib: any) => {
     const staffId = contrib.employee_id;
@@ -145,12 +145,16 @@ export async function getWeeklyRevenue(shopId: string) {
   const totalRevenue = visitsWithEmployees?.reduce((sum, v) => sum + parseFloat(v.bill_amount?.toString() || '0'), 0) || 0;
   
   // Get commission from employee_contributions table for accurate payroll tracking
+  // Use consistent date format for DATE column comparison
+  const weekAgoDateStr = weekAgo.toISOString().split('T')[0];
+  const todayDateStr = today.toISOString().split('T')[0];
+  
   const { data: contributions } = await supabase
     .from('employee_contributions')
     .select('commission_earned')
     .eq('shop_id', shopId)
-    .gte('contribution_date', weekAgo.toISOString().split('T')[0])
-    .lte('contribution_date', today.toISOString().split('T')[0]);
+    .gte('contribution_date', weekAgoDateStr)
+    .lte('contribution_date', todayDateStr);
   
   const totalCommission = contributions?.reduce((sum, c) => sum + parseFloat(c.commission_earned?.toString() || '0'), 0) || 0;
 
@@ -175,8 +179,8 @@ export async function getWeeklyRevenue(shopId: string) {
     .from('employee_contributions')
     .select('contribution_date, commission_earned')
     .eq('shop_id', shopId)
-    .gte('contribution_date', weekAgo.toISOString().split('T')[0])
-    .lte('contribution_date', today.toISOString().split('T')[0]);
+    .gte('contribution_date', weekAgoDateStr)
+    .lte('contribution_date', todayDateStr);
 
   dailyContributions?.forEach((contrib: any) => {
     const date = contrib.contribution_date;
@@ -206,12 +210,13 @@ export async function getWeeklyRevenue(shopId: string) {
   }, {});
 
   // Add commission from employee_contributions for each staff member
+  // Use consistent date format for DATE column comparison
   const { data: staffContributions } = await supabase
     .from('employee_contributions')
     .select('employee_id, commission_earned')
     .eq('shop_id', shopId)
-    .gte('contribution_date', weekAgo.toISOString().split('T')[0])
-    .lte('contribution_date', today.toISOString().split('T')[0]);
+    .gte('contribution_date', weekAgoDateStr)
+    .lte('contribution_date', todayDateStr);
 
   staffContributions?.forEach((contrib: any) => {
     const staffId = contrib.employee_id;
@@ -253,12 +258,16 @@ export async function getMonthlyRevenue(shopId: string, year: number, month: num
   const totalRevenue = visits?.reduce((sum, v) => sum + parseFloat(v.bill_amount?.toString() || '0'), 0) || 0;
   
   // Get commission from employee_contributions table for accurate payroll tracking
+  // Use consistent date format for DATE column comparison
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
   const { data: contributions } = await supabase
     .from('employee_contributions')
     .select('commission_earned')
     .eq('shop_id', shopId)
-    .gte('contribution_date', startDate.toISOString().split('T')[0])
-    .lte('contribution_date', endDate.toISOString().split('T')[0]);
+    .gte('contribution_date', startDateStr)
+    .lte('contribution_date', endDateStr);
   
   const totalCommission = contributions?.reduce((sum, c) => sum + parseFloat(c.commission_earned?.toString() || '0'), 0) || 0;
 
@@ -339,12 +348,16 @@ export async function getTopPerformers(shopId: string, dateRange: DateRange, lim
   }, {});
 
   // Add commission from employee_contributions for each staff member
+  // Use consistent date format for DATE column comparison
+  const startDateStr = dateRange.start.split('T')[0];
+  const endDateStr = dateRange.end.split('T')[0];
+  
   const { data: staffContributions } = await supabase
     .from('employee_contributions')
     .select('employee_id, commission_earned')
     .eq('shop_id', shopId)
-    .gte('contribution_date', dateRange.start.split('T')[0])
-    .lte('contribution_date', dateRange.end.split('T')[0]);
+    .gte('contribution_date', startDateStr)
+    .lte('contribution_date', endDateStr);
 
   staffContributions?.forEach((contrib: any) => {
     const staffId = contrib.employee_id;

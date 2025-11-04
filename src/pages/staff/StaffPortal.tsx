@@ -269,11 +269,8 @@ export default function StaffPortal() {
         return;
       }
 
-      console.log('Shop loaded successfully:', {
-        id: shopData.id,
-        shop_name: shopData.shop_name,
-        identifier: trimmedIdentifier
-      });
+      // SECURITY: Don't log shop IDs or identifiers
+      console.log('Shop loaded successfully (shop details hidden for security)');
 
       // Set shop with all data
       setShop({
@@ -511,48 +508,76 @@ export default function StaffPortal() {
 
   if (view === 'auth' || !employee) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-4">
+        <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md transform transition-all">
+          {/* Logo/Icon Section */}
           <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <Users className="w-12 h-12 text-blue-600" />
+            <div className="w-28 h-28 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full mx-auto mb-6 flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
+              <Users className="w-14 h-14 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Staff Portal
-            </h2>
-            <p className="text-gray-600 mt-1">{shop.shop_name}</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome Back!
+            </h1>
+            <p className="text-lg text-gray-600 font-medium">{shop.shop_name}</p>
+            <p className="text-sm text-gray-500 mt-1">Staff Portal Access</p>
           </div>
 
-          <form onSubmit={handlePinSubmit} className="space-y-4">
+          <form onSubmit={handlePinSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter your PIN
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Enter your PIN to continue
               </label>
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={10}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter PIN"
-                autoFocus
-              />
+              <div className="relative">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-6 py-4 text-center text-3xl tracking-[0.3em] border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all bg-gray-50 font-mono"
+                  placeholder="••••"
+                  autoFocus
+                />
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  {pin.length > 0 && (
+                    <div className="flex gap-2">
+                      {Array.from({ length: pin.length }).map((_, i) => (
+                        <div key={i} className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
-                {error}
+              <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium animate-pulse">
+                <div className="flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{error}</span>
+                </div>
               </div>
             )}
 
             <button
               type="submit"
               disabled={!pin.trim()}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Sign In
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Signing In...</span>
+                </div>
+              ) : (
+                'Sign In →'
+              )}
             </button>
+
+            {/* Security Notice */}
+            <p className="text-xs text-center text-gray-500 mt-4">
+              🔒 Your PIN is secure and encrypted
+            </p>
           </form>
         </div>
       </div>

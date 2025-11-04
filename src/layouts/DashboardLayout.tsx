@@ -294,45 +294,7 @@ export default function DashboardLayout() {
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation - Only show on mobile */}
-        {!isHomePage && (
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-system-separator z-50">
-            <div className="flex justify-around items-center h-16">
-              {navItems.slice(0, 5).map((item) => {
-                const isClockRequests = item.to.includes('clock-requests');
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      `flex flex-col items-center justify-center flex-1 h-full ${
-                        isActive ? 'text-modern-blue' : 'text-system-label'
-                      }`
-                    }
-                  >
-                    <item.icon className={`w-5 h-5 ${item.to.includes('clock-requests') && pendingClockRequests > 0 ? 'animate-pulse' : ''}`} />
-                    <span className="text-xs mt-1">{item.label}</span>
-                    {isClockRequests && pendingClockRequests > 0 && (
-                      <span className="absolute top-1 right-1/4 w-2 h-2 bg-modern-red rounded-full"></span>
-                    )}
-                  </NavLink>
-                );
-              })}
-              <NavLink
-                to={`/dashboard/${shopId}/settings`}
-                className={({ isActive }) =>
-                  `flex flex-col items-center justify-center flex-1 h-full ${
-                    isActive ? 'text-modern-blue' : 'text-system-label'
-                  }`
-                }
-              >
-                <Settings className="w-5 h-5" />
-                <span className="text-xs mt-1">More</span>
-              </NavLink>
-            </div>
-          </nav>
-        )}
+        {/* Mobile Bottom Navigation - Removed per user request */}
       </div>
     </div>
   );

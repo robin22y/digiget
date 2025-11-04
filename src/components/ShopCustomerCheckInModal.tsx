@@ -250,16 +250,11 @@ export function ShopCustomerCheckInModal({
             // Round to 2 decimal places for currency
             commissionEarned = Math.round(commissionEarned * 100) / 100;
             
-            console.log('Commission calculation:', {
-              bill,
-              commissionPct,
-              commissionEarned,
-              paymentType: employeeForCommission.payment_type,
-              employeeName: `${employeeForCommission.first_name} ${employeeForCommission.last_name}`,
-              employeeId: staffData.id
-            });
+            // SECURITY: Don't log employee personal data or IDs
+            console.log('Commission calculation completed (employee details hidden for security)');
           } else {
-            console.warn('Invalid commission percentage:', commissionPct, 'for employee:', staffData.id);
+            // SECURITY: Don't log employee IDs
+            console.warn('Invalid commission percentage (employee details hidden)');
           }
         }
       }

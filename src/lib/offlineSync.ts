@@ -63,7 +63,8 @@ export async function syncPendingClockEntries(): Promise<{
       // Don't delete entry on failure - keep it for retry
       // Only delete if retry count is too high (optional safeguard)
       if (entry.retry_count > 10) {
-        console.warn(`Entry ${entry.id} has exceeded retry limit, skipping`);
+        // SECURITY: Don't log entry IDs
+        console.warn('Entry exceeded retry limit, skipping (entry ID hidden)');
       }
     }
   }

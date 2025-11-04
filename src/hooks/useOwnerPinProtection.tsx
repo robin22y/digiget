@@ -31,6 +31,25 @@ export function useOwnerPinProtection({ shopId, onCancel }: UseOwnerPinProtectio
       const unlocked = sessionStorage.getItem(`owner_unlocked_${shopId}`);
       const unlockTime = sessionStorage.getItem(`owner_unlock_time_${shopId}`);
 
+      // Security: Check if we're returning from an external page (shop portal, tablet, staff portal)
+      // If so, require PIN again regardless of unlock status
+      const referrer = document.referrer;
+      const isReturningFromExternal = referrer && (
+        referrer.includes('/shop/') || 
+        referrer.includes('/tablet/') || 
+        referrer.includes('/staff/')
+      );
+
+      if (isReturningFromExternal && unlocked === 'true') {
+        // Clear unlock status when returning from external pages
+        sessionStorage.removeItem(`owner_unlocked_${shopId}`);
+        sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+        setIsUnlocked(false);
+        setShowPinModal(true);
+        setChecking(false);
+        return;
+      }
+
       if (unlocked === 'true' && unlockTime) {
         // Check if unlock is still valid (30 minutes)
         const timeSinceUnlock = Date.now() - parseInt(unlockTime, 10);

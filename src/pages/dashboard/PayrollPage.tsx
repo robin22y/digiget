@@ -88,7 +88,7 @@ export default function PayrollPage() {
             filter: `shop_id=eq.${shopId}`
           },
           (payload) => {
-            console.log('Employee contribution changed:', payload);
+            // SECURITY: Don't log employee contribution data
             // Reload payroll data when contributions change
             if (loadPayrollDataRef.current) {
               setRefreshing(true);
@@ -122,7 +122,7 @@ export default function PayrollPage() {
             filter: `shop_id=eq.${shopId}`
           },
           (payload) => {
-            console.log('Customer visit changed:', payload);
+            // SECURITY: Don't log customer visit data
             // Reload payroll data when customer visits change (may affect commission)
             if (loadPayrollDataRef.current) {
               setRefreshing(true);
@@ -210,12 +210,17 @@ export default function PayrollPage() {
 
         // Fetch commission data from employee_contributions
         // Commission is calculated from bill_amount entered during customer check-in
+        // Use consistent date filtering: format as YYYY-MM-DD for DATE column comparison
+        const startDateStr = start.toISOString().split('T')[0];
+        const endDateStr = end.toISOString().split('T')[0];
+        
         const { data: contributions } = await supabase
           .from('employee_contributions')
           .select('commission_earned, bill_amount, contribution_date')
           .eq('employee_id', employee.id)
-          .gte('contribution_date', start.toISOString().split('T')[0])
-          .lte('contribution_date', end.toISOString().split('T')[0]);
+          .eq('shop_id', shopId)
+          .gte('contribution_date', startDateStr)
+          .lte('contribution_date', endDateStr);
 
         const totalHours = clockEntries?.reduce((sum, entry) => sum + (entry.hours_worked || 0), 0) || 0;
         const daysWorked = new Set(clockEntries?.map(e => new Date(e.clock_in_time).toDateString())).size;
@@ -261,7 +266,15 @@ export default function PayrollPage() {
       });
 
       const data = await Promise.all(payrollPromises);
-      setPayrollData(data.filter(d => d.totalHours > 0).sort((a, b) => b.totalHours - a.totalHours));
+      // Include all employees who have either clock entries OR commission earned
+      // This ensures commission-only employees are visible and matches revenue dashboard
+      setPayrollData(data.filter(d => d.totalHours > 0 || d.commissionEarned > 0).sort((a, b) => {
+        // Sort by total earnings first, then by hours
+        if (b.totalEarnings !== a.totalEarnings) {
+          return b.totalEarnings - a.totalEarnings;
+        }
+        return b.totalHours - a.totalHours;
+      }));
     } catch (error) {
       console.error('Error loading payroll:', error);
     } finally {

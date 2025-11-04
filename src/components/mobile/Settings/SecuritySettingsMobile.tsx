@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Shield, KeyRound, Smartphone, MapPin, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Shield, KeyRound, Smartphone, MapPin, ChevronRight, Trash2 } from 'lucide-react';
 import BackButton from '../BackButton';
 import ChangeOwnerPinModal from '../../../components/ChangeOwnerPinModal';
 import { AuthorizeDeviceModal } from '../../../components/AuthorizeDeviceModal';
 import ShopLocationSetup from '../../../components/ShopLocationSetup';
 import { supabase } from '../../../lib/supabase';
+import { revokeDevice } from '../../../lib/deviceFingerprint';
 
 interface SecuritySettingsMobileProps {
   shopId: string;
@@ -27,12 +28,60 @@ export default function SecuritySettingsMobile({
 }: SecuritySettingsMobileProps) {
   const [showChangePinModal, setShowChangePinModal] = useState(false);
   const [showAuthDeviceModal, setShowAuthDeviceModal] = useState(false);
+  const [showAllDevices, setShowAllDevices] = useState(false);
   const [trustedDevices, setTrustedDevices] = useState(initialTrustedDevices);
   const [showLocationSetup, setShowLocationSetup] = useState(false);
   const [currentLatitude, setCurrentLatitude] = useState(latitude);
   const [currentLongitude, setCurrentLongitude] = useState(longitude);
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationMessage, setLocationMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const loadTrustedDevices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('trusted_devices')
+        .select('*')
+        .eq('shop_id', shopId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTrustedDevices(data || []);
+    } catch (error) {
+      console.error('Error loading trusted devices:', error);
+    }
+  };
+
+  const handleRevokeDevice = async (deviceId: string) => {
+    const confirmed = confirm(
+      'Revoke access for this device?\n\n' +
+      'Staff will no longer be able to clock in from this device without GPS verification.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const result = await revokeDevice(shopId, deviceId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to revoke device');
+      }
+
+      setLocationMessage({ type: 'success', text: '✓ Device access revoked' });
+      setTimeout(() => setLocationMessage(null), 3000);
+      await loadTrustedDevices();
+    } catch (error: any) {
+      setLocationMessage({ type: 'error', text: error.message || 'Failed to revoke device' });
+      setTimeout(() => setLocationMessage(null), 3000);
+    }
+  };
+
+  // Load trusted devices on mount
+  useEffect(() => {
+    if (shopId) {
+      loadTrustedDevices();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopId]);
 
   return (
     <div className="md:hidden bg-[#f7f8fa] min-h-screen">
@@ -77,29 +126,63 @@ export default function SecuritySettingsMobile({
               </div>
               <div className="text-left">
                 <div className="text-sm font-semibold text-gray-900">Authorize This Device</div>
-                <div className="text-xs text-gray-600">Skip PIN on this device</div>
+                <div className="text-xs text-gray-600">Allow clock-in without GPS tracking</div>
               </div>
             </div>
           </button>
           {trustedDevices.length > 0 && (
             <div className="space-y-2">
-              {trustedDevices.map((device) => (
-                <div key={device.id} className="bg-white rounded-2xl p-4 border border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                      <Smartphone className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-900">
-                        {device.device_name || 'Trusted Device'}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        Added {new Date(device.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
+              <div className="bg-white rounded-2xl p-4 border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-semibold text-gray-900">
+                    All Devices ({trustedDevices.filter(d => d.is_active).length} active)
                   </div>
+                  <button
+                    onClick={() => setShowAllDevices(!showAllDevices)}
+                    className="text-xs text-blue-600 font-medium"
+                  >
+                    {showAllDevices ? 'Hide' : 'View All'}
+                  </button>
                 </div>
-              ))}
+                {showAllDevices && (
+                  <div className="space-y-2 mt-3">
+                    {trustedDevices.map((device) => (
+                      <div key={device.id} className={`bg-gray-50 rounded-xl p-3 border ${!device.is_active ? 'border-gray-200 opacity-60' : 'border-gray-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${device.is_active ? 'bg-green-100' : 'bg-gray-100'}`}>
+                              <Smartphone className={`w-4 h-4 ${device.is_active ? 'text-green-600' : 'text-gray-600'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold text-gray-900">
+                                {device.device_name || 'Trusted Device'}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {device.is_active ? (
+                                  <span className="text-green-600">Active</span>
+                                ) : (
+                                  <span className="text-gray-500">Revoked</span>
+                                )}
+                                {' • '}
+                                {new Date(device.authorized_at || device.created_at).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          {device.is_active && (
+                            <button
+                              onClick={() => handleRevokeDevice(device.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                              title="Revoke access"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -167,11 +250,13 @@ export default function SecuritySettingsMobile({
       )}
       {showAuthDeviceModal && (
         <AuthorizeDeviceModal
+          isOpen={showAuthDeviceModal}
           shopId={shopId}
           onClose={() => setShowAuthDeviceModal(false)}
           onSuccess={() => {
             setShowAuthDeviceModal(false);
             // Reload trusted devices
+            loadTrustedDevices();
             if (onUpdateLocation) onUpdateLocation();
           }}
         />

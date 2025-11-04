@@ -93,7 +93,8 @@ export default function MobileSettings({
         longitude={longitude}
         onBack={handleBack}
         onSave={(data) => {
-          console.log('Settings saved:', data);
+          // SECURITY: Don't log settings data
+          console.log('Settings saved successfully (data hidden for security)');
         }}
       />
     );
@@ -112,7 +113,8 @@ export default function MobileSettings({
         rewardDescription={rewardDescription}
         onBack={handleBack}
         onSave={(data) => {
-          console.log('Loyalty settings saved:', data);
+          // SECURITY: Don't log settings data
+          console.log('Loyalty settings saved successfully (data hidden for security)');
         }}
       />
     );
@@ -128,7 +130,8 @@ export default function MobileSettings({
         gpsEnabled={gpsEnabled}
         onBack={handleBack}
         onSave={(data) => {
-          console.log('Clock-in settings saved:', data);
+          // SECURITY: Don't log settings data
+          console.log('Clock-in settings saved successfully (data hidden for security)');
         }}
       />
     );
