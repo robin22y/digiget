@@ -3,6 +3,7 @@ import { Lock, X, AlertCircle, RefreshCw } from 'lucide-react';
 import { validateOwnerPIN, isWeakOwnerPIN, getWeakPINReason, isLockedOut, recordFailedAttempt, recordSuccessfulAttempt, getLockoutTimeRemaining, getRemainingAttempts } from '../utils/pinValidation';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { getDeviceFingerprint, storeDeviceFingerprint } from '../lib/deviceFingerprint';
 
 interface OwnerPinModalProps {
   shopId: string;
@@ -90,39 +91,43 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
         return;
       }
 
-      // Get shop owner PIN from database
-      const { data: shopData, error: shopError } = await supabase
-        .from('shops')
-        .select('owner_pin')
-        .eq('id', shopId)
-        .single();
-
-      if (shopError || !shopData) {
-        setError('Failed to verify PIN. Please try again.');
-        setLoading(false);
-        return;
+      // Get device fingerprint (generate if not exists)
+      let deviceFingerprint = getDeviceFingerprint();
+      if (!deviceFingerprint) {
+        deviceFingerprint = storeDeviceFingerprint();
       }
 
-      // Check if PIN is not set (null or default)
-      if (!shopData.owner_pin || shopData.owner_pin === '000000') {
-        // PIN not set - redirect to create PIN flow
-        // We'll handle this by showing an error and letting the reset flow handle it
-        setError('PIN not set. Please use "Reset with password" below to create your PIN.');
-        setPin('');
-        setLoading(false);
-        return;
-      }
+      // Call server-side PIN verification endpoint
+      const res = await fetch("/.netlify/functions/verify-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include', // Important: include cookies
+        body: JSON.stringify({ shopId, pin, device: deviceFingerprint }),
+      });
 
-      // Verify PIN
-      if (shopData.owner_pin !== pin) {
-        const remaining = recordFailedAttempt(identifier);
-        setAttemptsRemaining(remaining);
+      setLoading(false);
 
-        if (remaining === 0) {
-          const lockoutTime = getLockoutTimeRemaining(identifier);
-          setError(`Too many failed attempts. Locked out for ${lockoutTime} minute${lockoutTime !== 1 ? 's' : ''}.`);
+      if (res.ok) {
+        // Success - record successful attempt and rely on HttpOnly cookie
+        recordSuccessfulAttempt(identifier);
+        onSuccess(); // HttpOnly cookie set by server, no sessionStorage needed
+      } else {
+        // Handle different error cases
+        const data = await res.json().catch(() => ({}));
+        const errorMessage = data.error || 'Invalid PIN';
+
+        if (res.status === 400 && errorMessage.includes('PIN not set')) {
+          setError('PIN not set. Please use "Reset with password" below to create your PIN.');
         } else {
-          setError(`Incorrect PIN. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`);
+          const remaining = recordFailedAttempt(identifier);
+          setAttemptsRemaining(remaining);
+
+          if (remaining === 0) {
+            const lockoutTime = getLockoutTimeRemaining(identifier);
+            setError(`Too many failed attempts. Locked out for ${lockoutTime} minute${lockoutTime !== 1 ? 's' : ''}.`);
+          } else {
+            setError(`Incorrect PIN. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`);
+          }
         }
 
         setPin('');
@@ -130,16 +135,7 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
         if (pinInputRefs.current[0]) {
           pinInputRefs.current[0]?.focus();
         }
-        setLoading(false);
-        return;
       }
-
-      // Success - record and unlock
-      recordSuccessfulAttempt(identifier);
-      sessionStorage.setItem(`owner_unlocked_${shopId}`, 'true');
-      sessionStorage.setItem(`owner_unlock_time_${shopId}`, Date.now().toString());
-
-      onSuccess();
     } catch (err: any) {
       console.error('PIN verification error:', err);
       setError('Failed to verify PIN. Please try again.');
@@ -331,19 +327,33 @@ export default function OwnerPinModal({ shopId, onSuccess, onCancel }: OwnerPinM
         console.log('PIN reset successfully (all data hidden for security)');
       }
 
-      // Success - clear reset flow and unlock
+      // Success - clear reset flow
       recordSuccessfulAttempt(identifier);
-      sessionStorage.setItem(`owner_unlocked_${shopId}`, 'true');
-      sessionStorage.setItem(`owner_unlock_time_${shopId}`, Date.now().toString());
 
-      setShowResetFlow(false);
-      setResetStep('password');
-      setNewPin('');
-      setConfirmNewPin('');
-      setPassword('');
+      // After PIN reset, verify with server to get cookie
+      let deviceFingerprint = getDeviceFingerprint();
+      if (!deviceFingerprint) {
+        deviceFingerprint = storeDeviceFingerprint();
+      }
+      const res = await fetch("/.netlify/functions/verify-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify({ shopId, pin: newPin, device: deviceFingerprint }),
+      });
 
-      // Show success and unlock
-      onSuccess();
+      if (res.ok) {
+        setShowResetFlow(false);
+        setResetStep('password');
+        setNewPin('');
+        setConfirmNewPin('');
+        setPassword('');
+
+        // Show success and unlock (HttpOnly cookie set by server)
+        onSuccess();
+      } else {
+        throw new Error('Failed to verify new PIN after reset');
+      }
     } catch (err: any) {
       console.error('Set new PIN error:', err);
       const errorMessage = err?.message || err?.error_description || 'Failed to set new PIN. Please try again.';

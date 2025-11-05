@@ -96,10 +96,13 @@ export default function SettingsPage() {
     setShowPinModal(false);
   };
 
-  const handleLockSettings = () => {
+  const handleLockSettings = async () => {
     if (shopId) {
-      sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-      sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+      // Clear access by calling clear endpoint (server will clear cookie)
+      await fetch(`/.netlify/functions/clear-cookie?shopId=${encodeURIComponent(shopId)}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
       setIsUnlocked(false);
       setShowPinModal(true);
     }
@@ -161,11 +164,7 @@ export default function SettingsPage() {
         return;
       }
 
-      // SECURITY: Always require PIN verification - no session storage bypass
-      // Clear any existing unlock status to force fresh PIN entry
-      sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-      sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
-      
+      // SECURITY: Always require PIN verification - check server-side cookie
       // Always require PIN entry for settings access
       setIsUnlocked(false);
       setShowPinModal(true);
@@ -2059,8 +2058,7 @@ export default function SettingsPage() {
             setMessage({ type: 'success', text: shop.owner_pin === '000000' || !shop.owner_pin ? 'PIN created successfully!' : 'PIN changed successfully!' });
             setTimeout(() => setMessage(null), 3000);
             // Unlock settings after creating PIN
-            sessionStorage.setItem(`owner_unlocked_${shop.id}`, 'true');
-            sessionStorage.setItem(`owner_unlock_time_${shop.id}`, Date.now().toString());
+            // HttpOnly cookie set by server in OwnerPinModal - no sessionStorage needed
             setIsUnlocked(true);
             // Reload shop to get updated PIN
             loadShop();

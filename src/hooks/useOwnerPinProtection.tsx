@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OwnerPinModal from '../components/OwnerPinModal';
+import { hasOwnerAccess } from '../utils/ownerAccess';
 
 interface UseOwnerPinProtectionOptions {
   shopId: string | null;
@@ -27,10 +28,7 @@ export function useOwnerPinProtection({ shopId, onCancel }: UseOwnerPinProtectio
       return;
     }
 
-    const checkUnlockStatus = () => {
-      const unlocked = sessionStorage.getItem(`owner_unlocked_${shopId}`);
-      const unlockTime = sessionStorage.getItem(`owner_unlock_time_${shopId}`);
-
+    const checkUnlockStatus = async () => {
       // Security: Check if we're returning from an external page (shop portal, tablet, staff portal)
       // If so, require PIN again regardless of unlock status
       const referrer = document.referrer;
@@ -40,36 +38,26 @@ export function useOwnerPinProtection({ shopId, onCancel }: UseOwnerPinProtectio
         referrer.includes('/staff/')
       );
 
-      if (isReturningFromExternal && unlocked === 'true') {
-        // Clear unlock status when returning from external pages
-        sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-        sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+      if (isReturningFromExternal) {
+        // Always require PIN when returning from external pages
         setIsUnlocked(false);
         setShowPinModal(true);
         setChecking(false);
         return;
       }
 
-      if (unlocked === 'true' && unlockTime) {
-        // Check if unlock is still valid (30 minutes)
-        const timeSinceUnlock = Date.now() - parseInt(unlockTime, 10);
-        const UNLOCK_DURATION = 30 * 60 * 1000; // 30 minutes
-
-        if (timeSinceUnlock < UNLOCK_DURATION) {
-          setIsUnlocked(true);
-          setShowPinModal(false);
-          setChecking(false);
-          return;
-        } else {
-          // Unlock expired
-          sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-          sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
-        }
+      // Check server-side cookie for access
+      const hasAccess = await hasOwnerAccess(shopId);
+      
+      if (hasAccess) {
+        setIsUnlocked(true);
+        setShowPinModal(false);
+      } else {
+        // Not unlocked - show PIN modal
+        setIsUnlocked(false);
+        setShowPinModal(true);
       }
-
-      // Not unlocked or expired - show PIN modal
-      setIsUnlocked(false);
-      setShowPinModal(true);
+      
       setChecking(false);
     };
 
@@ -86,10 +74,13 @@ export function useOwnerPinProtection({ shopId, onCancel }: UseOwnerPinProtectio
     setShowPinModal(false);
   };
 
-  const handleLock = () => {
+  const handleLock = async () => {
     if (shopId) {
-      sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-      sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+      // Clear access by calling clear endpoint (server will clear cookie)
+      await fetch(`/.netlify/functions/clear-cookie?shopId=${encodeURIComponent(shopId)}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
       setIsUnlocked(false);
       setShowPinModal(true);
     }

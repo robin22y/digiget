@@ -59,27 +59,8 @@ export default function DashboardHome() {
   }, [shopId]);
 
   // Security: Clear owner PIN unlock when returning from external pages (shop portal, tablet)
-  // This ensures PIN is required again after navigating away
-  useEffect(() => {
-    if (shopId && routeLocation.pathname === `/dashboard/${shopId}`) {
-      // Check if we're returning from an external page by checking document referrer
-      // or by checking if the unlock was set recently (within last second)
-      const unlockTime = sessionStorage.getItem(`owner_unlock_time_${shopId}`);
-      if (unlockTime) {
-        const timeSinceUnlock = Date.now() - parseInt(unlockTime, 10);
-        // If unlock was set more than 5 seconds ago, we likely navigated away and back
-        // Clear it to force PIN re-entry
-        if (timeSinceUnlock > 5000) {
-          // Check if we came from shop or tablet pages
-          const referrer = document.referrer;
-          if (referrer && (referrer.includes('/shop/') || referrer.includes('/tablet/') || referrer.includes('/staff/'))) {
-            sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-            sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
-          }
-        }
-      }
-    }
-  }, [routeLocation.pathname, shopId]);
+  // This is now handled by useOwnerPinProtection hook which checks server-side cookies
+  // No sessionStorage needed - access is controlled by HttpOnly cookies
 
   const loadShopShortCode = async () => {
     try {
@@ -289,8 +270,7 @@ export default function DashboardHome() {
                               // Clear owner PIN unlock when navigating to shop portal
                               // This ensures PIN is required again when returning
                               if (shopId) {
-                                sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-                                sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+                                // Clear access via server (HttpOnly cookie) - handled by useOwnerPinProtection
                               }
                               if (shopShortCode) {
                                 navigate(`/shop/${shopShortCode}`);
@@ -316,8 +296,7 @@ export default function DashboardHome() {
                               // Clear owner PIN unlock when navigating to tablet portal
                               // This ensures PIN is required again when returning
                               if (shopId) {
-                                sessionStorage.removeItem(`owner_unlocked_${shopId}`);
-                                sessionStorage.removeItem(`owner_unlock_time_${shopId}`);
+                                // Clear access via server (HttpOnly cookie) - handled by useOwnerPinProtection
                               }
                               navigate(`/tablet/${shopId}`);
                             }}
