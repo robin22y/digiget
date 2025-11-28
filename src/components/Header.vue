@@ -1,8 +1,13 @@
 <template>
   <header class="header">
     <div class="brand-container" @click="handleSecretClick">
-      <h1 class="brand-name">Digiget</h1>
-      <span class="brand-subtitle">DID I GET EVERYTHING TODAY?</span>
+      <div class="brand-logo-wrapper">
+        <img src="/logo.svg" alt="Digiget Logo" class="brand-logo" />
+      </div>
+      <div class="brand-text">
+        <h1 class="brand-name">Digiget</h1>
+        <span class="brand-subtitle">DID I GET EVERYTHING TODAY?</span>
+      </div>
     </div>
 
     <div class="actions">
@@ -64,7 +69,20 @@ const handleSecretClick = () => {
 }
 
 .brand-container {
-  @apply flex flex-col justify-center cursor-default select-none;
+  @apply flex items-center gap-3 cursor-default select-none;
+}
+
+.brand-logo-wrapper {
+  @apply flex items-center justify-center;
+}
+
+.brand-logo {
+  @apply w-10 h-10;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+}
+
+.brand-text {
+  @apply flex flex-col justify-center;
 }
 
 .brand-name {
