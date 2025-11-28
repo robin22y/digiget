@@ -59,7 +59,7 @@
             <li><button @click="$emit('close')" class="text-blue-400 hover:underline">Home (Welcome Screen)</button></li>
             <li><span class="text-zinc-500">Checklist (Main App)</span></li>
             <li><span class="text-zinc-500">Add Custom Card (Modal)</span></li>
-            <li><span class="text-zinc-500">Admin Control Panel (Hidden)</span></li>
+            <!-- Admin Panel Hidden from Public Site Map -->
           </ul>
         </div>
 
