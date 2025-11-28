@@ -1,36 +1,50 @@
 <template>
   <header class="header">
-    <h1 class="brand-name">Digiget</h1>
-    <button 
-      class="settings-button"
-      @click="$emit('settings-click')"
-      aria-label="Settings"
+    <!-- Secret Trigger Area -->
+    <h1 
+      class="brand-name select-none" 
+      @click="handleSecretClick"
     >
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        fill="none" 
-        viewBox="0 0 24 24" 
-        stroke-width="1.5" 
-        stroke="currentColor"
-        class="settings-icon"
-      >
-        <path 
-          stroke-linecap="round" 
-          stroke-linejoin="round" 
-          d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.87l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.87l.214-1.281z" 
-        />
-        <path 
-          stroke-linecap="round" 
-          stroke-linejoin="round" 
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-        />
-      </svg>
+      Digiget
+    </h1>
+
+    <button 
+      class="add-button"
+      @click="$emit('add-click')"
+      aria-label="Add Card"
+    >
+      <Plus :size="24" />
     </button>
   </header>
 </template>
 
 <script setup>
-defineEmits(['settings-click'])
+import { ref } from 'vue'
+import { Plus } from 'lucide-vue-next'
+
+const emit = defineEmits(['add-click', 'admin-trigger'])
+
+// Secret Click Logic
+const clickCount = ref(0)
+const lastClickTime = ref(0)
+
+const handleSecretClick = () => {
+  const now = Date.now()
+  
+  // Reset if more than 1 second has passed since last click
+  if (now - lastClickTime.value > 1000) {
+    clickCount.value = 0
+  }
+  
+  lastClickTime.value = now
+  clickCount.value++
+  
+  // 5 Clicks to trigger
+  if (clickCount.value === 5) {
+    emit('admin-trigger')
+    clickCount.value = 0
+  }
+}
 </script>
 
 <style scoped>
@@ -39,18 +53,16 @@ defineEmits(['settings-click'])
 }
 
 .brand-name {
-  @apply text-2xl font-semibold text-zinc-100 tracking-tight;
+  @apply text-2xl font-semibold text-zinc-100 tracking-tight cursor-default;
 }
 
-.settings-button {
-  @apply p-2 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-colors;
-  border: none;
-  background: transparent;
+.add-button {
+  @apply p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-zinc-800;
+  min-height: 44px;
+  min-width: 44px;
   cursor: pointer;
-}
-
-.settings-icon {
-  @apply w-6 h-6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
-

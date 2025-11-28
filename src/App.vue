@@ -1,89 +1,160 @@
 <template>
   <div class="app-container">
-    <Header @settings-click="handleSettingsClick" />
-    <main class="main-content">
-      <div v-if="safetyChecks.length === 0" class="card-stack-container">
-        <ShiftComplete />
+    
+    <!-- 1. The New Home Page (Welcome Screen) -->
+    <Transition name="fade">
+      <WelcomeScreen 
+        v-if="showWelcome" 
+        @start="startApp" 
+        @open-info="openInfoPage"
+      />
+    </Transition>
+
+    <!-- 2. The Main App (Header + Checklist) -->
+    <template v-if="!showWelcome">
+      <Header v-if="!showAdminDashboard" @add-click="openAddModal" @admin-trigger="showAdminLogin = true" />
+      
+      <main v-if="!showAdminDashboard" class="main-content">
+        <div v-if="safetyChecks.length === 0" class="card-stack-container">
+          <ShiftComplete 
+            :completed-items="completedItems"
+            :skipped-items="skippedItems"
+            @reset="handleResetShift"
+          />
+        </div>
+        <div v-else class="card-stack-container">
+          <SwipeCard
+            v-for="(check, index) in safetyChecks"
+            :key="check.id"
+            :title="check.title"
+            :icon="check.icon"
+            :index="index"
+            :style="{ zIndex: safetyChecks.length - index }"
+            @swiped="handleSwipe(check.id, $event)"
+          />
+          <UndoButton 
+            :can-undo="undoHistory.length > 0" 
+            @undo="handleUndo" 
+          />
+        </div>
+      </main>
+
+      <AdminDashboard 
+        v-if="showAdminDashboard" 
+        @close="showAdminDashboard = false"
+      />
+
+      <div v-if="showAdminLogin" class="modal-backdrop" @click.self="showAdminLogin = false">
+        <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-xs w-full rounded-2xl">
+          <h3 class="text-lg font-bold text-white mb-4">Car Park Access</h3>
+          <input 
+            v-model="adminPasswordInput"
+            type="password" 
+            placeholder="Access Code"
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white mb-4 focus:outline-none focus:border-blue-500"
+            @keyup.enter="handleAdminLogin"
+            autoFocus
+          />
+          <div class="flex gap-2">
+            <button @click="showAdminLogin = false" class="flex-1 py-3 text-zinc-500 hover:text-white">Cancel</button>
+            <button @click="handleAdminLogin" class="flex-1 py-3 bg-white text-black font-bold rounded-xl">Enter</button>
+          </div>
+        </div>
       </div>
-      <div v-else class="card-stack-container">
-        <SwipeCard
-          v-for="(check, index) in safetyChecks"
-          :key="check.id"
-          :title="check.title"
-          :icon="check.icon"
-          :index="index"
-          :style="{ zIndex: safetyChecks.length - index }"
-          @swiped="handleSwipe(check.id, $event)"
-        />
-        <UndoButton 
-          :can-undo="undoHistory.length > 0" 
-          @undo="handleUndo" 
-        />
-      </div>
-    </main>
+
+      <AddCardModal 
+        v-if="showAddModal" 
+        @close="showAddModal = false"
+        @add="handleAddNewCard"
+      />
+    </template>
+
+    <!-- Info Pages Modal (Global) -->
+    <InfoPages 
+      v-if="currentInfoPage" 
+      :page="currentInfoPage" 
+      @close="currentInfoPage = null" 
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import Header from './components/Header.vue'
 import SwipeCard from './components/SwipeCard.vue'
 import ShiftComplete from './components/ShiftComplete.vue'
 import UndoButton from './components/UndoButton.vue'
-import { Key, CreditCard, Lock, FileX, Pen, Radio } from 'lucide-vue-next'
+import AddCardModal from './components/AddCardModal.vue'
+import AdminDashboard from './components/AdminDashboard.vue'
+import WelcomeScreen from './components/WelcomeScreen.vue'
+import InfoPages from './components/InfoPages.vue'
 import { logShiftComplete } from './firebase.js'
+import { 
+  Key, CreditCard, Lock, FileX, Pen, Radio, 
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer 
+} from 'lucide-vue-next'
 
-// Icon mapping for serialization
 const iconMap = {
-  Key,
-  CreditCard,
-  Lock,
-  FileX,
-  Pen,
-  Radio
+  Key, CreditCard, Lock, FileX, Pen, Radio,
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer
 }
 
-// Default safety checks with icon names for serialization
-const defaultSafetyChecks = [
-  {
-    id: 1,
-    title: 'Keys Returned',
-    iconName: 'Key',
-    icon: Key
-  },
-  {
-    id: 2,
-    title: 'ID Badge',
-    iconName: 'CreditCard',
-    icon: CreditCard
-  },
-  {
-    id: 3,
-    title: 'CDs Locked',
-    iconName: 'Lock',
-    icon: Lock
-  },
-  {
-    id: 4,
-    title: 'Handovers Destroyed',
-    iconName: 'FileX',
-    icon: FileX
-  },
-  {
-    id: 5,
-    title: 'Meds Signed',
-    iconName: 'Pen',
-    icon: Pen
-  },
-  {
-    id: 6,
-    title: 'Bleep/Pager Returned',
-    iconName: 'Radio',
-    icon: Radio
+const showAddModal = ref(false)
+const showAdminLogin = ref(false)
+const showAdminDashboard = ref(false)
+const adminPasswordInput = ref('')
+const showWelcome = ref(true)
+const currentInfoPage = ref(null) // 'privacy', 'terms', 'cookie', 'sitemap', 'faq'
+
+// --- App Flow (Persistent Visit Logic) ---
+const checkVisitHistory = () => {
+  // Check localStorage (persists forever unless cleared)
+  const hasVisited = localStorage.getItem('digiget-visited')
+  if (hasVisited) {
+    showWelcome.value = false
+  } else {
+    showWelcome.value = true
   }
+}
+
+const startApp = () => {
+  showWelcome.value = false
+  // Mark as visited so they don't see it again
+  localStorage.setItem('digiget-visited', 'true')
+}
+
+const openInfoPage = (pageName) => {
+  currentInfoPage.value = pageName
+}
+
+// --- Admin Logic ---
+const handleAdminLogin = () => {
+  if (adminPasswordInput.value === 'Rncdm@2025') {
+    showAdminDashboard.value = true
+    showAdminLogin.value = false
+    adminPasswordInput.value = ''
+  } else {
+    showAdminLogin.value = false
+    adminPasswordInput.value = ''
+  }
+}
+
+// --- Data Logic ---
+const getFreshChecks = () => [
+  { id: 1, title: 'Keys Returned', iconName: 'Key', icon: Key },
+  { id: 2, title: 'ID Badge', iconName: 'CreditCard', icon: CreditCard },
+  { id: 3, title: 'CDs Locked', iconName: 'Lock', icon: Lock },
+  { id: 4, title: 'Handovers Destroyed', iconName: 'FileX', icon: FileX },
+  { id: 5, title: 'Meds Signed', iconName: 'Pen', icon: Pen },
 ]
 
-// Helper to restore icon components from icon names
+const defaultChecks = ref([])
+const customChecks = ref([])
+const safetyChecks = ref([])
+const completedItems = ref([])
+const skippedItems = ref([])
+const undoHistory = ref([])
+
 const restoreIcons = (items) => {
   return items.map(item => ({
     ...item,
@@ -91,141 +162,130 @@ const restoreIcons = (items) => {
   }))
 }
 
-// Initialize from localStorage or use defaults
-const loadStateFromStorage = () => {
+const loadState = () => {
   try {
     const saved = localStorage.getItem('digiget-state')
     if (saved) {
       const state = JSON.parse(saved)
-      return {
-        safetyChecks: restoreIcons(state.safetyChecks || defaultSafetyChecks),
-        completedItems: restoreIcons(state.completedItems || []),
-        skippedItems: restoreIcons(state.skippedItems || []),
-        undoHistory: state.undoHistory ? state.undoHistory.map(item => ({
+      customChecks.value = restoreIcons(state.customChecks || [])
+      
+      if (state.safetyChecks) {
+        safetyChecks.value = restoreIcons(state.safetyChecks)
+      } else {
+        safetyChecks.value = [...getFreshChecks(), ...customChecks.value]
+      }
+      
+      completedItems.value = restoreIcons(state.completedItems || [])
+      skippedItems.value = restoreIcons(state.skippedItems || [])
+      undoHistory.value = state.undoHistory ? state.undoHistory.map(item => ({
           ...item,
           check: restoreIcons([item.check])[0]
         })) : []
-      }
+        
+    } else {
+      customChecks.value = []
+      safetyChecks.value = getFreshChecks()
     }
-  } catch (error) {
-    console.error('Error loading state from localStorage:', error)
-  }
-  return {
-    safetyChecks: [...defaultSafetyChecks],
-    completedItems: [],
-    skippedItems: [],
-    undoHistory: []
+  } catch (e) {
+    safetyChecks.value = getFreshChecks()
   }
 }
 
-// Initialize state
-const initialState = loadStateFromStorage()
-const safetyChecks = ref(initialState.safetyChecks)
-const completedItems = ref(initialState.completedItems)
-const skippedItems = ref(initialState.skippedItems)
-const undoHistory = ref(initialState.undoHistory)
+const saveState = () => {
+  const serialize = (items) => items.map(item => ({
+    ...item,
+    iconName: item.iconName || Object.keys(iconMap).find(key => iconMap[key] === item.icon) || 'Clipboard',
+    icon: undefined
+  }))
 
-// Save state to localStorage (serialize icons to icon names)
-const saveStateToStorage = () => {
-  try {
-    // Convert icon components to icon names for serialization
-    const serializeItems = (items) => {
-      return items.map(item => ({
-        ...item,
-        iconName: item.iconName || Object.keys(iconMap).find(key => iconMap[key] === item.icon) || null,
-        icon: undefined // Remove icon component for serialization
-      }))
-    }
-    
-    const state = {
-      safetyChecks: serializeItems(safetyChecks.value),
-      completedItems: serializeItems(completedItems.value),
-      skippedItems: serializeItems(skippedItems.value),
-      undoHistory: undoHistory.value.map(item => ({
-        ...item,
-        check: serializeItems([item.check])[0]
-      }))
-    }
-    localStorage.setItem('digiget-state', JSON.stringify(state))
-  } catch (error) {
-    console.error('Error saving state to localStorage:', error)
+  const state = {
+    customChecks: serialize(customChecks.value),
+    safetyChecks: serialize(safetyChecks.value),
+    completedItems: serialize(completedItems.value),
+    skippedItems: serialize(skippedItems.value),
+    undoHistory: undoHistory.value.map(item => ({
+      ...item,
+      check: serialize([item.check])[0]
+    }))
   }
+  localStorage.setItem('digiget-state', JSON.stringify(state))
 }
 
-// Watch for changes and save to localStorage
-watch([safetyChecks, completedItems, skippedItems, undoHistory], () => {
-  saveStateToStorage()
+// Init
+checkVisitHistory() // Check if user has visited before
+loadState()
+
+watch([safetyChecks, customChecks, completedItems, skippedItems, undoHistory], () => {
+  saveState()
 }, { deep: true })
 
-// Watch for shift completion
 watch(safetyChecks, async (newChecks) => {
   if (newChecks.length === 0 && (completedItems.value.length > 0 || skippedItems.value.length > 0)) {
-    // All cards have been swiped, log the shift
     try {
       const itemsChecked = completedItems.value.length
       const skippedTitles = skippedItems.value.map(item => item.title)
-      
       await logShiftComplete(itemsChecked, skippedTitles)
-      console.log('Shift completion logged successfully')
-    } catch (error) {
-      console.error('Error logging shift completion:', error)
-      // Note: Firestore will queue this write if offline and sync when online
-    }
+    } catch (e) { console.error(e) }
   }
 }, { deep: true })
 
 const handleSwipe = (checkId, direction) => {
-  // Find the swiped check
-  const swipedCheck = safetyChecks.value.find(check => check.id === checkId)
-  
-  if (swipedCheck) {
-    // Add to undo history before removing
-    undoHistory.value.push({
-      check: swipedCheck,
-      direction: direction,
-      originalIndex: safetyChecks.value.findIndex(c => c.id === checkId)
-    })
-    
-    if (direction === 'right') {
-      // Swiped right = DONE
-      completedItems.value.push(swipedCheck)
-    } else if (direction === 'left') {
-      // Swiped left = SKIP
-      skippedItems.value.push(swipedCheck)
-    }
-  }
-  
-  // Remove the swiped card from the stack
-  safetyChecks.value = safetyChecks.value.filter(check => check.id !== checkId)
-  
-  console.log(`Swiped ${direction}:`, checkId, swipedCheck?.title)
+  const swipedCheck = safetyChecks.value.find(c => c.id === checkId)
+  if (!swipedCheck) return
+
+  undoHistory.value.push({
+    check: swipedCheck,
+    direction,
+    originalIndex: safetyChecks.value.findIndex(c => c.id === checkId)
+  })
+
+  if (direction === 'right') completedItems.value.push(swipedCheck)
+  else skippedItems.value.push(swipedCheck)
+
+  safetyChecks.value = safetyChecks.value.filter(c => c.id !== checkId)
 }
 
 const handleUndo = () => {
   if (undoHistory.value.length === 0) return
-  
-  // Get the last swiped item
   const lastAction = undoHistory.value.pop()
   const { check, direction, originalIndex } = lastAction
-  
-  // Remove from completed/skipped items
-  if (direction === 'right') {
-    completedItems.value = completedItems.value.filter(item => item.id !== check.id)
-  } else if (direction === 'left') {
-    skippedItems.value = skippedItems.value.filter(item => item.id !== check.id)
-  }
-  
-  // Restore the card to the stack at its original position
-  // Insert at the original index or at the beginning if index is out of bounds
+
+  if (direction === 'right') completedItems.value = completedItems.value.filter(i => i.id !== check.id)
+  else skippedItems.value = skippedItems.value.filter(i => i.id !== check.id)
+
   const insertIndex = Math.min(originalIndex, safetyChecks.value.length)
   safetyChecks.value.splice(insertIndex, 0, check)
-  
-  console.log('Undo:', check.title)
 }
 
-const handleSettingsClick = () => {
-  console.log('Settings clicked')
-  // Settings logic will be added later
+const handleResetShift = () => {
+  if (confirm('Start a new shift checklist?')) {
+    safetyChecks.value = [...getFreshChecks(), ...customChecks.value]
+    completedItems.value = []
+    skippedItems.value = []
+    undoHistory.value = []
+    window.scrollTo(0, 0)
+  }
+}
+
+const openAddModal = () => {
+  if (customChecks.value.length >= 3) {
+    alert("You can only add up to 3 custom cards.")
+    return
+  }
+  showAddModal.value = true
+}
+
+const handleAddNewCard = ({ title, iconName, color }) => {
+  const newCard = {
+    id: Date.now(),
+    title: title,
+    iconName: iconName,
+    icon: iconMap[iconName],
+    color: color
+  }
+  customChecks.value.push(newCard)
+  safetyChecks.value.unshift(newCard)
+  showAddModal.value = false
 }
 </script>
 
@@ -239,7 +299,22 @@ const handleSettingsClick = () => {
 }
 
 .card-stack-container {
-  @apply relative w-full max-w-sm h-96 flex items-center justify-center;
+  @apply relative w-full max-w-sm h-full max-h-[600px] flex items-center justify-center;
   perspective: 1000px;
+}
+
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+}
+
+/* Transition for Home Page */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
