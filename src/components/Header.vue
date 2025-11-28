@@ -1,45 +1,56 @@
 <template>
   <header class="header">
-    <!-- Secret Trigger Area -->
-    <h1 
-      class="brand-name select-none" 
-      @click="handleSecretClick"
-    >
-      Digiget
-    </h1>
+    <div class="brand-container" @click="handleSecretClick">
+      <h1 class="brand-name">Digiget</h1>
+      <span class="brand-subtitle">DID I GET EVERYTHING TODAY?</span>
+    </div>
 
-    <button 
-      class="add-button"
-      @click="$emit('add-click')"
-      aria-label="Add Card"
-    >
-      <Plus :size="24" />
-    </button>
+    <div class="actions">
+      <!-- Install Icon (Only if installable) -->
+      <button 
+        v-if="canInstall"
+        class="action-button install-mini"
+        @click="$emit('install')"
+        aria-label="Install App"
+        title="Install App"
+      >
+        <Download :size="20" />
+      </button>
+
+      <button 
+        class="action-button add-btn"
+        @click="$emit('add-click')"
+        aria-label="Add Card"
+      >
+        <Plus :size="24" />
+      </button>
+    </div>
   </header>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { Plus } from 'lucide-vue-next'
+import { Plus, Download } from 'lucide-vue-next'
 
-const emit = defineEmits(['add-click', 'admin-trigger'])
+defineProps({
+  canInstall: {
+    type: Boolean,
+    default: false
+  }
+})
 
-// Secret Click Logic
+const emit = defineEmits(['add-click', 'admin-trigger', 'install'])
+
+// Secret Click Logic (5 clicks = Admin)
 const clickCount = ref(0)
 const lastClickTime = ref(0)
 
 const handleSecretClick = () => {
   const now = Date.now()
-  
-  // Reset if more than 1 second has passed since last click
-  if (now - lastClickTime.value > 1000) {
-    clickCount.value = 0
-  }
-  
+  if (now - lastClickTime.value > 1000) clickCount.value = 0
   lastClickTime.value = now
   clickCount.value++
   
-  // 5 Clicks to trigger
   if (clickCount.value === 5) {
     emit('admin-trigger')
     clickCount.value = 0
@@ -52,17 +63,28 @@ const handleSecretClick = () => {
   @apply flex items-center justify-between px-6 py-4 bg-zinc-950 border-b border-zinc-900;
 }
 
-.brand-name {
-  @apply text-2xl font-semibold text-zinc-100 tracking-tight cursor-default;
+.brand-container {
+  @apply flex flex-col justify-center cursor-default select-none;
 }
 
-.add-button {
-  @apply p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-zinc-800;
-  min-height: 44px;
-  min-width: 44px;
+.brand-name {
+  @apply text-2xl font-bold text-zinc-100 tracking-tight leading-none;
+}
+
+.brand-subtitle {
+  @apply text-[0.65rem] font-bold text-zinc-500 tracking-widest mt-1;
+}
+
+.actions {
+  @apply flex items-center gap-3;
+}
+
+.action-button {
+  @apply p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-zinc-800 flex items-center justify-center;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+
+.install-mini {
+  @apply text-blue-400 border-blue-900/30 bg-blue-900/10 hover:bg-blue-900/20;
 }
 </style>

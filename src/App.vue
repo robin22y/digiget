@@ -5,14 +5,22 @@
     <Transition name="fade">
       <WelcomeScreen 
         v-if="showWelcome" 
+        :can-install="!!deferredPrompt"
         @start="startApp" 
         @open-info="openInfoPage"
+        @install="handleInstall"
       />
     </Transition>
 
     <!-- 2. The Main App (Header + Checklist) -->
     <template v-if="!showWelcome">
-      <Header v-if="!showAdminDashboard" @add-click="openAddModal" @admin-trigger="showAdminLogin = true" />
+      <Header 
+        v-if="!showAdminDashboard" 
+        :can-install="!!deferredPrompt"
+        @add-click="openAddModal" 
+        @admin-trigger="showAdminLogin = true" 
+        @install="handleInstall"
+      />
       
       <main v-if="!showAdminDashboard" class="main-content">
         <div v-if="safetyChecks.length === 0" class="card-stack-container">
@@ -79,7 +87,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import Header from './components/Header.vue'
 import SwipeCard from './components/SwipeCard.vue'
 import ShiftComplete from './components/ShiftComplete.vue'
@@ -104,7 +112,25 @@ const showAdminLogin = ref(false)
 const showAdminDashboard = ref(false)
 const adminPasswordInput = ref('')
 const showWelcome = ref(true)
-const currentInfoPage = ref(null) // 'privacy', 'terms', 'cookie', 'sitemap', 'faq'
+const currentInfoPage = ref(null)
+const deferredPrompt = ref(null)
+
+// --- PWA Install Logic ---
+onMounted(() => {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    deferredPrompt.value = e
+  })
+})
+
+const handleInstall = async () => {
+  if (!deferredPrompt.value) return
+  deferredPrompt.value.prompt()
+  const { outcome } = await deferredPrompt.value.userChoice
+  if (outcome === 'accepted') {
+    deferredPrompt.value = null
+  }
+}
 
 // --- App Flow (Persistent Visit Logic) ---
 const checkVisitHistory = () => {

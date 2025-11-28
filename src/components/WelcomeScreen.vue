@@ -3,7 +3,7 @@
     <div class="scroll-wrapper">
       <div class="content-wrapper">
         
-        <!-- Hero Section -->
+        <!-- Logo / Brand -->
         <div class="logo-section">
           <div class="icon-pulse">
             <ShieldCheck :size="72" class="text-white drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" stroke-width="1.5" />
@@ -11,6 +11,7 @@
           <h1 class="app-title">Digiget</h1>
         </div>
 
+        <!-- The Tagline & Description -->
         <div class="text-center space-y-4">
           <h2 class="tagline-text">
             Did I Get Everything?
@@ -22,11 +23,23 @@
           </p>
         </div>
 
+        <!-- Install Button (Only visible if browser allows) -->
+        <button 
+          v-if="canInstall"
+          class="install-btn" 
+          @click="$emit('install')"
+        >
+          <Download :size="18" />
+          Install App
+        </button>
+
+        <!-- Call to Action -->
         <button class="start-btn" @click="$emit('start')">
           Start Shift Check
           <ArrowRight :size="20" />
         </button>
 
+        <!-- Informative Features -->
         <div class="features-grid">
           <div class="feature-item">
             <WifiOff :size="16" class="text-blue-400" />
@@ -42,95 +55,22 @@
           </div>
         </div>
 
-        <!-- Scroll Indicator -->
-        <div class="scroll-indicator animate-bounce text-zinc-600 mt-8">
-          <span class="text-xs uppercase tracking-widest mb-1 block text-center">Learn More</span>
-          <ArrowDown :size="20" class="mx-auto" />
-        </div>
-
-        <!-- New Content Sections -->
-        <div class="info-sections space-y-12 w-full max-w-md text-left mt-12 pb-12 border-t border-zinc-800/50 pt-12">
-          
-          <!-- Why Digiget Exists -->
-          <section>
-            <h3 class="section-title">Why Digiget Exists</h3>
-            <p class="section-text">
-              Every nurse knows the feeling. You're halfway home and suddenly panic: "Did I return my keys? Did I sign the controlled drugs? Did I complete handover?"
-            </p>
-            <p class="section-text mt-4">
-              Digiget was built to stop those 2am drives back to the hospital. It's a simple end-of-shift checklist that takes 30 seconds and gives you peace of mind. No sign-up. No data collection. Just swipe through your checks and go home.
-            </p>
-          </section>
-
-          <!-- How It Works -->
-          <section>
-            <h3 class="section-title">How It Works</h3>
-            <div class="steps-list space-y-4 mt-6">
-              <div class="step-row">
-                <div class="step-number">1</div>
-                <div>
-                  <h4 class="step-title">Open the App</h4>
-                  <p class="step-desc">No login required. Works offline. Instant access.</p>
-                </div>
-              </div>
-              <div class="step-row">
-                <div class="step-number">2</div>
-                <div>
-                  <h4 class="step-title">Swipe Through Checklist</h4>
-                  <p class="step-desc">Keys returned? Swipe right. Meds signed? Swipe right.</p>
-                </div>
-              </div>
-              <div class="step-row">
-                <div class="step-number">3</div>
-                <div>
-                  <h4 class="step-title">Leave Work Behind</h4>
-                  <p class="step-desc">Drive home knowing you didn't forget anything.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Who Uses It -->
-          <section>
-            <h3 class="section-title">Who Uses Digiget?</h3>
-            <ul class="user-list space-y-2 mt-4">
-              <li class="flex items-center gap-2">
-                <Check :size="16" class="text-blue-500" />
-                <span class="text-zinc-400 text-sm">Ward Nurses checking keys & meds</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <Check :size="16" class="text-blue-500" />
-                <span class="text-zinc-400 text-sm">Theatre Nurses confirming counts</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <Check :size="16" class="text-blue-500" />
-                <span class="text-zinc-400 text-sm">Community Nurses completing notes</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <Check :size="16" class="text-blue-500" />
-                <span class="text-zinc-400 text-sm">Agency Staff working across trusts</span>
-              </li>
-            </ul>
-          </section>
-
-          <!-- FAQ Snippet -->
-          <section>
-            <h3 class="section-title">Common Questions</h3>
-            <div class="space-y-4 mt-4">
-              <div>
-                <h4 class="font-bold text-zinc-200 text-sm">Do I need an account?</h4>
-                <p class="text-zinc-500 text-xs mt-1">No. Digiget works instantly without sign-up.</p>
-              </div>
-              <div>
-                <h4 class="font-bold text-zinc-200 text-sm">Is my data private?</h4>
-                <p class="text-zinc-500 text-xs mt-1">Yes. Everything stays on your device. We don't collect personal info.</p>
-              </div>
-            </div>
-            <button @click="$emit('open-info', 'faq')" class="text-blue-400 text-xs font-bold mt-4 hover:underline">
-              Read more FAQs &rarr;
-            </button>
-          </section>
-
+        <!-- How it Works Mini-Section -->
+        <div class="how-it-works">
+          <div class="step">
+            <div class="step-icon"><Layers :size="20" /></div>
+            <span>Swipe Cards</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step">
+            <div class="step-icon"><CheckCircle2 :size="20" /></div>
+            <span>Confirm</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step">
+            <div class="step-icon"><Coffee :size="20" /></div>
+            <span>Relax</span>
+          </div>
         </div>
 
       </div>
@@ -155,9 +95,16 @@
 </template>
 
 <script setup>
-import { ShieldCheck, WifiOff, Lock, Zap, ArrowRight, ArrowDown, Check } from 'lucide-vue-next'
+import { ShieldCheck, WifiOff, Lock, Zap, ArrowRight, Layers, CheckCircle2, Coffee, Download } from 'lucide-vue-next'
 
-defineEmits(['start', 'open-info'])
+defineProps({
+  canInstall: {
+    type: Boolean,
+    default: false
+  }
+})
+
+defineEmits(['start', 'open-info', 'install'])
 </script>
 
 <style scoped>
@@ -168,11 +115,12 @@ defineEmits(['start', 'open-info'])
 
 .scroll-wrapper {
   @apply h-full w-full overflow-y-auto flex flex-col items-center;
-  scroll-behavior: smooth;
+  /* Ensure footer sits at bottom if content is short */
+  min-height: 100vh; 
 }
 
 .content-wrapper {
-  @apply flex-1 flex flex-col items-center justify-start gap-8 max-w-md w-full p-6 pt-12;
+  @apply flex-1 flex flex-col items-center justify-center gap-8 max-w-sm w-full p-6 pt-12;
 }
 
 /* Logo Animation */
@@ -225,7 +173,14 @@ defineEmits(['start', 'open-info'])
   @apply flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-400;
 }
 
-/* CTA Button */
+/* CTA Buttons */
+.install-btn {
+  @apply w-full max-w-xs bg-zinc-800 text-zinc-300 font-bold text-sm py-3 rounded-xl border border-zinc-700
+         hover:bg-zinc-700 hover:text-white transition-all flex items-center justify-center gap-2 mb-2;
+  opacity: 0;
+  animation: slideUpFade 0.8s ease-out forwards 0.8s;
+}
+
 .start-btn {
   @apply w-full bg-white text-zinc-950 font-bold text-lg py-4 rounded-2xl shadow-xl shadow-blue-900/10
          hover:bg-zinc-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300
@@ -234,34 +189,33 @@ defineEmits(['start', 'open-info'])
   animation: slideUpFade 0.8s ease-out forwards 1.0s;
 }
 
-/* Content Sections */
-.section-title {
-  @apply text-xl font-bold text-white mb-3;
+/* How It Works */
+.how-it-works {
+  @apply flex items-center justify-between w-full max-w-[280px] mt-2 opacity-0;
+  animation: fadeIn 0.8s ease-out forwards 1.6s;
 }
 
-.section-text {
-  @apply text-zinc-400 text-sm leading-relaxed;
+.step {
+  @apply flex flex-col items-center gap-2;
 }
 
-.step-row {
-  @apply flex gap-4 items-start;
+.step-icon {
+  @apply w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400;
 }
 
-.step-number {
-  @apply w-8 h-8 rounded-full bg-zinc-800 text-zinc-300 font-bold flex items-center justify-center flex-shrink-0 text-sm;
+.step span {
+  @apply text-[10px] font-bold uppercase text-zinc-600 tracking-wide;
 }
 
-.step-title {
-  @apply text-zinc-200 font-bold text-sm;
-}
-
-.step-desc {
-  @apply text-zinc-500 text-xs mt-1;
+.step-line {
+  @apply flex-1 h-[1px] bg-zinc-800 -mt-5 mx-2;
 }
 
 /* Footer */
 .legal-footer {
   @apply w-full py-8 flex flex-col items-center gap-3 mt-auto border-t border-zinc-900/50 bg-zinc-950/50 backdrop-blur-sm;
+  opacity: 0;
+  animation: fadeIn 0.8s ease-out forwards 1.8s;
 }
 
 .footer-links {
