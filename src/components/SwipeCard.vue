@@ -192,16 +192,16 @@ const handleEnd = (e) => {
 
 <style scoped>
 .swipe-card {
-  @apply absolute w-full max-w-sm bg-zinc-900 rounded-3xl p-1 shadow-2xl;
+  @apply absolute w-full max-w-sm rounded-3xl p-1 shadow-2xl;
   height: 420px; /* Fixed height for consistency */
   touch-action: pan-y; /* Allow vertical scroll, handle horizontal in JS */
   user-select: none;
   cursor: grab;
   top: 50%;
   left: 50%;
-  /* Gradient border effect */
-  background: linear-gradient(145deg, #27272a, #09090b);
-  border: 1px solid #27272a;
+  /* Gradient border effect & background */
+  background: linear-gradient(145deg, #3f3f46, #18181b);
+  border: 1px solid #3f3f46;
 }
 
 .swipe-card:active {
@@ -209,13 +209,14 @@ const handleEnd = (e) => {
 }
 
 .card-inner {
-  @apply h-full w-full bg-zinc-900/50 rounded-[20px] flex flex-col items-center justify-between p-8 relative overflow-hidden;
+  @apply h-full w-full bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[20px] flex flex-col items-center justify-between p-8 relative overflow-hidden;
   /* Inner shadow for depth */
   box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
 }
 
 .icon-container {
-  @apply w-32 h-32 rounded-full bg-zinc-800/80 flex items-center justify-center mt-4 mb-6 shadow-lg;
+  /* Subtle gradient for icon background */
+  @apply w-32 h-32 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center mt-4 mb-6 shadow-lg;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -229,7 +230,7 @@ const handleEnd = (e) => {
 }
 
 .card-title {
-  @apply text-3xl font-bold text-zinc-100 text-center tracking-tight;
+  @apply text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400 text-center tracking-tight;
 }
 
 .card-instruction {

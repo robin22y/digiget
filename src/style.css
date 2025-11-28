@@ -1,19 +1,79 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
+
 @tailwind components;
+
 @tailwind utilities;
 
+
+
 @layer base {
+
   body {
+
     @apply bg-zinc-950 text-zinc-100 font-sans;
+
     margin: 0;
+
     padding: 0;
+
     overflow: hidden;
+
     height: 100vh;
+
     width: 100vw;
+
+    /* Subtle global gradient background */
+
+    background: radial-gradient(circle at top left, #1f1f23, #09090b);
+
   }
 
+
+
   #app {
+
     @apply h-screen w-screen overflow-hidden;
+
   }
+
+}
+
+
+
+@layer utilities {
+
+  .bg-gradient-primary {
+
+    @apply bg-gradient-to-br from-blue-600 to-blue-800;
+
+  }
+
+  
+
+  .bg-gradient-success {
+
+    @apply bg-gradient-to-br from-green-500 to-green-700;
+
+  }
+
+
+
+  .text-gradient-primary {
+
+    @apply text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-blue-600;
+
+  }
+
+  
+
+  /* Add a subtle glow effect */
+
+  .glow-blue {
+
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+
+  }
+
 }
