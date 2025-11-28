@@ -11,15 +11,16 @@
     </div>
 
     <div class="actions">
-      <!-- Install Icon (Only if installable) -->
+      <!-- Install Icon -->
       <button 
-        v-if="canInstall"
         class="action-button install-mini"
+        :class="{ 'install-available': canInstall }"
         @click="$emit('install')"
         aria-label="Install App"
-        title="Install App"
+        :title="canInstall ? 'Install App' : 'Install not available'"
+        :disabled="!canInstall"
       >
-        <Download :size="20" />
+        <Download :size="18" />
       </button>
 
       <button 
@@ -100,9 +101,19 @@ const handleSecretClick = () => {
 .action-button {
   @apply p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border border-zinc-800 flex items-center justify-center;
   cursor: pointer;
+  min-width: 40px;
+  min-height: 40px;
 }
 
 .install-mini {
-  @apply text-blue-400 border-blue-900/30 bg-blue-900/10 hover:bg-blue-900/20;
+  @apply text-zinc-500 border-zinc-800 bg-zinc-900;
+}
+
+.install-mini.install-available {
+  @apply text-blue-400 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/50;
+}
+
+.install-mini:disabled {
+  @apply opacity-50 cursor-not-allowed;
 }
 </style>
