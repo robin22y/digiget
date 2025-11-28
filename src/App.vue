@@ -47,6 +47,21 @@
         </div>
       </main>
 
+      <!-- Footer -->
+      <footer v-if="!showAdminDashboard" class="app-footer">
+        <div class="footer-links">
+          <button class="footer-link" @click="openInfoPage('privacy')">Privacy</button>
+          <span class="dot">•</span>
+          <button class="footer-link" @click="openInfoPage('terms')">Terms</button>
+          <span class="dot">•</span>
+          <button class="footer-link" @click="openInfoPage('cookie')">Cookies</button>
+          <span class="dot">•</span>
+          <button class="footer-link" @click="openInfoPage('sitemap')">Site Map</button>
+          <span class="dot">•</span>
+          <button class="footer-link" @click="openInfoPage('faq')">FAQ</button>
+        </div>
+      </footer>
+
       <AdminDashboard 
         v-if="showAdminDashboard" 
         @close="showAdminDashboard = false"
@@ -331,6 +346,23 @@ const handleAddNewCard = ({ title, iconName, color }) => {
 
 .modal-backdrop {
   @apply fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+}
+
+/* Footer */
+.app-footer {
+  @apply w-full py-3 px-4 border-t border-zinc-900/50 bg-zinc-950/50 backdrop-blur-sm shrink-0;
+}
+
+.footer-links {
+  @apply flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-[10px] text-zinc-600;
+}
+
+.footer-link {
+  @apply hover:text-zinc-400 transition-colors cursor-pointer;
+}
+
+.dot {
+  @apply text-zinc-800;
 }
 
 /* Transition for Home Page */
