@@ -213,20 +213,39 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     // Use Firestore's offline persistence - the write will succeed immediately
     // and sync in the background. Don't wait for server confirmation.
     console.log('📤 Queuing write to Firestore (offline persistence enabled)...')
+    console.log('📤 Collection path:', 'shift_logs')
+    console.log('📤 Data being saved:', { ...shiftLog, timestamp: '[serverTimestamp]' })
     
     // Fire-and-forget: Don't await - let it run in background
     // This prevents UI blocking even if network is slow
-    addDoc(collection(db, 'shift_logs'), shiftLog)
+    const savePromise = addDoc(collection(db, 'shift_logs'), shiftLog)
+    
+    console.log('📤 addDoc promise created, setting up handlers...')
+    
+    savePromise
       .then((docRef) => {
         console.log('✅ Shift log queued for sync. Document ID:', docRef.id)
+        console.log('✅ Document path:', docRef.path)
         console.log('✅ Document will sync to server when network is available')
       })
       .catch((error) => {
         console.error('❌ Error saving shift log (background):', error)
-        if (error.code === 'permission-denied') {
+        console.error('Error code:', error.code)
+        console.error('Error message:', error.message)
+        if (error.code === 'permission-denied' || error.code === 'permissions-denied') {
           console.error('🔒 PERMISSION DENIED: Check Firestore security rules!')
+          console.error('Current user ID:', auth.currentUser?.uid)
+        }
+        if (error.code === 'unavailable') {
+          console.warn('⚠️ Network unavailable - data will be queued for offline sync')
         }
       })
+    
+    // Add a timeout to detect if promise never resolves
+    setTimeout(() => {
+      console.warn('⏱️ 5 seconds passed - checking if save completed...')
+      // The promise handlers above will log if it completes
+    }, 5000)
     
     // Return immediately without waiting
     // The save happens in background via offline persistence
