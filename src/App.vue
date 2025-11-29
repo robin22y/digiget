@@ -16,7 +16,6 @@
     <template v-if="!showWelcome">
       <Header 
         v-if="!showAdminDashboard" 
-        :current-shift="currentShift"
         @add-click="openAddModal" 
         @admin-trigger="showAdminLogin = true" 
         @manage-cards="showCardManager = true"
@@ -719,7 +718,8 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 }
 
 .main-content {
-  @apply flex-1 flex flex-col items-center justify-center p-6 overflow-hidden;
+  @apply flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto;
+  min-height: 0;
 }
 
 .shift-selector-wrapper {
@@ -731,8 +731,10 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 }
 
 .card-stack-container {
-  @apply relative w-full max-w-sm h-full max-h-[600px] flex items-center justify-center;
+  @apply relative w-full max-w-sm flex items-center justify-center;
   perspective: 1000px;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .modal-backdrop {
@@ -758,7 +760,7 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 
 /* Footer */
 .app-footer {
-  @apply w-full py-3 px-4 border-t border-zinc-900/50 bg-zinc-950/50 backdrop-blur-sm shrink-0;
+  @apply w-full py-3 px-4 border-t border-zinc-900/50 bg-zinc-950/50 backdrop-blur-sm shrink-0 relative z-20;
 }
 
 .footer-links {

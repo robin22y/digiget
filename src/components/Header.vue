@@ -6,12 +6,7 @@
       </div>
       <div class="brand-text">
         <h1 class="brand-name">Digiget</h1>
-        <div class="flex items-center gap-2">
-          <span class="brand-subtitle">DID I GET EVERYTHING?</span>
-          <span v-if="currentShift" class="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-blue-400 uppercase tracking-wider">
-            {{ currentShift }}
-          </span>
-        </div>
+        <span class="brand-subtitle">DID I GET EVERYTHING?</span>
       </div>
     </div>
 
@@ -49,10 +44,6 @@
 <script setup>
 import { ref } from 'vue'
 import { Plus, Settings, RotateCcw } from 'lucide-vue-next'
-
-defineProps({
-  currentShift: String
-})
 
 const emit = defineEmits(['add-click', 'admin-trigger', 'manage-cards', 'reset-day'])
 
