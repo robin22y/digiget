@@ -421,8 +421,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe } from 'lucide-vue-next'
-import { db } from '../firebase'
-import { collection, query, orderBy, onSnapshot, limit, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { supabase } from '../supabase'
 
 const emit = defineEmits(['close'])
 
@@ -450,13 +449,13 @@ const metrics = ref({
 const loadingMetrics = ref(true)
 
 // Logs Data (used for metrics calculation only, not displayed)
-let logsUnsubscribe = null
+let logsChannel = null
 
 // Ads Data
 const ads = ref([])
 const loadingAds = ref(true)
 const isSavingAd = ref(false)
-let adsUnsubscribe = null
+let adsChannel = null
 
 // New Ad Form State
 const newAd = ref({
@@ -663,70 +662,144 @@ const calculateMetrics = (allLogs) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 1. Fetch All Logs for Metrics (fetch more for accurate metrics)
   // Note: Firestore has a limit of fetching documents, but this should work for most cases
   // For very large datasets, consider pagination or Cloud Functions
-  const allLogsQuery = query(
-    collection(db, "shift_logs"),
-    orderBy("timestamp", "desc"),
-    limit(1000) // Fetch up to 1000 most recent logs for metrics
-  )
-
-  logsUnsubscribe = onSnapshot(allLogsQuery, (snapshot) => {
-    const allLogs = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
-    
-    // Calculate metrics from all fetched logs
-    metrics.value = calculateMetrics(allLogs)
+  // 1. Fetch Shift Logs for Metrics
+  if (!supabase) {
+    console.error("Supabase not available")
     loadingMetrics.value = false
-  }, (error) => {
-    console.error("Logs Access Error:", error)
-    loadingMetrics.value = false
-  })
-
-  // 2. Fetch Ads
-  // Try with orderBy first, fallback to simple query if index missing
-  const adsQuery = query(
-    collection(db, "ads"),
-    orderBy("createdAt", "desc")
-  )
-
-  adsUnsubscribe = onSnapshot(adsQuery, (snapshot) => {
-    ads.value = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
     loadingAds.value = false
-  }, (error) => {
-    console.error("Ads Access Error (likely missing index):", error)
-    // Try fallback query without orderBy
-    const fallbackQuery = query(collection(db, "ads"))
-    if (adsUnsubscribe) adsUnsubscribe() // Clean up previous subscription
-    adsUnsubscribe = onSnapshot(fallbackQuery, (snapshot) => {
-      ads.value = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+    return
+  }
+
+  try {
+    // Fetch logs (up to 1000 most recent)
+    const { data: allLogs, error: logsError } = await supabase
+      .from('shift_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1000)
+
+    if (logsError) {
+      console.error("Logs Access Error:", logsError)
+      loadingMetrics.value = false
+    } else {
+      // Convert Supabase format to expected format for calculateMetrics
+      const convertedLogs = (allLogs || []).map(log => ({
+        id: log.id,
+        userId: log.user_id,
+        itemsChecked: log.items_checked,
+        skippedItems: log.skipped_items || [],
+        shiftType: log.shift_type,
+        location: log.location,
+        timestamp: log.created_at ? { seconds: Math.floor(new Date(log.created_at).getTime() / 1000) } : null
       }))
-      // Sort by createdAt manually
-      ads.value.sort((a, b) => {
-        const aTime = a.createdAt?.seconds || a.createdAt?.toMillis?.() || 0
-        const bTime = b.createdAt?.seconds || b.createdAt?.toMillis?.() || 0
-        return bTime - aTime
-      })
+      
+      // Calculate metrics from all fetched logs
+      metrics.value = calculateMetrics(convertedLogs)
+      loadingMetrics.value = false
+
+      // Set up real-time subscription for logs
+      logsChannel = supabase
+        .channel('shift_logs_changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'shift_logs' },
+          async () => {
+            // Refetch logs when changes occur
+            const { data: updatedLogs } = await supabase
+              .from('shift_logs')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(1000)
+            
+            if (updatedLogs) {
+              const converted = updatedLogs.map(log => ({
+                id: log.id,
+                userId: log.user_id,
+                itemsChecked: log.items_checked,
+                skippedItems: log.skipped_items || [],
+                shiftType: log.shift_type,
+                location: log.location,
+                timestamp: log.created_at ? { seconds: Math.floor(new Date(log.created_at).getTime() / 1000) } : null
+              }))
+              metrics.value = calculateMetrics(converted)
+            }
+          }
+        )
+        .subscribe()
+    }
+
+    // 2. Fetch Ads
+    const { data: adsData, error: adsError } = await supabase
+      .from('ads')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (adsError) {
+      console.error("Ads Access Error:", adsError)
       loadingAds.value = false
-    }, (fallbackError) => {
-      console.error("Fallback query also failed:", fallbackError)
+    } else {
+      // Convert snake_case to camelCase for compatibility
+      ads.value = (adsData || []).map(ad => ({
+        id: ad.id,
+        type: ad.type,
+        content: ad.content,
+        link: ad.link,
+        imageUrl: ad.image_url || ad.imageUrl,
+        isActive: ad.is_active !== undefined ? ad.is_active : ad.isActive,
+        targetCity: ad.target_city || ad.targetCity,
+        targetRegion: ad.target_region || ad.targetRegion,
+        targetShifts: ad.target_shifts || ad.targetShifts || [],
+        createdAt: ad.created_at ? { seconds: Math.floor(new Date(ad.created_at).getTime() / 1000) } : null
+      }))
       loadingAds.value = false
-    })
-  })
+
+      // Set up real-time subscription for ads
+      adsChannel = supabase
+        .channel('ads_changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'ads' },
+          async () => {
+            // Refetch ads when changes occur
+            const { data: updatedAds } = await supabase
+              .from('ads')
+              .select('*')
+              .order('created_at', { ascending: false })
+            
+            if (updatedAds) {
+              ads.value = updatedAds.map(ad => ({
+                id: ad.id,
+                type: ad.type,
+                content: ad.content,
+                link: ad.link,
+                imageUrl: ad.image_url || ad.imageUrl,
+                isActive: ad.is_active !== undefined ? ad.is_active : ad.isActive,
+                targetCity: ad.target_city || ad.targetCity,
+                targetRegion: ad.target_region || ad.targetRegion,
+                targetShifts: ad.target_shifts || ad.targetShifts || [],
+                createdAt: ad.created_at ? { seconds: Math.floor(new Date(ad.created_at).getTime() / 1000) } : null
+              }))
+            }
+          }
+        )
+        .subscribe()
+    }
+  } catch (error) {
+    console.error("Error initializing dashboard:", error)
+    loadingMetrics.value = false
+    loadingAds.value = false
+  }
 })
 
 onUnmounted(() => {
-  if (logsUnsubscribe) logsUnsubscribe()
-  if (adsUnsubscribe) adsUnsubscribe()
+  if (logsChannel) {
+    supabase.removeChannel(logsChannel)
+  }
+  if (adsChannel) {
+    supabase.removeChannel(adsChannel)
+  }
 })
 
 
@@ -740,10 +813,20 @@ const createNewAd = async () => {
 
   isSavingAd.value = true
   try {
-    await addDoc(collection(db, "ads"), {
-      ...newAd.value,
-      createdAt: serverTimestamp()
-    })
+    const { error } = await supabase
+      .from('ads')
+      .insert([{
+        type: newAd.value.type,
+        content: newAd.value.content,
+        link: newAd.value.link,
+        image_url: newAd.value.imageUrl || null,
+        is_active: newAd.value.isActive,
+        target_city: newAd.value.targetCity || null,
+        target_region: newAd.value.targetRegion || null,
+        target_shifts: newAd.value.targetShifts || []
+      }])
+    
+    if (error) throw error
     
     // Reset Form
     newAd.value = {
@@ -767,10 +850,12 @@ const createNewAd = async () => {
 
 const toggleAdStatus = async (ad) => {
   try {
-    const adRef = doc(db, "ads", ad.id)
-    await updateDoc(adRef, {
-      isActive: !ad.isActive
-    })
+    const { error } = await supabase
+      .from('ads')
+      .update({ is_active: !ad.isActive })
+      .eq('id', ad.id)
+    
+    if (error) throw error
   } catch (e) {
     console.error("Error toggling ad:", e)
   }
@@ -779,7 +864,12 @@ const toggleAdStatus = async (ad) => {
 const deleteAd = async (id) => {
   if (!confirm("Are you sure you want to delete this campaign? This cannot be undone.")) return
   try {
-    await deleteDoc(doc(db, "ads", id))
+    const { error } = await supabase
+      .from('ads')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
     alert("Campaign deleted successfully.")
   } catch (e) {
     console.error("Error deleting ad:", e)

@@ -47,8 +47,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ExternalLink, ArrowRight } from 'lucide-vue-next'
-import { db } from '../firebase'
-import { collection, query, where, getDocs, limit } from 'firebase/firestore'
+import { supabase } from '../supabase'
 
 const props = defineProps({
   currentShift: {
@@ -116,23 +115,28 @@ const getUserLocation = async () => {
 
 // Check if ad matches targeting criteria
 const matchesTargeting = (ad) => {
+  // Support both camelCase (Firebase) and snake_case (Supabase) field names
+  const targetCity = ad.target_city || ad.targetCity
+  const targetRegion = ad.target_region || ad.targetRegion
+  const targetShifts = ad.target_shifts || ad.targetShifts
+  
   // If no targeting set, show to everyone
-  if (!ad.targetCity && !ad.targetRegion && (!ad.targetShifts || ad.targetShifts.length === 0)) {
+  if (!targetCity && !targetRegion && (!targetShifts || targetShifts.length === 0)) {
     return true
   }
   
   // Check location targeting
-  if (ad.targetCity && ad.targetCity.toLowerCase() !== userLocation.value.city.toLowerCase()) {
+  if (targetCity && targetCity.toLowerCase() !== userLocation.value.city.toLowerCase()) {
     return false
   }
   
-  if (ad.targetRegion && ad.targetRegion.toLowerCase() !== userLocation.value.region.toLowerCase()) {
+  if (targetRegion && targetRegion.toLowerCase() !== userLocation.value.region.toLowerCase()) {
     return false
   }
   
   // Check shift targeting
-  if (ad.targetShifts && ad.targetShifts.length > 0) {
-    if (!ad.targetShifts.includes(props.currentShift)) {
+  if (targetShifts && targetShifts.length > 0) {
+    if (!targetShifts.includes(props.currentShift)) {
       return false
     }
   }
@@ -144,43 +148,42 @@ onMounted(async () => {
   // Get user location first
   await getUserLocation()
   
-  // Check if Firebase is available
-  if (!db) {
+  // Check if Supabase is available
+  if (!supabase) {
     // Only log in development
     if (import.meta.env.DEV) {
-      console.log("Firebase not available - ads disabled")
+      console.log("Supabase not available - ads disabled")
     }
     return
   }
   
   try {
-    // Fetch active ads - query without orderBy to avoid index requirements
-    // We'll sort client-side instead
-    const q = query(
-      collection(db, "ads"),
-      where("isActive", "==", true),
-      limit(20) // Get more ads to sort client-side
-    )
-    const snapshot = await getDocs(q)
+    // Fetch active ads from Supabase
+    const { data: ads, error } = await supabase
+      .from('ads')
+      .select('*')
+      .eq('isActive', true)
+      .order('created_at', { ascending: false })
+      .limit(20)
     
-    const ads = snapshot.docs.map(doc => {
-      const data = doc.data()
-      return { 
-        id: doc.id, 
-        ...data,
-        // Ensure createdAt exists (fallback for old ads)
-        createdAt: data.createdAt || { seconds: 0, nanoseconds: 0 }
-      }
-    })
+    if (error) {
+      console.error("Failed to load ads:", error)
+      return
+    }
     
-    // Filter to only active ads, match targeting, and sort by createdAt client-side
+    if (!ads || ads.length === 0) {
+      console.log("No active ads found")
+      return
+    }
+    
+    // Filter to match targeting and sort by createdAt client-side
     const activeAds = ads
       .filter(ad => ad.isActive === true)
       .filter(ad => matchesTargeting(ad)) // Apply targeting filter
       .sort((a, b) => {
         // Sort by createdAt descending (newest first)
-        const aTime = a.createdAt?.seconds || 0
-        const bTime = b.createdAt?.seconds || 0
+        const aTime = new Date(a.created_at || 0).getTime()
+        const bTime = new Date(b.created_at || 0).getTime()
         return bTime - aTime
       })
       .slice(0, 10) // Take top 10 after sorting
@@ -194,9 +197,9 @@ onMounted(async () => {
         link: currentAd.value.link,
         type: currentAd.value.type,
         targeting: {
-          city: currentAd.value.targetCity,
-          region: currentAd.value.targetRegion,
-          shifts: currentAd.value.targetShifts
+          city: currentAd.value.target_city,
+          region: currentAd.value.target_region,
+          shifts: currentAd.value.target_shifts
         },
         userLocation: userLocation.value,
         userShift: props.currentShift,

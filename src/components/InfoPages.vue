@@ -111,7 +111,7 @@
 <script setup>
 import { computed } from 'vue'
 import { X } from 'lucide-vue-next'
-import { deleteUserData } from '../firebase.js'
+import { deleteUserData } from '../supabase.js'
 
 const props = defineProps({
   page: {

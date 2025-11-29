@@ -231,7 +231,7 @@ import CardManager from './components/CardManager.vue'
 import AdminDashboard from './components/AdminDashboard.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import InfoPages from './components/InfoPages.vue'
-import { logShiftComplete } from './firebase.js'
+import { logShiftComplete } from './supabase.js'
 import { inject } from '@vercel/analytics'
 import { 
   Key, CreditCard, Lock, FileX, Pen, Radio, 
