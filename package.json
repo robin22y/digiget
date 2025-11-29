@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.5.0",
     "firebase": "^12.6.0",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
