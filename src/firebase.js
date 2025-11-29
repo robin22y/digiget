@@ -214,21 +214,23 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     // and sync in the background. Don't wait for server confirmation.
     console.log('📤 Queuing write to Firestore (offline persistence enabled)...')
     
-    // Firestore with offline persistence will:
-    // 1. Save locally immediately (returns docRef right away)
-    // 2. Queue for sync when online
-    // 3. Retry automatically if network fails
-    const docRef = await addDoc(collection(db, 'shift_logs'), shiftLog)
+    // Fire-and-forget: Don't await - let it run in background
+    // This prevents UI blocking even if network is slow
+    addDoc(collection(db, 'shift_logs'), shiftLog)
+      .then((docRef) => {
+        console.log('✅ Shift log queued for sync. Document ID:', docRef.id)
+        console.log('✅ Document will sync to server when network is available')
+      })
+      .catch((error) => {
+        console.error('❌ Error saving shift log (background):', error)
+        if (error.code === 'permission-denied') {
+          console.error('🔒 PERMISSION DENIED: Check Firestore security rules!')
+        }
+      })
     
-    // With offline persistence, addDoc returns immediately with a document ID
-    // The actual server sync happens in the background
-    console.log('✅ Shift log queued for sync. Document ID:', docRef.id)
-    console.log('✅ Document will sync to server when network is available')
-    console.log('✅ Note: With offline persistence, this may take a moment to appear in Firestore console')
-    
-    // Return the document ID immediately
-    // The sync will happen automatically in the background
-    return docRef.id
+    // Return immediately without waiting
+    // The save happens in background via offline persistence
+    return 'queued'
   } catch (error) {
     // Always log errors so users know something went wrong
     console.error('❌ Error logging shift completion:', error)
