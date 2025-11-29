@@ -5,7 +5,10 @@ import {
   collection, 
   addDoc, 
   serverTimestamp,
-  enableIndexedDbPersistence
+  CACHE_SIZE_UNLIMITED,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore'
 
 // Your web app's Firebase configuration
@@ -31,18 +34,21 @@ try {
   if (import.meta.env.VITE_FIREBASE_API_KEY) {
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
-    db = getFirestore(app)
     
-    // Enable offline persistence
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Firestore persistence failed: Multiple tabs open')
-      } else if (err.code === 'unimplemented') {
-        console.warn('Firestore persistence not available in this browser')
-      } else {
-        console.error('Firestore persistence error:', err)
-      }
-    })
+    // Initialize Firestore with persistent cache (new API)
+    // This replaces the deprecated enableIndexedDbPersistence()
+    try {
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+          tabManager: persistentMultipleTabManager()
+        })
+      })
+    } catch (cacheError) {
+      // Fallback to default Firestore if cache initialization fails
+      console.warn('Failed to initialize persistent cache, using default:', cacheError)
+      db = getFirestore(app)
+    }
   } else {
     console.warn('Firebase not initialized - environment variables missing')
   }

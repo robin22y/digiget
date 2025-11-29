@@ -15,11 +15,11 @@
 
     <div class="action-section">
       <div class="buttons-row">
-        <button class="share-button" @click="handleShare">
+        <button class="share-button" @click="handleShareWithVibration">
           <Share2 :size="20" />
           Share
         </button>
-        <button class="edit-button" @click="handleEditClick">
+        <button class="edit-button" @click="handleEditWithVibration">
           <Edit :size="20" />
           Edit
         </button>
@@ -161,6 +161,17 @@ const formatShareMessage = () => {
   return message
 }
 
+// Helper function for vibration (only works after user interaction)
+const tryVibrate = () => {
+  if (navigator.vibrate) {
+    try {
+      navigator.vibrate([50])
+    } catch (e) {
+      // Silently fail if vibration is blocked
+    }
+  }
+}
+
 const handleShare = async () => {
   const message = formatShareMessage()
   const shareData = {
@@ -183,6 +194,16 @@ const handleShare = async () => {
   
   // Fallback: Show share options modal
   showShareModal.value = true
+}
+
+const handleShareWithVibration = () => {
+  tryVibrate()
+  handleShare()
+}
+
+const handleEditWithVibration = () => {
+  tryVibrate()
+  handleEditClick()
 }
 
 const shareViaWhatsApp = () => {
@@ -255,8 +276,8 @@ const initConfetti = () => {
 
   animate(ctx, canvas)
   
-  // Haptic feedback
-  if (navigator.vibrate) navigator.vibrate([100, 50, 100])
+  // Haptic feedback removed - vibration requires user gesture
+  // Will be added to button clicks instead if needed
 }
 
 const animate = (ctx, canvas) => {

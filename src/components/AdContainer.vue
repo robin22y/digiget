@@ -48,7 +48,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { ExternalLink, ArrowRight } from 'lucide-vue-next'
 import { db } from '../firebase'
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore'
+import { collection, query, where, getDocs, limit } from 'firebase/firestore'
 
 const currentAd = ref(null)
 
@@ -87,27 +87,14 @@ const formatLink = (link) => {
 
 onMounted(async () => {
   try {
-    // Fetch active ads - simplified query to avoid index requirements
-    // First try with orderBy, fallback to simple where if it fails
-    let snapshot
-    try {
-      const q = query(
-        collection(db, "ads"),
-        where("isActive", "==", true),
-        orderBy("createdAt", "desc"),
-        limit(10) // Get latest 10 active ads
-      )
-      snapshot = await getDocs(q)
-    } catch (indexError) {
-      // If index error, try without orderBy
-      console.warn("Index not found, fetching without orderBy:", indexError)
-      const q = query(
-        collection(db, "ads"),
-        where("isActive", "==", true),
-        limit(10)
-      )
-      snapshot = await getDocs(q)
-    }
+    // Fetch active ads - query without orderBy to avoid index requirements
+    // We'll sort client-side instead
+    const q = query(
+      collection(db, "ads"),
+      where("isActive", "==", true),
+      limit(20) // Get more ads to sort client-side
+    )
+    const snapshot = await getDocs(q)
     
     const ads = snapshot.docs.map(doc => {
       const data = doc.data()
@@ -119,8 +106,16 @@ onMounted(async () => {
       }
     })
     
-    // Filter to only active ads (safety check)
-    const activeAds = ads.filter(ad => ad.isActive === true)
+    // Filter to only active ads (safety check) and sort by createdAt client-side
+    const activeAds = ads
+      .filter(ad => ad.isActive === true)
+      .sort((a, b) => {
+        // Sort by createdAt descending (newest first)
+        const aTime = a.createdAt?.seconds || 0
+        const bTime = b.createdAt?.seconds || 0
+        return bTime - aTime
+      })
+      .slice(0, 10) // Take top 10 after sorting
     
     if (activeAds.length > 0) {
       // Pick a random ad from the active pool to keep it fresh
