@@ -38,3 +38,4 @@
 - **Safari iOS**: Requires "Add to Home Screen" manually
 - **Firefox**: May require manual installation
 
+

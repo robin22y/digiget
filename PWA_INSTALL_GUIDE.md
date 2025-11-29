@@ -88,3 +88,4 @@
 - **Firefox**: May require manual installation
 - **Samsung Internet**: Should support PWA installation
 
+

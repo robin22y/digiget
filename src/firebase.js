@@ -22,37 +22,48 @@ const firebaseConfig = {
 // Warn if environment variables are not set
 if (!import.meta.env.VITE_FIREBASE_API_KEY) {
   console.error('❌ Firebase environment variables not set! Please create a .env file with your Firebase credentials.')
-  throw new Error('Firebase configuration is missing. Please set up environment variables.')
+  console.error('The app will continue to work, but Firebase features will be disabled.')
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
-
-// Initialize Firebase Authentication
-export const auth = getAuth(app)
-
-// Initialize Firestore
-export const db = getFirestore(app)
-
-// Enable offline persistence
-// This allows the app to work offline and sync when connection is restored
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    // Multiple tabs open, persistence can only be enabled in one tab at a time
-    console.warn('Firestore persistence failed: Multiple tabs open')
-  } else if (err.code === 'unimplemented') {
-    // The current browser does not support all of the features required
-    console.warn('Firestore persistence not available in this browser')
+// Initialize Firebase (with error handling)
+let app, auth, db
+try {
+  if (import.meta.env.VITE_FIREBASE_API_KEY) {
+    app = initializeApp(firebaseConfig)
+    auth = getAuth(app)
+    db = getFirestore(app)
+    
+    // Enable offline persistence
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('Firestore persistence failed: Multiple tabs open')
+      } else if (err.code === 'unimplemented') {
+        console.warn('Firestore persistence not available in this browser')
+      } else {
+        console.error('Firestore persistence error:', err)
+      }
+    })
   } else {
-    console.error('Firestore persistence error:', err)
+    console.warn('Firebase not initialized - environment variables missing')
   }
-})
+} catch (error) {
+  console.error('Failed to initialize Firebase:', error)
+  console.warn('The app will continue to work, but Firebase features will be disabled.')
+}
+
+// Export auth and db (will be undefined if Firebase failed to initialize)
+export { auth, db }
 
 /**
  * Sign in user anonymously when app loads
  * This creates a unique anonymous user ID for tracking
  */
 export const signInAnonymouslyUser = async () => {
+  if (!auth) {
+    console.warn('Firebase auth not available - skipping anonymous sign-in')
+    return null
+  }
+  
   try {
     return new Promise((resolve, reject) => {
       onAuthStateChanged(auth, async (user) => {
@@ -87,6 +98,11 @@ export const signInAnonymouslyUser = async () => {
  * @param {string[]} skippedItems - Array of titles of cards swiped left (SKIP)
  */
 export const logShiftComplete = async (itemsChecked, skippedItems = []) => {
+  if (!db || !auth) {
+    console.warn('Firebase not available - shift log not saved')
+    return null
+  }
+  
   try {
     const user = auth.currentUser
     
