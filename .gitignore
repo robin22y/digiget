@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Secrets and config files
+seedFirestore.js
+firebase-config.js
+*secret*
+*key*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -9,13 +9,20 @@ import {
 } from 'firebase/firestore'
 
 // Your web app's Firebase configuration
+// Load from environment variables for security
 const firebaseConfig = {
-  apiKey: "AIzaSyC7GnZ25iISJ3NmaI4Nrjk77AD6H3VtkRA",
-  authDomain: "digiget-5c3ad.firebaseapp.com",
-  projectId: "digiget-5c3ad",
-  storageBucket: "digiget-5c3ad.firebasestorage.app",
-  messagingSenderId: "112177258758",
-  appId: "1:112177258758:web:d12a75184506a6bd0cbe87"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+}
+
+// Warn if environment variables are not set
+if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+  console.error('❌ Firebase environment variables not set! Please create a .env file with your Firebase credentials.')
+  throw new Error('Firebase configuration is missing. Please set up environment variables.')
 }
 
 // Initialize Firebase
