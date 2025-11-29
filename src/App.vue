@@ -22,8 +22,24 @@
         @reset-day="handleResetDay"
       />
       
-      <!-- Install Button (Top Right) -->
+      <!-- Install Button and Shift Selector (Top Right) -->
       <div v-if="!showAdminDashboard" class="install-banner">
+        <!-- Shift Selector (left side) -->
+        <div v-if="safetyChecks.length > 0" class="shift-selector-inline">
+          <div class="shift-bar bg-zinc-900/80 p-1 rounded-xl border border-zinc-800 flex gap-1 shadow-lg backdrop-blur-sm">
+            <button 
+              v-for="shift in ['Day', 'SE', 'SL', 'Night']" 
+              :key="shift"
+              @click="currentShift = shift"
+              class="flex-1 py-2 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200"
+              :class="currentShift === shift ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'"
+            >
+              {{ shift }}
+            </button>
+          </div>
+        </div>
+        
+        <!-- Install Button (right side) -->
         <button 
           class="install-banner-button"
           :class="{ 'install-available': deferredPrompt, 'install-disabled': !deferredPrompt }"
@@ -37,23 +53,6 @@
       </div>
       
       <main v-if="!showAdminDashboard" class="main-content">
-        <!-- Shift Selector Bar (shown when cards are visible) -->
-        <div v-if="safetyChecks.length > 0" class="shift-selector-wrapper mb-4">
-          <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block text-center">
-            SELECT SHIFT
-          </label>
-          <div class="shift-bar bg-zinc-900/80 p-1 rounded-xl border border-zinc-800 flex gap-1 shadow-lg backdrop-blur-sm z-10 relative max-w-xs mx-auto">
-            <button 
-              v-for="shift in ['Day', 'SE', 'SL', 'Night']" 
-              :key="shift"
-              @click="currentShift = shift"
-              class="flex-1 py-2 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200"
-              :class="currentShift === shift ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'"
-            >
-              {{ shift }}
-            </button>
-          </div>
-        </div>
 
         <div v-if="safetyChecks.length === 0" class="card-stack-container">
           <ShiftComplete 
@@ -740,7 +739,15 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 
 /* Install Banner (Top Right) */
 .install-banner {
-  @apply w-full flex justify-end px-6 py-2 shrink-0;
+  @apply w-full flex justify-between items-center px-6 py-2 shrink-0 gap-4;
+}
+
+.shift-selector-inline {
+  @apply flex items-center;
+}
+
+.shift-selector-inline .shift-bar {
+  @apply max-w-xs;
 }
 
 .install-banner-button {
