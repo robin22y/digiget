@@ -132,10 +132,34 @@ const deferredPrompt = ref(null)
 
 // --- PWA Install Logic ---
 onMounted(() => {
+  // Listen for the beforeinstallprompt event
   window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('✅ PWA install prompt available!')
     e.preventDefault()
     deferredPrompt.value = e
   })
+
+  // Debug: Check if service worker is registered
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      console.log('Service Workers registered:', registrations.length)
+      registrations.forEach(reg => {
+        console.log('SW scope:', reg.scope, 'active:', !!reg.active)
+      })
+    })
+  }
+
+  // Debug: Check manifest
+  if ('serviceWorker' in navigator) {
+    fetch('/manifest.webmanifest')
+      .then(res => res.json())
+      .then(manifest => {
+        console.log('✅ Manifest loaded:', manifest)
+      })
+      .catch(err => {
+        console.error('❌ Manifest error:', err)
+      })
+  }
 })
 
 const handleInstall = async () => {
