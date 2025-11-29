@@ -9,6 +9,7 @@
         @start="startApp" 
         @open-info="openInfoPage"
         @install="handleInstall"
+        @contact="showContactModal = true"
       />
     </Transition>
 
@@ -93,6 +94,8 @@
           <button class="footer-link" @click="openInfoPage('sitemap')">Site Map</button>
           <span class="dot">•</span>
           <button class="footer-link" @click="openInfoPage('faq')">FAQ</button>
+          <span class="dot">•</span>
+          <button class="footer-link" @click="showContactModal = true">Contact Us</button>
         </div>
       </footer>
 
@@ -147,6 +150,49 @@
       @update="handleUpdateCard"
     />
 
+    <!-- Contact Us Modal -->
+    <div v-if="showContactModal" class="modal-backdrop" @click.self="showContactModal = false">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-md w-full rounded-2xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-white">Contact Us</h3>
+          <button @click="showContactModal = false" class="text-zinc-500 hover:text-white">
+            <X :size="24" />
+          </button>
+        </div>
+        <p class="text-zinc-400 text-sm mb-6">
+          Have a suggestion for improvement or a feature request? We'd love to hear from you!
+        </p>
+        <form @submit.prevent="handleContactSubmit" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Your Message</label>
+            <textarea
+              v-model="contactMessage"
+              rows="6"
+              placeholder="Tell us about improvements, features, or any feedback..."
+              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 resize-none"
+              required
+            ></textarea>
+          </div>
+          <div class="flex gap-3">
+            <button 
+              type="button"
+              @click="showContactModal = false" 
+              class="flex-1 py-3 text-zinc-500 hover:text-white font-medium"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              :disabled="!contactMessage.trim() || isSendingContact"
+              class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ isSendingContact ? 'Sending...' : 'Send Message' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Cooldown Warning Modal -->
     <div v-if="showCooldownWarning" class="modal-backdrop" @click.self="handleCooldownCancel">
       <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-sm w-full rounded-2xl">
@@ -189,7 +235,7 @@ import { logShiftComplete } from './firebase.js'
 import { inject } from '@vercel/analytics'
 import { 
   Key, CreditCard, Lock, FileX, Pen, Radio, 
-  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download, X
 } from 'lucide-vue-next'
 
 const iconMap = {
@@ -204,6 +250,9 @@ const showAdminDashboard = ref(false)
 const adminPasswordInput = ref('')
 const showWelcome = ref(true)
 const currentInfoPage = ref(null)
+const showContactModal = ref(false)
+const contactMessage = ref('')
+const isSendingContact = ref(false)
 const deferredPrompt = ref(null)
 const cardToEdit = ref(null)
 const currentShift = ref('Day') // Store the selected shift type
@@ -428,6 +477,32 @@ const handleUndo = () => {
 
   const insertIndex = Math.min(originalIndex, safetyChecks.value.length)
   safetyChecks.value.splice(insertIndex, 0, check)
+}
+
+const handleContactSubmit = () => {
+  if (!contactMessage.value.trim()) return
+  
+  isSendingContact.value = true
+  
+  // Encode the email address so it's not visible in the UI
+  const email = 'admin@digiget.uk'
+  const subject = encodeURIComponent('Digiget Feedback / Feature Request')
+  const body = encodeURIComponent(contactMessage.value.trim())
+  
+  // Create mailto link (email is encoded, not visible in UI)
+  const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`
+  
+  // Open email client
+  window.location.href = mailtoLink
+  
+  // Reset form after a delay
+  setTimeout(() => {
+    contactMessage.value = ''
+    isSendingContact.value = false
+    showContactModal.value = false
+    // Show success message (optional)
+    alert('Your email client should open. If it doesn\'t, please email us directly.')
+  }, 500)
 }
 
 const handleResetDay = () => {

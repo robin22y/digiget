@@ -178,6 +178,8 @@
           <button class="footer-link" @click="$emit('open-info', 'sitemap')">Site Map</button>
           <span class="dot">•</span>
           <button class="footer-link" @click="$emit('open-info', 'faq')">FAQ</button>
+          <span class="dot">•</span>
+          <button class="footer-link" @click="$emit('contact')">Contact Us</button>
         </div>
         <p class="copyright">© {{ new Date().getFullYear() }} Digiget. Not an official NHS app.</p>
       </footer>
@@ -196,7 +198,7 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['start', 'open-info', 'install'])
+const emit = defineEmits(['start', 'open-info', 'install', 'contact'])
 
 // Data
 const shifts = ['Day', 'SE', 'SL', 'Night']

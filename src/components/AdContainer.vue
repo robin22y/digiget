@@ -144,6 +144,12 @@ onMounted(async () => {
   // Get user location first
   await getUserLocation()
   
+  // Check if Firebase is available
+  if (!db) {
+    console.log("Firebase not available - ads disabled")
+    return
+  }
+  
   try {
     // Fetch active ads - query without orderBy to avoid index requirements
     // We'll sort client-side instead
