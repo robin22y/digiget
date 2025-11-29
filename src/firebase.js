@@ -27,10 +27,9 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 }
 
-// Warn if environment variables are not set
-if (!import.meta.env.VITE_FIREBASE_API_KEY) {
-  console.error('❌ Firebase environment variables not set! Please create a .env file with your Firebase credentials.')
-  console.error('The app will continue to work, but Firebase features will be disabled.')
+// Warn if environment variables are not set (only in development)
+if (!import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.DEV) {
+  console.warn('⚠️ Firebase environment variables not set. Firebase features will be disabled.')
 }
 
 // Initialize Firebase (with error handling)
@@ -55,11 +54,16 @@ try {
       db = getFirestore(app)
     }
   } else {
-    console.warn('Firebase not initialized - environment variables missing')
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.warn('Firebase not initialized - environment variables missing')
+    }
   }
 } catch (error) {
   console.error('Failed to initialize Firebase:', error)
-  console.warn('The app will continue to work, but Firebase features will be disabled.')
+    if (import.meta.env.DEV) {
+      console.warn('The app will continue to work, but Firebase features will be disabled.')
+    }
 }
 
 // Export auth and db (will be undefined if Firebase failed to initialize)
@@ -97,7 +101,10 @@ const getRoughLocation = async () => {
  */
 export const signInAnonymouslyUser = async () => {
   if (!auth) {
-    console.warn('Firebase auth not available - skipping anonymous sign-in')
+      // Only log in development
+      if (import.meta.env.DEV) {
+        console.warn('Firebase auth not available - skipping anonymous sign-in')
+      }
     return null
   }
   
