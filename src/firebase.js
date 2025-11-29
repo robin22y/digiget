@@ -196,6 +196,17 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
 
     // Add document to shift_logs collection
     // Firestore will automatically queue this if offline and sync when online
+    console.log('📝 Attempting to save shift log to Firestore...', {
+      userId: auth.currentUser.uid,
+      itemsChecked,
+      shiftType,
+      skippedCount: skippedItems.length,
+      environment: import.meta.env.MODE,
+      isProd: import.meta.env.PROD,
+      dbExists: !!db,
+      authExists: !!auth
+    })
+    
     const docRef = await addDoc(collection(db, 'shift_logs'), shiftLog)
     
     // Always log success so users know data was saved
@@ -204,6 +215,18 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
   } catch (error) {
     // Always log errors so users know something went wrong
     console.error('❌ Error logging shift completion:', error)
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack
+    })
+    
+    // Check if it's a permissions error
+    if (error.code === 'permission-denied') {
+      console.error('🔒 PERMISSION DENIED: Check Firestore security rules!')
+      console.error('The security rules may be blocking writes. Make sure anonymous users can write to shift_logs collection.')
+    }
+    
     // Even if there's an error, the data will be queued for sync when online
     // thanks to offline persistence
     throw error
