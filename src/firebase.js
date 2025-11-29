@@ -215,14 +215,35 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     console.log('📤 Queuing write to Firestore (offline persistence enabled)...')
     console.log('📤 Collection path:', 'shift_logs')
     console.log('📤 Data being saved:', { ...shiftLog, timestamp: '[serverTimestamp]' })
+    console.log('📤 DB instance check:', {
+      dbType: db?.type,
+      dbApp: db?.app?.name,
+      hasCollection: typeof db?.collection === 'function'
+    })
+    
+    // Try to get the collection reference first to verify connection
+    let colRef
+    try {
+      colRef = collection(db, 'shift_logs')
+      console.log('✅ Collection reference created:', colRef.path)
+    } catch (colError) {
+      console.error('❌ Failed to create collection reference:', colError)
+      throw colError
+    }
     
     // Fire-and-forget: Don't await - let it run in background
     // This prevents UI blocking even if network is slow
-    const savePromise = addDoc(collection(db, 'shift_logs'), shiftLog)
+    console.log('📤 Calling addDoc...')
+    const savePromise = addDoc(colRef, shiftLog)
     
     console.log('📤 addDoc promise created, setting up handlers...')
     
-    savePromise
+    // Add a timeout wrapper to detect hanging promises
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('addDoc promise never resolved after 10 seconds')), 10000)
+    )
+    
+    Promise.race([savePromise, timeoutPromise])
       .then((docRef) => {
         console.log('✅ Shift log queued for sync. Document ID:', docRef.id)
         console.log('✅ Document path:', docRef.path)
@@ -232,6 +253,10 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
         console.error('❌ Error saving shift log (background):', error)
         console.error('Error code:', error.code)
         console.error('Error message:', error.message)
+        if (error.message.includes('never resolved')) {
+          console.error('🔴 PROMISE HANGING: The addDoc call is not resolving')
+          console.error('This suggests a network/connectivity issue or Firestore rules blocking')
+        }
         if (error.code === 'permission-denied' || error.code === 'permissions-denied') {
           console.error('🔒 PERMISSION DENIED: Check Firestore security rules!')
           console.error('Current user ID:', auth.currentUser?.uid)
@@ -240,12 +265,6 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
           console.warn('⚠️ Network unavailable - data will be queued for offline sync')
         }
       })
-    
-    // Add a timeout to detect if promise never resolves
-    setTimeout(() => {
-      console.warn('⏱️ 5 seconds passed - checking if save completed...')
-      // The promise handlers above will log if it completes
-    }, 5000)
     
     // Return immediately without waiting
     // The save happens in background via offline persistence
