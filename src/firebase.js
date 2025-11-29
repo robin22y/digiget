@@ -190,8 +190,11 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
  */
 export const deleteUserData = async () => {
   if (!db || !auth) {
-    console.warn('Firebase not available - cannot delete data')
-    throw new Error('Firebase not available')
+    if (import.meta.env.DEV) {
+      console.warn('Firebase not available - cannot delete data')
+    }
+    // Return gracefully instead of throwing - Firebase features are optional
+    return { success: false, message: 'Cloud sync is not available. Your data is stored locally on your device only.' }
   }
 
   const user = auth.currentUser
@@ -220,16 +223,20 @@ export const deleteUserData = async () => {
     })
     await batch.commit()
 
-    console.log(`Deleted ${snapshot.size} logs for user.`)
+    if (import.meta.env.DEV) {
+      console.log(`Deleted ${snapshot.size} logs for user.`)
+    }
     
     // 3. Optional: Delete the anonymous user account itself
     // Note: Uncommenting this will delete the user account, which may cause issues
     // if the user wants to continue using the app. Consider if this is desired behavior.
     // await user.delete() 
     
-    return true
+    return { success: true, message: `Deleted ${snapshot.size} log(s) from cloud.` }
   } catch (error) {
-    console.error('Error deleting data:', error)
-    throw error
+    if (import.meta.env.DEV) {
+      console.error('Error deleting data:', error)
+    }
+    return { success: false, message: 'Failed to delete data. Please try again.' }
   }
 }

@@ -136,10 +136,16 @@ const title = computed(() => {
 const handleDeleteData = async () => {
   if (confirm("Are you sure? This will permanently delete your sync history from the cloud. This cannot be undone.")) {
     try {
-      await deleteUserData()
-      alert("Your cloud data has been deleted.")
+      const result = await deleteUserData()
+      if (result.success) {
+        alert(result.message || "Your cloud data has been deleted.")
+      } else {
+        alert(result.message || "Cloud sync is not available. Your data is stored locally on your device only.")
+      }
     } catch (e) {
-      console.error('Error deleting data:', e)
+      if (import.meta.env.DEV) {
+        console.error('Error deleting data:', e)
+      }
       alert("Error deleting data. Please try again.")
     }
   }
