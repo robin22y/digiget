@@ -22,6 +22,8 @@ export default defineConfig({
 
       manifest: {
 
+        id: '/',
+
         name: 'Digiget',
 
         short_name: 'Digiget',
