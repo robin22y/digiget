@@ -183,10 +183,10 @@ const handleAdminLogin = () => {
 // --- Data Logic ---
 const getFreshChecks = () => [
   { id: 1, title: 'Keys Returned', iconName: 'Key', icon: Key },
-  { id: 2, title: 'ID Badge', iconName: 'CreditCard', icon: CreditCard },
+  { id: 2, title: 'Skin Check', iconName: 'AlertCircle', icon: AlertCircle },
   { id: 3, title: 'CDs Locked', iconName: 'Lock', icon: Lock },
   { id: 4, title: 'Handovers Destroyed', iconName: 'FileX', icon: FileX },
-  { id: 5, title: 'Meds Signed', iconName: 'Pen', icon: Pen },
+  { id: 5, title: 'Critical Meds Signed', iconName: 'Pen', icon: Pen },
 ]
 
 const defaultChecks = ref([])

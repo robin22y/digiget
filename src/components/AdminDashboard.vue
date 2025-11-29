@@ -23,9 +23,22 @@
           </button>
         </div>
       </div>
-      <button @click="$emit('close')" class="exit-btn">
-        <LogOut :size="20" />
-      </button>
+      <div class="flex gap-2">
+        <!-- Share/Download PDF Button (Only visible on Logs tab) -->
+        <button 
+          v-if="activeTab === 'logs' && logs.length > 0"
+          @click="shareOrDownloadPDF"
+          class="p-2 text-zinc-500 hover:text-blue-400 hover:bg-zinc-900 rounded-lg transition-colors flex items-center gap-2"
+          title="Share or Download Report"
+        >
+          <Download :size="20" />
+          <span class="hidden sm:inline text-xs font-bold uppercase">Share PDF</span>
+        </button>
+        
+        <button @click="$emit('close')" class="exit-btn">
+          <LogOut :size="20" />
+        </button>
+      </div>
     </div>
 
     <!-- LOGS TAB -->
@@ -171,18 +184,61 @@
       </div>
     </div>
 
+    <!-- Share Modal -->
+    <div v-if="showShareModal" class="modal-backdrop" @click.self="showShareModal = false">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-sm w-full rounded-2xl">
+        <h3 class="text-lg font-bold text-white mb-4">Share Report</h3>
+        
+        <div class="space-y-3">
+          <button 
+            @click="shareViaWhatsApp"
+            class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+          >
+            <span>📱</span>
+            Share via WhatsApp
+          </button>
+          
+          <button 
+            @click="shareViaNative"
+            class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+          >
+            <span>📤</span>
+            Share via System
+          </button>
+          
+          <button 
+            @click="downloadPDFOnly"
+            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+          >
+            <Download :size="18" />
+            Download PDF Only
+          </button>
+        </div>
+        
+        <button 
+          @click="showShareModal = false" 
+          class="w-full mt-4 py-2 text-zinc-500 hover:text-white"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Database, LogOut, Trash2, Power } from 'lucide-vue-next'
+import { Database, LogOut, Trash2, Power, Download } from 'lucide-vue-next'
 import { db } from '../firebase'
 import { collection, query, orderBy, onSnapshot, limit, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const emit = defineEmits(['close'])
 
 const activeTab = ref('logs') // 'logs' or 'ads'
+const showShareModal = ref(false)
 
 // Logs Data
 const logs = ref([])
@@ -242,6 +298,119 @@ onUnmounted(() => {
   if (logsUnsubscribe) logsUnsubscribe()
   if (adsUnsubscribe) adsUnsubscribe()
 })
+
+// --- PDF Export Logic ---
+const generatePDF = () => {
+  const doc = new jsPDF()
+  
+  // Header
+  doc.setFontSize(18)
+  doc.text('Digiget Shift Report', 14, 22)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30)
+  
+  // Prepare data for table
+  const tableData = logs.value.map(log => [
+    formatDate(log.timestamp) + ' ' + formatTime(log.timestamp),
+    log.userId ? log.userId.slice(0, 8) + '...' : 'Anon',
+    `${log.itemsChecked || 0} Checked`,
+    log.skippedItems && log.skippedItems.length > 0 ? log.skippedItems.join(', ') : 'None'
+  ])
+
+  // Generate Table
+  autoTable(doc, {
+    startY: 36,
+    head: [['Time', 'User ID', 'Status', 'Skipped Items']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [24, 24, 27], textColor: 255 }, // Zinc 900
+    styles: { fontSize: 8, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [245, 245, 245] }
+  })
+  
+  return doc
+}
+
+const shareOrDownloadPDF = () => {
+  showShareModal.value = true
+}
+
+const shareViaWhatsApp = async () => {
+  const doc = generatePDF()
+  const pdfBlob = doc.output('blob')
+  const pdfFile = new File([pdfBlob], 'digiget-report.pdf', { type: 'application/pdf' })
+  
+  // Try native share API first (works with WhatsApp on mobile)
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+    try {
+      await navigator.share({
+        title: 'Digiget Shift Report',
+        text: 'Digiget shift completion report',
+        files: [pdfFile]
+      })
+      showShareModal.value = false
+      return
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        showShareModal.value = false
+        return
+      }
+    }
+  }
+  
+  // Fallback: Download PDF and open WhatsApp Web
+  doc.save('digiget-report.pdf')
+  
+  // Open WhatsApp Web with message (user can attach the downloaded PDF manually)
+  const message = encodeURIComponent('Digiget Shift Report - Please check the downloaded PDF file.')
+  const whatsappUrl = `https://web.whatsapp.com/send?text=${message}`
+  
+  setTimeout(() => {
+    window.open(whatsappUrl, '_blank')
+  }, 500)
+  
+  showShareModal.value = false
+}
+
+const shareViaNative = async () => {
+  const doc = generatePDF()
+  const pdfBlob = doc.output('blob')
+  const pdfFile = new File([pdfBlob], 'digiget-report.pdf', { type: 'application/pdf' })
+  
+  if (navigator.share) {
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          title: 'Digiget Shift Report',
+          text: 'Digiget shift completion report',
+          files: [pdfFile]
+        })
+        showShareModal.value = false
+        return
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Share failed:', error)
+        alert('Sharing not available. Downloading PDF instead.')
+      } else {
+        showShareModal.value = false
+        return
+      }
+    }
+  }
+  
+  // Fallback to download
+  doc.save('digiget-report.pdf')
+  showShareModal.value = false
+}
+
+const downloadPDFOnly = () => {
+  const doc = generatePDF()
+  doc.save('digiget-report.pdf')
+  showShareModal.value = false
+}
 
 // --- Ad Actions ---
 
@@ -325,6 +494,14 @@ const formatDate = (timestamp) => {
 
 .table-container {
   @apply flex-1 overflow-auto;
+}
+
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/90 backdrop-blur-sm z-[110] flex items-center justify-center p-4;
+}
+
+.modal-content {
+  animation: fadeIn 0.2s ease-out;
 }
 
 @keyframes fadeIn {
