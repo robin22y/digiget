@@ -42,7 +42,7 @@
       <div class="buttons-row">
         <button class="share-button" @click="handleShare">
           <Share2 :size="20" />
-          Share Report
+          Share
         </button>
         <button class="reset-button" @click="$emit('reset')">
           Start New Shift
@@ -136,7 +136,10 @@ const formatShareMessage = () => {
     message += `\n✅ All checks passed!\n`
   }
   
-  message += `\nVerified via Digiget.uk`
+  message += `\n━━━━━━━━━━━━━━━━━━━━\n`
+  message += `✅ Verified via Digiget\n`
+  message += `🔗 https://digiget.uk\n`
+  message += `━━━━━━━━━━━━━━━━━━━━`
   
   return message
 }
@@ -351,10 +354,9 @@ onUnmounted(() => {
 }
 
 .share-button {
-  @apply flex-1 bg-gradient-to-br from-blue-600 to-blue-700 text-white font-bold py-4 rounded-xl shadow-lg 
-         hover:from-blue-500 hover:to-blue-600 active:scale-95 transition-all 
-         flex items-center justify-center gap-2 min-h-[56px] border border-blue-500/30;
-  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.4);
+  @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-4 rounded-xl shadow-lg 
+         hover:bg-zinc-700 hover:text-white active:scale-95 transition-all 
+         flex items-center justify-center gap-2 min-h-[56px];
 }
 
 .reset-button {
