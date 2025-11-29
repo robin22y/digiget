@@ -7,19 +7,19 @@
       <div class="success-icon">
         <CheckCircle :size="64" />
       </div>
-      <h1 class="success-title">You are done.</h1>
+      <h1 class="success-title">{{ currentMessage.title }}</h1>
       <p class="success-message text-zinc-400">
-        Your safety checks are complete and confirmed.
+        {{ currentMessage.subtitle }}
       </p>
     </div>
 
     <div class="action-section">
       <div class="buttons-row">
-        <button class="share-button" @click="handleShareWithVibration">
+        <button class="share-button" @click="handleShare">
           <Share2 :size="20" />
           Share
         </button>
-        <button class="edit-button" @click="handleEditWithVibration">
+        <button class="edit-button" @click="handleEditClick">
           <Edit :size="20" />
           Edit
         </button>
@@ -117,6 +117,32 @@ const props = defineProps({
 
 const emit = defineEmits(['reset', 'edit'])
 
+// --- Dynamic Messaging System ---
+const messageBank = [
+  // Reassuring
+  { title: "All done.", subtitle: "You can relax now." },
+  { title: "Everything's checked.", subtitle: "Safe to go home." },
+  { title: "You're all set.", subtitle: "Drive home in peace." },
+  { title: "Nothing forgotten.", subtitle: "Time to rest." },
+  
+  // Celebratory
+  { title: "Shift complete.", subtitle: "Well done today." },
+  { title: "That's everything.", subtitle: "Nice work." },
+  { title: "All sorted.", subtitle: "You've earned your rest." },
+  
+  // Context Specific
+  { title: "You're free.", subtitle: "Keys? ✓ Meds? ✓ Handover? ✓" },
+  { title: "Sleep easy.", subtitle: "No 2am drives back tonight!" },
+  { title: "You're done.", subtitle: "Leave work at work." }
+]
+
+const currentMessage = ref(messageBank[0])
+
+const pickRandomMessage = () => {
+  const randomIndex = Math.floor(Math.random() * messageBank.length)
+  currentMessage.value = messageBank[randomIndex]
+}
+
 const showEditWarning = ref(false)
 
 const handleEditClick = () => {
@@ -161,17 +187,6 @@ const formatShareMessage = () => {
   return message
 }
 
-// Helper function for vibration (only works after user interaction)
-const tryVibrate = () => {
-  if (navigator.vibrate) {
-    try {
-      navigator.vibrate([50])
-    } catch (e) {
-      // Silently fail if vibration is blocked
-    }
-  }
-}
-
 const handleShare = async () => {
   const message = formatShareMessage()
   const shareData = {
@@ -194,16 +209,6 @@ const handleShare = async () => {
   
   // Fallback: Show share options modal
   showShareModal.value = true
-}
-
-const handleShareWithVibration = () => {
-  tryVibrate()
-  handleShare()
-}
-
-const handleEditWithVibration = () => {
-  tryVibrate()
-  handleEditClick()
 }
 
 const shareViaWhatsApp = () => {
@@ -310,6 +315,7 @@ const animate = (ctx, canvas) => {
 }
 
 onMounted(() => {
+  pickRandomMessage() // Pick message when component loads
   initConfetti()
 })
 
@@ -340,11 +346,11 @@ onUnmounted(() => {
 }
 
 .success-title {
-  @apply text-3xl font-bold text-zinc-100 mb-1;
+  @apply text-3xl font-bold text-zinc-100 mb-1 text-center leading-tight;
 }
 
 .success-message {
-  @apply text-lg font-medium;
+  @apply text-lg font-medium text-center text-zinc-400 px-4;
 }
 
 /* Scrollable Review List */
