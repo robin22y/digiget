@@ -59,29 +59,18 @@ try {
     auth = getAuth(app)
     console.log('✅ Firebase app and auth initialized')
     
-    // Initialize Firestore with persistent cache (new API)
-    // This replaces the deprecated enableIndexedDbPersistence()
-    // In production, use simpler initialization to avoid timeout issues
+    // Initialize Firestore - use default for both dev and prod to avoid timeout issues
+    // The persistent cache was causing network timeout issues in production
     try {
-      if (import.meta.env.PROD) {
-        // Production: Use default Firestore (more reliable, less features)
-        db = getFirestore(app)
-        console.log('✅ Firestore initialized (production mode - default cache)')
-      } else {
-        // Development: Use persistent cache for offline support
-        db = initializeFirestore(app, {
-          localCache: persistentLocalCache({
-            cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-            tabManager: persistentMultipleTabManager()
-          })
-        })
-        console.log('✅ Firestore initialized with persistent cache (development)')
-      }
-    } catch (cacheError) {
-      // Fallback to default Firestore if cache initialization fails
-      console.warn('⚠️ Failed to initialize persistent cache, using default:', cacheError)
+      // Always use default Firestore for reliability
       db = getFirestore(app)
-      console.log('✅ Firestore initialized with default cache (fallback)')
+      console.log('✅ Firestore initialized (default mode)')
+      
+      // Note: Offline persistence is still enabled by default in Firestore
+      // Writes will be queued if offline and synced when online
+    } catch (firestoreError) {
+      console.error('❌ Failed to initialize Firestore:', firestoreError)
+      throw firestoreError
     }
   } else {
     console.warn('❌ Firebase not initialized - VITE_FIREBASE_API_KEY is missing')
@@ -217,16 +206,12 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     
     console.log('📤 Sending to Firestore...')
     console.log('📤 Network status:', navigator.onLine ? 'Online' : 'Offline')
+    console.log('📤 Firestore instance:', db ? 'Available' : 'Missing')
     
-    // Try to save with a longer timeout for production network issues
-    const timeoutDuration = import.meta.env.PROD ? 30000 : 10000 // 30s for prod, 10s for dev
-    
-    const savePromise = addDoc(collection(db, 'shift_logs'), shiftLog)
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error(`Firestore save timeout after ${timeoutDuration/1000} seconds`)), timeoutDuration)
-    )
-    
-    const docRef = await Promise.race([savePromise, timeoutPromise])
+    // Remove timeout race - let Firestore handle its own network timeouts
+    // This allows Firestore's offline persistence to queue the write if network is slow
+    console.log('📤 Calling addDoc...')
+    const docRef = await addDoc(collection(db, 'shift_logs'), shiftLog)
     
     // Always log success so users know data was saved
     console.log('✅ Shift log saved to Firebase with ID:', docRef.id)
