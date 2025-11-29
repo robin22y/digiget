@@ -208,7 +208,14 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     })
     
     console.log('📤 Sending to Firestore...')
-    const docRef = await addDoc(collection(db, 'shift_logs'), shiftLog)
+    
+    // Add timeout to catch hanging requests
+    const savePromise = addDoc(collection(db, 'shift_logs'), shiftLog)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Firestore save timeout after 10 seconds')), 10000)
+    )
+    
+    const docRef = await Promise.race([savePromise, timeoutPromise])
     
     // Always log success so users know data was saved
     console.log('✅ Shift log saved to Firebase with ID:', docRef.id)
