@@ -115,7 +115,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['reset', 'edit'])
+const emit = defineEmits(['reset', 'edit'])
 
 const showEditWarning = ref(false)
 

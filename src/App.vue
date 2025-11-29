@@ -157,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, computed, nextTick } from 'vue'
 import Header from './components/Header.vue'
 import SwipeCard from './components/SwipeCard.vue'
 import ShiftComplete from './components/ShiftComplete.vue'
@@ -207,15 +207,21 @@ onMounted(() => {
     })
   }
 
-  // Debug: Check manifest
-  if ('serviceWorker' in navigator) {
+  // Debug: Check manifest (only in production)
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
     fetch('/manifest.webmanifest')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
       .then(manifest => {
         console.log('✅ Manifest loaded:', manifest)
       })
       .catch(err => {
-        console.error('❌ Manifest error:', err)
+        // Silently fail in development, only log in production
+        if (import.meta.env.PROD) {
+          console.error('❌ Manifest error:', err)
+        }
       })
   }
 })
@@ -452,18 +458,80 @@ const handleEditShift = () => {
   // Restore all cards from completed/skipped back to safetyChecks
   // This allows the user to edit their choices
   
-  // Combine completed and skipped items - these already have icons restored
+  console.log('handleEditShift called')
+  console.log('completedItems:', completedItems.value.length)
+  console.log('skippedItems:', skippedItems.value.length)
+  
+  // Combine completed and skipped items
   const allSwipedCards = [...completedItems.value, ...skippedItems.value]
   
-  // Ensure icons are properly restored
-  const restoredCards = restoreIcons(allSwipedCards)
+  console.log('All swiped cards:', allSwipedCards.length)
+  if (allSwipedCards.length > 0) {
+    console.log('Sample card:', allSwipedCards[0])
+  }
   
-  // Restore the cards to safetyChecks and clear completed/skipped
-  safetyChecks.value = restoredCards
+  // Ensure icons are properly restored and all properties are present
+  const restoredCards = restoreIcons(allSwipedCards).map(card => {
+    // Find the icon if it's missing
+    let icon = card.icon
+    if (!icon && card.iconName) {
+      icon = iconMap[card.iconName]
+    }
+    if (!icon) {
+      // Try to find icon by matching existing icon component
+      const iconKey = Object.keys(iconMap).find(key => iconMap[key] === card.icon)
+      icon = iconKey ? iconMap[iconKey] : iconMap.Clipboard
+    }
+    
+    return {
+      ...card,
+      // Ensure all required properties exist
+      id: card.id || Date.now() + Math.random(), // Fallback ID if missing
+      title: card.title || 'Unknown',
+      iconName: card.iconName || Object.keys(iconMap).find(key => iconMap[key] === icon) || 'Clipboard',
+      icon: icon,
+      color: card.color || '#27272a'
+    }
+  })
+  
+  console.log('Restored cards:', restoredCards.length)
+  if (restoredCards.length > 0) {
+    console.log('Sample restored card:', restoredCards[0])
+  }
+  
+  // If no cards to restore, something went wrong - restore from defaults
+  if (restoredCards.length === 0) {
+    console.warn('No cards to restore! Restoring from defaults...')
+    const freshDefaults = getFreshChecks()
+    const allDefaultCards = freshDefaults.map(defaultCard => {
+      const customVersion = customChecks.value.find(c => 
+        c.id === defaultCard.id || 
+        (c.title === defaultCard.title && c.iconName === defaultCard.iconName)
+      )
+      return customVersion || defaultCard
+    })
+    const defaultTitles = new Set(freshDefaults.map(c => c.title))
+    const additionalCustoms = customChecks.value.filter(c => 
+      !defaultTitles.has(c.title) && 
+      !freshDefaults.some(d => d.id === c.id)
+    )
+    safetyChecks.value = [...allDefaultCards, ...additionalCustoms]
+  } else {
+    // Restore the cards to safetyChecks
+    safetyChecks.value = restoredCards
+  }
+  
+  // Clear completed/skipped and undo history
   completedItems.value = []
   skippedItems.value = []
   undoHistory.value = []
+  
+  // Force a save to localStorage to persist the restored state
+  saveState()
+  
   window.scrollTo(0, 0)
+  
+  console.log('Edit shift complete. safetyChecks now has', safetyChecks.value.length, 'cards')
 }
 
 // Get all cards for management (combine default and custom, but use current state)
