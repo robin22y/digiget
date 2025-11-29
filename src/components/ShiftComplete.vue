@@ -333,10 +333,8 @@ onUnmounted(() => {
 
 <style scoped>
 .shift-complete {
-  @apply flex flex-col items-center w-full relative;
+  @apply flex flex-col items-center h-full w-full max-h-full relative;
   animation: fadeIn 0.5s ease-in;
-  min-height: 0;
-  flex: 1 1 auto;
 }
 
 .confetti-canvas {
@@ -346,7 +344,7 @@ onUnmounted(() => {
 }
 
 .header-section {
-  @apply flex-none flex flex-col items-center justify-center py-4 relative z-10;
+  @apply flex-none flex flex-col items-center justify-center py-6 relative z-10;
 }
 
 .success-icon {
@@ -399,7 +397,7 @@ onUnmounted(() => {
 }
 
 .action-section {
-  @apply flex-none w-full flex flex-col items-center pb-2 pt-2 relative z-10;
+  @apply flex-none w-full flex flex-col items-center pb-6 pt-2 relative z-10;
 }
 
 .buttons-row {
