@@ -62,12 +62,16 @@ try {
     // Initialize Firestore - use default for both dev and prod to avoid timeout issues
     // The persistent cache was causing network timeout issues in production
     try {
-      // Always use default Firestore for reliability
-      db = getFirestore(app)
-      console.log('✅ Firestore initialized (default mode)')
-      
-      // Note: Offline persistence is still enabled by default in Firestore
-      // Writes will be queued if offline and synced when online
+      // Use persistent cache for offline support
+      // This allows writes to succeed immediately and sync in background
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+          tabManager: persistentMultipleTabManager()
+        })
+      })
+      console.log('✅ Firestore initialized with offline persistence')
+      console.log('✅ Writes will succeed immediately and sync in background')
     } catch (firestoreError) {
       console.error('❌ Failed to initialize Firestore:', firestoreError)
       throw firestoreError
@@ -191,42 +195,39 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       location: locationData
     }
 
-    // Add document to shift_logs collection
-    // Firestore will automatically queue this if offline and sync when online
+    // Check payload size
+    const payloadSize = JSON.stringify(shiftLog).length
     console.log('📝 Attempting to save shift log to Firestore...', {
       userId: auth.currentUser.uid,
       itemsChecked,
       shiftType,
       skippedCount: skippedItems.length,
+      payloadSize: `${payloadSize} bytes`,
       environment: import.meta.env.MODE,
       isProd: import.meta.env.PROD,
       dbExists: !!db,
-      authExists: !!auth
+      authExists: !!auth,
+      networkStatus: navigator.onLine ? 'Online' : 'Offline'
     })
     
-    console.log('📤 Sending to Firestore...')
-    console.log('📤 Network status:', navigator.onLine ? 'Online' : 'Offline')
-    console.log('📤 Firestore instance:', db ? 'Available' : 'Missing')
+    // Use Firestore's offline persistence - the write will succeed immediately
+    // and sync in the background. Don't wait for server confirmation.
+    console.log('📤 Queuing write to Firestore (offline persistence enabled)...')
     
-    // Remove timeout race - let Firestore handle its own network timeouts
-    // This allows Firestore's offline persistence to queue the write if network is slow
-    console.log('📤 Calling addDoc...')
+    // Firestore with offline persistence will:
+    // 1. Save locally immediately (returns docRef right away)
+    // 2. Queue for sync when online
+    // 3. Retry automatically if network fails
     const docRef = await addDoc(collection(db, 'shift_logs'), shiftLog)
     
-    // Always log success so users know data was saved
-    console.log('✅ Shift log saved to Firebase with ID:', docRef.id)
-    console.log('✅ Document path:', docRef.path)
+    // With offline persistence, addDoc returns immediately with a document ID
+    // The actual server sync happens in the background
+    console.log('✅ Shift log queued for sync. Document ID:', docRef.id)
+    console.log('✅ Document will sync to server when network is available')
+    console.log('✅ Note: With offline persistence, this may take a moment to appear in Firestore console')
     
-    // Verify it was actually saved by checking if we can read it back
-    // (This helps catch cases where it's queued but not actually saved)
-    try {
-      // Small delay to ensure write is processed
-      await new Promise(resolve => setTimeout(resolve, 500))
-      console.log('✅ Write confirmed - data should be in Firestore now')
-    } catch (verifyError) {
-      console.warn('⚠️ Could not verify write, but document ID was returned:', docRef.id)
-    }
-    
+    // Return the document ID immediately
+    // The sync will happen automatically in the background
     return docRef.id
   } catch (error) {
     // Always log errors so users know something went wrong
