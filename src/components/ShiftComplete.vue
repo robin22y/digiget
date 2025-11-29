@@ -42,13 +42,53 @@
       <div class="buttons-row">
         <button class="share-button" @click="handleShare">
           <Share2 :size="20" />
-          Share
+          Share Report
         </button>
         <button class="reset-button" @click="$emit('reset')">
           Start New Shift
         </button>
       </div>
       <AdContainer />
+    </div>
+
+    <!-- Share Modal -->
+    <div v-if="showShareModal" class="modal-backdrop" @click.self="showShareModal = false">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-sm w-full rounded-2xl">
+        <h3 class="text-lg font-bold text-white mb-4">Share Report</h3>
+        
+        <div class="space-y-3">
+          <button 
+            @click="shareViaWhatsApp"
+            class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+          >
+            <span>📱</span>
+            Share via WhatsApp
+          </button>
+          
+          <button 
+            @click="shareViaSMS"
+            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+          >
+            <span>💬</span>
+            Share via SMS
+          </button>
+          
+          <button 
+            @click="copyToClipboard"
+            class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+          >
+            <span>📋</span>
+            Copy to Clipboard
+          </button>
+        </div>
+        
+        <button 
+          @click="showShareModal = false" 
+          class="w-full mt-4 py-2 text-zinc-500 hover:text-white"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -58,7 +98,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { CheckCircle, Check, X, Share2 } from 'lucide-vue-next'
 import AdContainer from './AdContainer.vue'
 
-defineProps({
+const props = defineProps({
   completedItems: {
     type: Array,
     default: () => []
@@ -71,28 +111,85 @@ defineProps({
 
 defineEmits(['reset'])
 
-// --- Share Logic ---
+const showShareModal = ref(false)
+
+const formatShareMessage = () => {
+  const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  
+  let message = `✅ Shift Handover Check - ${date} ${time}\n\n`
+  message += `Completed: ${props.completedItems.length}\n`
+  
+  if (props.completedItems.length > 0) {
+    message += `\n✅ Done:\n`
+    props.completedItems.forEach(item => {
+      message += `  • ${item.title}\n`
+    })
+  }
+  
+  if (props.skippedItems.length > 0) {
+    message += `\n⚠️ Skipped:\n`
+    props.skippedItems.forEach(item => {
+      message += `  • ${item.title}\n`
+    })
+  } else {
+    message += `\n✅ All checks passed!\n`
+  }
+  
+  message += `\nVerified via Digiget.uk`
+  
+  return message
+}
+
 const handleShare = async () => {
+  const message = formatShareMessage()
   const shareData = {
-    title: 'Digiget',
-    text: 'Check your keys, meds, and ID before you leave. Use Digiget for a safer shift handover.',
-    url: window.location.origin
+    title: 'Shift Handover Report',
+    text: message
   }
 
+  // Try Web Share API first (works with WhatsApp/SMS on mobile)
   if (navigator.share) {
     try {
       await navigator.share(shareData)
+      return
     } catch (err) {
-      console.error('Error sharing:', err)
+      // User cancelled or error - fall through to other options
+      if (err.name === 'AbortError') {
+        return // User cancelled, don't show fallback
+      }
     }
-  } else {
-    // Fallback for browsers that don't support Web Share API
-    try {
-      await navigator.clipboard.writeText(shareData.url)
-      alert('Link copied to clipboard!')
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
+  }
+  
+  // Fallback: Show share options modal
+  showShareModal.value = true
+}
+
+const shareViaWhatsApp = () => {
+  const message = formatShareMessage()
+  const encodedMessage = encodeURIComponent(message)
+  const whatsappUrl = `https://wa.me/?text=${encodedMessage}`
+  window.open(whatsappUrl, '_blank')
+  showShareModal.value = false
+}
+
+const shareViaSMS = () => {
+  const message = formatShareMessage()
+  const encodedMessage = encodeURIComponent(message)
+  const smsUrl = `sms:?body=${encodedMessage}`
+  window.location.href = smsUrl
+  showShareModal.value = false
+}
+
+const copyToClipboard = async () => {
+  const message = formatShareMessage()
+  try {
+    await navigator.clipboard.writeText(message)
+    alert('Report copied to clipboard!')
+    showShareModal.value = false
+  } catch (err) {
+    console.error('Failed to copy:', err)
+    alert('Failed to copy. Please try again.')
   }
 }
 
@@ -250,17 +347,20 @@ onUnmounted(() => {
 }
 
 .buttons-row {
-  @apply flex w-full max-w-xs gap-3 mb-4;
+  @apply flex w-full max-w-xs gap-3 mb-4 items-stretch;
 }
 
 .share-button {
-  @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-4 rounded-xl shadow-lg 
-         hover:bg-zinc-700 hover:text-white active:scale-95 transition-all flex items-center justify-center gap-2;
+  @apply flex-1 bg-gradient-to-br from-blue-600 to-blue-700 text-white font-bold py-4 rounded-xl shadow-lg 
+         hover:from-blue-500 hover:to-blue-600 active:scale-95 transition-all 
+         flex items-center justify-center gap-2 min-h-[56px] border border-blue-500/30;
+  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.4);
 }
 
 .reset-button {
   @apply flex-[2] bg-zinc-100 text-zinc-950 font-bold py-4 rounded-xl shadow-lg 
-         hover:bg-white active:scale-95 transition-all flex items-center justify-center gap-2;
+         hover:bg-white active:scale-95 transition-all 
+         flex items-center justify-center gap-2 min-h-[56px];
 }
 
 .scrollbar-hide::-webkit-scrollbar {
@@ -285,5 +385,13 @@ onUnmounted(() => {
 @keyframes slideUp {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/90 backdrop-blur-sm z-[110] flex items-center justify-center p-4;
+}
+
+.modal-content {
+  animation: fadeIn 0.2s ease-out;
 }
 </style>
