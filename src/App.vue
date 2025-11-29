@@ -385,6 +385,17 @@ watch(safetyChecks, async (newChecks) => {
   }
 }, { deep: true })
 
+// Haptic feedback helper
+const vibrate = (pattern = [50]) => {
+  if ('vibrate' in navigator) {
+    try {
+      navigator.vibrate(pattern)
+    } catch (e) {
+      // Silently fail if vibration is not supported or blocked
+    }
+  }
+}
+
 const handleSwipe = (checkId, direction) => {
   const swipedCheck = safetyChecks.value.find(c => c.id === checkId)
   if (!swipedCheck) return
@@ -399,6 +410,12 @@ const handleSwipe = (checkId, direction) => {
   else skippedItems.value.push(swipedCheck)
 
   safetyChecks.value = safetyChecks.value.filter(c => c.id !== checkId)
+  
+  // Haptic feedback when checklist is completed (last card swiped)
+  if (safetyChecks.value.length === 0) {
+    // Celebration pattern: short, pause, medium, pause, long
+    vibrate([50, 100, 100, 100, 200])
+  }
 }
 
 const handleUndo = () => {
@@ -765,6 +782,9 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 /* Footer */
 .app-footer {
   @apply w-full py-3 px-4 border-t border-zinc-900/50 bg-zinc-950/50 backdrop-blur-sm shrink-0;
+  /* Add padding for Android navigation buttons */
+  /* Use safe area inset if available, otherwise use fixed 56px for typical Android nav bar */
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 56px));
 }
 
 .footer-links {

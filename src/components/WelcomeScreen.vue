@@ -71,14 +71,20 @@
         <!-- SEO Content Sections -->
         <main class="info-sections space-y-16 w-full max-w-md text-left pb-12 border-t border-zinc-800/50 pt-12">
           
-          <!-- Why Digiget Exists -->
+          <!-- Why Nurses Use Digiget -->
           <section>
-            <h3 class="section-title">Why Digiget Exists</h3>
+            <h3 class="section-title">Why Nurses Use Digiget</h3>
             <p class="section-text">
-              Every nurse knows the feeling. You're halfway home and suddenly panic: <em>"Did I return the keys? Did I sign the controlled drugs? Did I complete the handover?"</em>
+              Every shift, thousands of UK nurses drive home wondering:
+            </p>
+            <p class="section-text mt-2 italic text-zinc-300">
+              "Did I return my keys? Did I sign the controlled drugs?"
             </p>
             <p class="section-text mt-4">
-              Digiget was built to prevent anxious visits back to the hospital. It's a simple, specialized <strong>end-of-shift checklist</strong> that takes 30 seconds and gives you total peace of mind. No sign-up. No data collection. Just swipe through your checks and go home.
+              Digiget is the 30-second end-of-shift checklist that gives you peace of mind. No sign-up. No data collection.
+            </p>
+            <p class="section-text mt-4">
+              Built by a nurse who drove back to the hospital at 2am for forgotten keys one too many times.
             </p>
           </section>
 
@@ -89,65 +95,69 @@
               <div class="step-row">
                 <div class="step-number">1</div>
                 <div>
-                  <h4 class="step-title">Open the App</h4>
-                  <p class="step-desc">No login required. Works completely offline. Instant access when you need it most.</p>
+                  <h4 class="step-title">Select your shift type (Day, Night, SE, SL)</h4>
                 </div>
               </div>
               <div class="step-row">
                 <div class="step-number">2</div>
                 <div>
-                  <h4 class="step-title">Swipe Your Checklist</h4>
-                  <p class="step-desc">Keys returned? Swipe right. Meds signed? Swipe right. Confirm each critical item.</p>
+                  <h4 class="step-title">Swipe through your checklist in 30 seconds</h4>
                 </div>
               </div>
               <div class="step-row">
                 <div class="step-number">3</div>
                 <div>
-                  <h4 class="step-title">Leave Work Behind</h4>
-                  <p class="step-desc">Get the green tick. Drive home knowing you didn't forget a single thing.</p>
+                  <h4 class="step-title">Leave work at work</h4>
                 </div>
               </div>
             </div>
+            <p class="section-text mt-6 text-center">
+              Works offline. Completely private. Always free.
+            </p>
           </section>
 
-          <!-- Who Uses It -->
+          <!-- Who Uses Digiget -->
           <section>
-            <h3 class="section-title">Who Uses Digiget?</h3>
+            <h3 class="section-title">Who Uses Digiget</h3>
             <ul class="user-list space-y-3 mt-4">
               <li class="flex items-start gap-3">
                 <Check :size="18" class="text-blue-500 mt-0.5 shrink-0" />
-                <span class="text-zinc-400 text-sm"><strong>Ward Nurses</strong> checking keys, ID, and medication documentation.</span>
+                <span class="text-zinc-400 text-sm">Ward nurses checking keys, ID, and meds</span>
               </li>
               <li class="flex items-start gap-3">
                 <Check :size="18" class="text-blue-500 mt-0.5 shrink-0" />
-                <span class="text-zinc-400 text-sm"><strong>Theatre Nurses</strong> confirming instrument counts and equipment.</span>
+                <span class="text-zinc-400 text-sm">Theatre nurses confirming instrument counts</span>
               </li>
               <li class="flex items-start gap-3">
                 <Check :size="18" class="text-blue-500 mt-0.5 shrink-0" />
-                <span class="text-zinc-400 text-sm"><strong>Community Nurses</strong> ensuring all notes and patient handovers are complete.</span>
+                <span class="text-zinc-400 text-sm">Community nurses ensuring handovers are complete</span>
               </li>
               <li class="flex items-start gap-3">
                 <Check :size="18" class="text-blue-500 mt-0.5 shrink-0" />
-                <span class="text-zinc-400 text-sm"><strong>Agency Staff</strong> working across multiple trusts and unfamiliar wards.</span>
+                <span class="text-zinc-400 text-sm">Bank and agency nurses working across multiple trusts</span>
               </li>
             </ul>
           </section>
 
-          <!-- FAQ Snippet -->
+          <!-- Frequently Asked Questions -->
           <section>
             <h3 class="section-title">Frequently Asked Questions</h3>
             <div class="space-y-6 mt-6">
               <div>
-                <h4 class="font-bold text-zinc-200 text-sm">Do I need an account?</h4>
-                <p class="text-zinc-500 text-sm mt-1 leading-relaxed">No. Digiget works instantly without any sign-up or login. Just open it and start checking.</p>
+                <h4 class="font-bold text-zinc-200 text-sm mb-2">Do I need an account?</h4>
+                <p class="text-zinc-500 text-sm leading-relaxed">No. Digiget works instantly without sign-up.</p>
               </div>
               <div>
-                <h4 class="font-bold text-zinc-200 text-sm">Is my data private?</h4>
-                <p class="text-zinc-500 text-sm mt-1 leading-relaxed">Yes. Everything stays on your device. We do not collect or store any personal information or patient data.</p>
+                <h4 class="font-bold text-zinc-200 text-sm mb-2">Is my data private?</h4>
+                <p class="text-zinc-500 text-sm leading-relaxed">Yes. Your checklist stays on your device. We collect anonymous usage stats (city-level location, shift types) to improve the app.</p>
               </div>
               <div>
-                <h4 class="font-bold text-zinc-200 text-sm">Does it work without internet?</h4>
-                <p class="text-zinc-500 text-sm mt-1 leading-relaxed">Yes. Digiget is a Progressive Web App (PWA). Once loaded, it works completely offline, perfect for hospitals with poor signal.</p>
+                <h4 class="font-bold text-zinc-200 text-sm mb-2">Does it work offline?</h4>
+                <p class="text-zinc-500 text-sm leading-relaxed">Yes. Perfect for hospitals with poor signal.</p>
+              </div>
+              <div>
+                <h4 class="font-bold text-zinc-200 text-sm mb-2">Can I customize the checklist?</h4>
+                <p class="text-zinc-500 text-sm leading-relaxed">Yes. Add, edit, or delete any checklist items.</p>
               </div>
             </div>
           </section>
@@ -227,6 +237,7 @@ const handleStart = () => {
 .logo-section {
   @apply flex flex-col items-center gap-3;
   animation: float 6s ease-in-out infinite;
+  overflow: visible; /* Ensure descenders aren't clipped */
 }
 
 .icon-pulse {
@@ -240,6 +251,9 @@ const handleStart = () => {
 
 .app-title {
   @apply text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-400 tracking-tighter mt-4;
+  line-height: 1.2;
+  padding-bottom: 0.1em; /* Extra space for descenders like 'g' */
+  display: block;
 }
 
 /* Text Styling */

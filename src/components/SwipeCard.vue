@@ -178,6 +178,17 @@ const handleMove = (e) => {
   }
 }
 
+// Haptic feedback helper
+const vibrate = (pattern = [50]) => {
+  if ('vibrate' in navigator) {
+    try {
+      navigator.vibrate(pattern)
+    } catch (e) {
+      // Silently fail if vibration is not supported or blocked
+    }
+  }
+}
+
 const handleEnd = (e) => {
   if (!isDragging.value) return
   
@@ -188,6 +199,9 @@ const handleEnd = (e) => {
     // Fly off screen
     const direction = distance > 0 ? 'right' : 'left'
     const flyDistance = direction === 'right' ? 1000 : -1000
+    
+    // Haptic feedback on swipe
+    vibrate([30])
     
     // Animate off screen
     currentX.value = startX.value + flyDistance
