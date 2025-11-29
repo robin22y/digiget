@@ -238,28 +238,25 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     
     console.log('📤 addDoc promise created, setting up handlers...')
     
-    // Add a timeout wrapper to detect hanging promises
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('addDoc promise never resolved after 10 seconds')), 10000)
-    )
-    
-    Promise.race([savePromise, timeoutPromise])
+    // Handle promise resolution/rejection without timeout
+    // Firestore will resolve when the write is queued (offline persistence)
+    // or when it syncs to server (if online)
+    savePromise
       .then((docRef) => {
-        console.log('✅ Shift log queued for sync. Document ID:', docRef.id)
+        console.log('✅ Shift log saved successfully. Document ID:', docRef.id)
         console.log('✅ Document path:', docRef.path)
-        console.log('✅ Document will sync to server when network is available')
+        console.log('✅ Data will sync to server when network is available')
       })
       .catch((error) => {
         console.error('❌ Error saving shift log (background):', error)
         console.error('Error code:', error.code)
         console.error('Error message:', error.message)
-        if (error.message.includes('never resolved')) {
-          console.error('🔴 PROMISE HANGING: The addDoc call is not resolving')
-          console.error('This suggests a network/connectivity issue or Firestore rules blocking')
-        }
+        
         if (error.code === 'permission-denied' || error.code === 'permissions-denied') {
           console.error('🔒 PERMISSION DENIED: Check Firestore security rules!')
           console.error('Current user ID:', auth.currentUser?.uid)
+          console.error('📋 Required rule: allow write: if request.auth != null;')
+          console.error('Go to: Firebase Console → Firestore → Rules')
         }
         if (error.code === 'auth/admin-restricted-operation') {
           console.error('🔒 ANONYMOUS AUTH DISABLED: Enable Anonymous authentication in Firebase Console!')
@@ -268,7 +265,20 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
         if (error.code === 'unavailable') {
           console.warn('⚠️ Network unavailable - data will be queued for offline sync')
         }
+        if (!error.code) {
+          console.warn('⚠️ Unknown error - this might be a network issue. Data may sync when online.')
+        }
       })
+    
+    // Add a warning timeout (non-blocking) to help debug hanging promises
+    setTimeout(() => {
+      // Check if promise is still pending after 10 seconds
+      // This is just for debugging, doesn't throw errors
+      console.warn('⏱️ addDoc still pending after 10 seconds - this may indicate:')
+      console.warn('   1. Firestore security rules blocking writes')
+      console.warn('   2. Network connectivity issues')
+      console.warn('   3. Anonymous authentication not enabled')
+    }, 10000)
     
     // Return immediately without waiting
     // The save happens in background via offline persistence

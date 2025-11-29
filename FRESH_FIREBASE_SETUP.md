@@ -24,10 +24,11 @@
 4. Select a location closest to your users (e.g., `europe-west2` for UK)
 5. Click **"Enable"**
 
-## Step 4: Set Up Security Rules
+## Step 4: Set Up Security Rules (CRITICAL!)
 
 1. Go to **Firestore Database** → **Rules**
-2. Replace with these rules:
+2. **IMPORTANT:** If you started in "test mode", you MUST update the rules or writes will be blocked after 30 days!
+3. Replace with these rules:
 
 ```javascript
 rules_version = '2';
@@ -35,22 +36,26 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Allow anonymous users to create shift logs
     match /shift_logs/{document=**} {
+      // Allow create if user is authenticated and userId matches
       allow create: if request.auth != null && 
-                     request.auth.uid == request.resource.data.userId;
+                     request.resource.data.userId == request.auth.uid;
+      // Allow read for authenticated users (for admin dashboard)
       allow read: if request.auth != null;
+      // No updates or deletes via client (use admin functions if needed)
       allow update, delete: if false;
     }
     
-    // Ads collection
+    // Ads collection - public read, no client writes
     match /ads/{document=**} {
-      allow read: if true;
-      allow write: if false; // Only admins (add admin check later)
+      allow read: if true; // Anyone can read ads
+      allow write: if false; // Only admins via Firebase Console
     }
   }
 }
 ```
 
-3. Click **"Publish"**
+4. Click **"Publish"**
+5. **VERIFY:** After publishing, check that the rules show "Published" status
 
 ## Step 5: Get Your Firebase Config
 
