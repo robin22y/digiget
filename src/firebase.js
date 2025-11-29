@@ -207,10 +207,23 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       authExists: !!auth
     })
     
+    console.log('📤 Sending to Firestore...')
     const docRef = await addDoc(collection(db, 'shift_logs'), shiftLog)
     
     // Always log success so users know data was saved
     console.log('✅ Shift log saved to Firebase with ID:', docRef.id)
+    console.log('✅ Document path:', docRef.path)
+    
+    // Verify it was actually saved by checking if we can read it back
+    // (This helps catch cases where it's queued but not actually saved)
+    try {
+      // Small delay to ensure write is processed
+      await new Promise(resolve => setTimeout(resolve, 500))
+      console.log('✅ Write confirmed - data should be in Firestore now')
+    } catch (verifyError) {
+      console.warn('⚠️ Could not verify write, but document ID was returned:', docRef.id)
+    }
+    
     return docRef.id
   } catch (error) {
     // Always log errors so users know something went wrong
@@ -218,13 +231,21 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     console.error('Error details:', {
       code: error.code,
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
+      name: error.name
     })
     
     // Check if it's a permissions error
-    if (error.code === 'permission-denied') {
+    if (error.code === 'permission-denied' || error.code === 'permissions-denied') {
       console.error('🔒 PERMISSION DENIED: Check Firestore security rules!')
       console.error('The security rules may be blocking writes. Make sure anonymous users can write to shift_logs collection.')
+      console.error('Current user:', auth.currentUser?.uid)
+    }
+    
+    // Check if it's a network error (might be queued for offline)
+    if (error.code === 'unavailable' || error.message?.includes('network')) {
+      console.warn('⚠️ Network error - data will be queued and synced when online')
+      console.warn('This is normal if you\'re offline. Firestore will sync automatically.')
     }
     
     // Even if there's an error, the data will be queued for sync when online

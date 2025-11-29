@@ -426,10 +426,11 @@ watch(safetyChecks, async (newChecks) => {
       const itemsChecked = completedItems.value.length
       const skippedTitles = skippedItems.value.map(item => item.title)
       // Pass the currentShift.value to Firebase!
+      console.log('🔄 Starting Firebase save process...')
       const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
       
       if (result) {
-        console.log('✅ Shift completion logged successfully to Firebase')
+        console.log('✅ Shift completion logged successfully to Firebase. Document ID:', result)
       } else {
         console.warn('⚠️ Shift completion not logged - Firebase not configured. Check console for details.')
       }
