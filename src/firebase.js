@@ -32,14 +32,17 @@ const hasApiKey = !!import.meta.env.VITE_FIREBASE_API_KEY
 const hasAuthDomain = !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN
 const hasProjectId = !!import.meta.env.VITE_FIREBASE_PROJECT_ID
 
+// Always log this in production to help debug
 console.log('🔍 Firebase Config Check:', {
   hasApiKey,
   hasAuthDomain,
   hasProjectId,
   apiKeyLength: import.meta.env.VITE_FIREBASE_API_KEY?.length || 0,
+  apiKeyPreview: import.meta.env.VITE_FIREBASE_API_KEY ? import.meta.env.VITE_FIREBASE_API_KEY.substring(0, 10) + '...' : 'MISSING',
   env: import.meta.env.MODE,
   isDev: import.meta.env.DEV,
-  isProd: import.meta.env.PROD
+  isProd: import.meta.env.PROD,
+  allViteEnvVars: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_'))
 })
 
 // Warn if environment variables are not set (only in development)
