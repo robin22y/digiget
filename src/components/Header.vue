@@ -11,16 +11,13 @@
     </div>
 
     <div class="actions">
-      <!-- Install Icon -->
       <button 
-        class="action-button install-mini"
-        :class="{ 'install-available': canInstall }"
-        @click="$emit('install')"
-        aria-label="Install App"
-        :title="canInstall ? 'Install App' : 'Install not available'"
-        :disabled="!canInstall"
+        class="action-button reset-btn"
+        @click="$emit('reset-day')"
+        aria-label="Reset Today's Entry"
+        title="Reset Today's Entry"
       >
-        <Download :size="18" />
+        <RotateCcw :size="18" />
       </button>
 
       <button 
@@ -46,16 +43,10 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Plus, Download, Settings } from 'lucide-vue-next'
+import { Plus, Settings, RotateCcw } from 'lucide-vue-next'
 
-defineProps({
-  canInstall: {
-    type: Boolean,
-    default: false
-  }
-})
 
-const emit = defineEmits(['add-click', 'admin-trigger', 'install', 'manage-cards'])
+const emit = defineEmits(['add-click', 'admin-trigger', 'manage-cards', 'reset-day'])
 
 // Secret Click Logic (5 clicks = Admin)
 const clickCount = ref(0)
@@ -115,15 +106,4 @@ const handleSecretClick = () => {
   min-height: 40px;
 }
 
-.install-mini {
-  @apply text-zinc-500 border-zinc-800 bg-zinc-900;
-}
-
-.install-mini.install-available {
-  @apply text-blue-400 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/50;
-}
-
-.install-mini:disabled {
-  @apply opacity-50 cursor-not-allowed;
-}
 </style>

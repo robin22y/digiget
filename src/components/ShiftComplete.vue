@@ -7,35 +7,10 @@
       <div class="success-icon">
         <CheckCircle :size="64" />
       </div>
-      <h1 class="success-title">Shift Complete</h1>
-      <p class="success-message">
-        <span class="text-green-400">{{ completedItems.length }} Done</span>
-        <span class="mx-2 text-zinc-600">|</span>
-        <span :class="skippedItems.length > 0 ? 'text-red-400' : 'text-zinc-500'">
-          {{ skippedItems.length }} Skipped
-        </span>
+      <h1 class="success-title">You are done.</h1>
+      <p class="success-message text-zinc-400">
+        Your safety checks are complete and confirmed.
       </p>
-    </div>
-
-    <!-- Scrollable Review List -->
-    <div class="review-list">
-      <h3 class="list-header">Session Summary</h3>
-      
-      <!-- Skipped Items First (Important to review) -->
-      <div v-for="item in skippedItems" :key="item.id" class="review-item skipped">
-        <div class="item-icon-wrapper bg-red-500/10 text-red-400">
-          <X :size="16" />
-        </div>
-        <span class="item-text text-red-200">{{ item.title }}</span>
-      </div>
-
-      <!-- Completed Items -->
-      <div v-for="item in completedItems" :key="item.id" class="review-item completed">
-        <div class="item-icon-wrapper bg-green-500/10 text-green-400">
-          <Check :size="16" />
-        </div>
-        <span class="item-text">{{ item.title }}</span>
-      </div>
     </div>
 
     <div class="action-section">
@@ -44,11 +19,42 @@
           <Share2 :size="20" />
           Share
         </button>
-        <button class="reset-button" @click="$emit('reset')">
-          Start New Shift
+        <button class="edit-button" @click="handleEditClick">
+          <Edit :size="20" />
+          Edit
+        </button>
+      </div>
+      <div class="start-shift-section">
+        <button class="start-shift-button" @click="$emit('reset')">
+          Start Shift Check
         </button>
       </div>
       <AdContainer />
+    </div>
+
+    <!-- Edit Confirmation Modal -->
+    <div v-if="showEditWarning" class="modal-backdrop" @click.self="showEditWarning = false">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-sm w-full rounded-2xl">
+        <h3 class="text-lg font-bold text-white mb-4">Re-open Checklist?</h3>
+        <p class="text-zinc-400 mb-6">
+          You have already confirmed your safety checks. Re-opening the list is only for corrections. Continue?
+        </p>
+        
+        <div class="flex gap-3">
+          <button 
+            @click="showEditWarning = false" 
+            class="flex-1 py-3 text-zinc-400 hover:text-white font-medium"
+          >
+            Cancel
+          </button>
+          <button 
+            @click="handleConfirmEdit"
+            class="flex-1 py-3 bg-white text-zinc-950 font-bold rounded-xl"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Share Modal -->
@@ -95,7 +101,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { CheckCircle, Check, X, Share2 } from 'lucide-vue-next'
+import { CheckCircle, Share2, Edit } from 'lucide-vue-next'
 import AdContainer from './AdContainer.vue'
 
 const props = defineProps({
@@ -109,7 +115,18 @@ const props = defineProps({
   }
 })
 
-defineEmits(['reset'])
+defineEmits(['reset', 'edit'])
+
+const showEditWarning = ref(false)
+
+const handleEditClick = () => {
+  showEditWarning.value = true
+}
+
+const handleConfirmEdit = () => {
+  showEditWarning.value = false
+  emit('edit')
+}
 
 const showShareModal = ref(false)
 
@@ -359,10 +376,20 @@ onUnmounted(() => {
          flex items-center justify-center gap-2 min-h-[56px];
 }
 
-.reset-button {
-  @apply flex-[2] bg-zinc-100 text-zinc-950 font-bold py-4 rounded-xl shadow-lg 
-         hover:bg-white active:scale-95 transition-all 
+.edit-button {
+  @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-4 rounded-xl shadow-lg 
+         hover:bg-zinc-700 hover:text-white active:scale-95 transition-all 
          flex items-center justify-center gap-2 min-h-[56px];
+}
+
+.start-shift-section {
+  @apply w-full max-w-xs mt-4;
+}
+
+.start-shift-button {
+  @apply w-full bg-zinc-100 text-zinc-950 font-bold py-4 rounded-xl shadow-lg 
+         hover:bg-white active:scale-95 transition-all 
+         flex items-center justify-center gap-2;
 }
 
 .scrollbar-hide::-webkit-scrollbar {

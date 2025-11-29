@@ -16,12 +16,25 @@
     <template v-if="!showWelcome">
       <Header 
         v-if="!showAdminDashboard" 
-        :can-install="!!deferredPrompt"
         @add-click="openAddModal" 
         @admin-trigger="showAdminLogin = true" 
-        @install="handleInstall"
         @manage-cards="showCardManager = true"
+        @reset-day="handleResetDay"
       />
+      
+      <!-- Install Button (Top Right) -->
+      <div v-if="!showAdminDashboard" class="install-banner">
+        <button 
+          class="install-banner-button"
+          :class="{ 'install-available': deferredPrompt, 'install-disabled': !deferredPrompt }"
+          @click="handleInstall"
+          :disabled="!deferredPrompt"
+          :title="deferredPrompt ? 'Install Digiget App' : 'Install not available'"
+        >
+          <Download :size="18" />
+          <span>Install</span>
+        </button>
+      </div>
       
       <main v-if="!showAdminDashboard" class="main-content">
         <div v-if="safetyChecks.length === 0" class="card-stack-container">
@@ -29,6 +42,7 @@
             :completed-items="completedItems"
             :skipped-items="skippedItems"
             @reset="handleResetShift"
+            @edit="handleEditShift"
           />
         </div>
         <div v-else class="card-stack-container">
@@ -114,6 +128,31 @@
       @add="handleAddNewCard"
       @update="handleUpdateCard"
     />
+
+    <!-- Cooldown Warning Modal -->
+    <div v-if="showCooldownWarning" class="modal-backdrop" @click.self="handleCooldownCancel">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-sm w-full rounded-2xl">
+        <h3 class="text-lg font-bold text-white mb-4">Starting a New Shift?</h3>
+        <p class="text-zinc-400 mb-6">
+          You finished a shift very recently. Digiget is designed to help you switch off. Are you starting a new shift, or just checking?
+        </p>
+        
+        <div class="space-y-3">
+          <button 
+            @click="handleCooldownConfirm"
+            class="w-full bg-white text-zinc-950 font-bold py-3 px-4 rounded-xl hover:bg-zinc-100 transition-colors"
+          >
+            I'm Starting a New Shift
+          </button>
+          <button 
+            @click="handleCooldownCancel"
+            class="w-full bg-zinc-800 text-zinc-300 font-medium py-3 px-4 rounded-xl hover:bg-zinc-700 transition-colors"
+          >
+            Just Checking
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -131,7 +170,7 @@ import InfoPages from './components/InfoPages.vue'
 import { logShiftComplete } from './firebase.js'
 import { 
   Key, CreditCard, Lock, FileX, Pen, Radio, 
-  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer 
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download
 } from 'lucide-vue-next'
 
 const iconMap = {
@@ -310,6 +349,9 @@ watch(safetyChecks, async (newChecks) => {
       const itemsChecked = completedItems.value.length
       const skippedTitles = skippedItems.value.map(item => item.title)
       await logShiftComplete(itemsChecked, skippedTitles)
+      
+      // Store the completion timestamp for cooldown check
+      localStorage.setItem('digiget-last-completion', Date.now().toString())
     } catch (e) { console.error(e) }
   }
 }, { deep: true })
@@ -342,8 +384,9 @@ const handleUndo = () => {
   safetyChecks.value.splice(insertIndex, 0, check)
 }
 
-const handleResetShift = () => {
-  if (confirm('Start a new shift checklist?')) {
+const handleResetDay = () => {
+  if (confirm('Reset today\'s entry? This will clear today\'s progress only. Your custom cards and history will be preserved.')) {
+    // Reset only today's session - preserves custom cards and historical data
     // Get all cards (including edited defaults that are now in customChecks)
     // Start with fresh defaults, but replace with custom versions if they exist
     const freshDefaults = getFreshChecks()
@@ -363,12 +406,64 @@ const handleResetShift = () => {
       !freshDefaults.some(d => d.id === c.id)
     )
     
+    // Reset only current session data (today's entry)
+    // Note: customChecks is preserved (user's custom cards)
+    // Note: Historical Firebase logs are preserved (already saved separately)
     safetyChecks.value = [...allCards, ...additionalCustoms]
     completedItems.value = []
     skippedItems.value = []
     undoHistory.value = []
     window.scrollTo(0, 0)
   }
+}
+
+const showCooldownWarning = ref(false)
+
+const handleResetShift = () => {
+  // Check if last completion was less than 4 hours ago
+  const lastCompletion = localStorage.getItem('digiget-last-completion')
+  if (lastCompletion) {
+    const lastCompletionTime = parseInt(lastCompletion)
+    const fourHoursAgo = Date.now() - (4 * 60 * 60 * 1000) // 4 hours in milliseconds
+    
+    if (lastCompletionTime > fourHoursAgo) {
+      // Show cooldown warning
+      showCooldownWarning.value = true
+      return
+    }
+  }
+  
+  // No cooldown or more than 4 hours passed, proceed normally
+  handleResetDay()
+}
+
+const handleCooldownConfirm = () => {
+  showCooldownWarning.value = false
+  handleResetDay()
+}
+
+const handleCooldownCancel = () => {
+  showCooldownWarning.value = false
+  // Stay on the green screen (do nothing)
+}
+
+const handleEditShift = () => {
+  // Re-open the checklist for editing after confirmation
+  // Restore all cards from completed/skipped back to safetyChecks
+  // This allows the user to edit their choices
+  
+  // Combine completed and skipped items - these already have icons restored
+  const allSwipedCards = [...completedItems.value, ...skippedItems.value]
+  
+  // Ensure icons are properly restored
+  const restoredCards = restoreIcons(allSwipedCards)
+  
+  // Restore the cards to safetyChecks and clear completed/skipped
+  safetyChecks.value = restoredCards
+  completedItems.value = []
+  skippedItems.value = []
+  undoHistory.value = []
+  window.scrollTo(0, 0)
 }
 
 // Get all cards for management (combine default and custom, but use current state)
@@ -541,6 +636,23 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 
 .modal-backdrop {
   @apply fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+}
+
+/* Install Banner (Top Right) */
+.install-banner {
+  @apply w-full flex justify-end px-6 py-2 shrink-0;
+}
+
+.install-banner-button {
+  @apply flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg;
+}
+
+.install-banner-button.install-available {
+  @apply bg-blue-600 hover:bg-blue-500 text-white cursor-pointer;
+}
+
+.install-banner-button.install-disabled {
+  @apply bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-50;
 }
 
 /* Footer */

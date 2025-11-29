@@ -143,7 +143,7 @@
       </div>
 
       <!-- Existing Ads List -->
-      <h3 class="text-lg font-bold text-white mb-4">Active Campaigns</h3>
+      <h3 class="text-lg font-bold text-white mb-4">All Campaigns</h3>
       <div v-if="loadingAds" class="text-zinc-500">Loading campaigns...</div>
       <div v-else class="space-y-4">
         <div v-for="ad in ads" :key="ad.id" class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex justify-between items-center group">
@@ -157,8 +157,9 @@
               </span>
               <span class="text-xs text-zinc-500 uppercase">{{ ad.type }}</span>
             </div>
-            <h4 class="font-bold text-zinc-200">{{ ad.content }}</h4>
+            <h4 class="font-bold text-zinc-200 mb-1">{{ ad.content }}</h4>
             <a :href="ad.link" target="_blank" class="text-xs text-blue-400 hover:underline truncate block max-w-md">{{ ad.link }}</a>
+            <div v-if="ad.imageUrl" class="text-xs text-zinc-600 mt-1">Image: {{ ad.imageUrl.substring(0, 40) }}...</div>
           </div>
           
           <div class="flex items-center gap-2">
@@ -179,7 +180,7 @@
           </div>
         </div>
         <div v-if="ads.length === 0" class="text-zinc-600 text-sm text-center py-8">
-          No active ad campaigns.
+          No ad campaigns found. Create one above.
         </div>
       </div>
     </div>
@@ -280,6 +281,7 @@ onMounted(() => {
   })
 
   // 2. Fetch Ads
+  // Try with orderBy first, fallback to simple query if index missing
   const adsQuery = query(
     collection(db, "ads"),
     orderBy("createdAt", "desc")
@@ -291,6 +293,27 @@ onMounted(() => {
       ...doc.data()
     }))
     loadingAds.value = false
+  }, (error) => {
+    console.error("Ads Access Error (likely missing index):", error)
+    // Try fallback query without orderBy
+    const fallbackQuery = query(collection(db, "ads"))
+    if (adsUnsubscribe) adsUnsubscribe() // Clean up previous subscription
+    adsUnsubscribe = onSnapshot(fallbackQuery, (snapshot) => {
+      ads.value = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      // Sort by createdAt manually
+      ads.value.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || a.createdAt?.toMillis?.() || 0
+        const bTime = b.createdAt?.seconds || b.createdAt?.toMillis?.() || 0
+        return bTime - aTime
+      })
+      loadingAds.value = false
+    }, (fallbackError) => {
+      console.error("Fallback query also failed:", fallbackError)
+      loadingAds.value = false
+    })
   })
 })
 
@@ -456,11 +479,13 @@ const toggleAdStatus = async (ad) => {
 }
 
 const deleteAd = async (id) => {
-  if (!confirm("Are you sure you want to delete this campaign?")) return
+  if (!confirm("Are you sure you want to delete this campaign? This cannot be undone.")) return
   try {
     await deleteDoc(doc(db, "ads", id))
+    alert("Campaign deleted successfully.")
   } catch (e) {
     console.error("Error deleting ad:", e)
+    alert("Failed to delete campaign. Check console for details.")
   }
 }
 

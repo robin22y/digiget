@@ -1,25 +1,30 @@
 <template>
-  <div v-if="currentAd" class="ad-container fade-in">
+  <div v-if="currentAd && validLink" class="ad-container fade-in">
     <!-- Type: Simple Text Ad -->
     <a 
       v-if="currentAd.type === 'text'"
-      :href="currentAd.link" 
+      :href="validLink" 
       target="_blank" 
       rel="noopener noreferrer"
       class="ad-text-link"
+      @click="handleAdClick"
     >
       <span class="ad-badge">Sponsored</span>
-      <p class="ad-content">{{ currentAd.content }}</p>
-      <ExternalLink :size="14" class="text-zinc-500" />
+      <div class="flex-1 min-w-0">
+        <p class="ad-content">{{ currentAd.content }}</p>
+        <p class="ad-link-url">{{ formatLink(validLink) }}</p>
+      </div>
+      <ExternalLink :size="14" class="text-zinc-500 flex-shrink-0" />
     </a>
 
     <!-- Type: Affiliate / Banner Ad -->
     <a 
       v-else-if="currentAd.type === 'affiliate'"
-      :href="currentAd.link"
+      :href="validLink"
       target="_blank"
       rel="noopener noreferrer"
       class="ad-banner group"
+      @click="handleAdClick"
     >
       <div v-if="currentAd.imageUrl" class="ad-image-wrapper">
         <img :src="currentAd.imageUrl" alt="Ad" class="ad-image" />
@@ -27,6 +32,7 @@
       <div class="ad-details">
         <span class="ad-badge-sm">Promoted</span>
         <h4 class="ad-title">{{ currentAd.content }}</h4>
+        <p class="ad-link-url-small">{{ formatLink(validLink) }}</p>
         <div class="ad-cta">
           Shop Now <ArrowRight :size="12" />
         </div>
@@ -39,30 +45,95 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ExternalLink, ArrowRight } from 'lucide-vue-next'
 import { db } from '../firebase'
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore'
 
 const currentAd = ref(null)
 
+// Ensure link has proper protocol
+const validLink = computed(() => {
+  if (!currentAd.value?.link) return null
+  const link = currentAd.value.link.trim()
+  if (!link) return null
+  
+  // Add https:// if no protocol
+  if (!link.startsWith('http://') && !link.startsWith('https://')) {
+    return `https://${link}`
+  }
+  return link
+})
+
+const handleAdClick = (e) => {
+  if (!validLink.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    console.error("Invalid ad link:", currentAd.value?.link)
+    alert("This ad has an invalid link. Please contact support.")
+    return false
+  }
+  // Log for debugging - let the natural link behavior work
+  console.log("Ad clicked, navigating to:", validLink.value)
+  // Don't prevent default - let the <a> tag handle navigation naturally
+  return true
+}
+
+const formatLink = (link) => {
+  if (!link) return ''
+  // Remove protocol for display
+  return link.replace(/^https?:\/\//, '').replace(/^www\./, '')
+}
+
 onMounted(async () => {
   try {
-    // Fetch active ads
-    const q = query(
-      collection(db, "ads"),
-      where("isActive", "==", true),
-      orderBy("createdAt", "desc"),
-      limit(5) // Get latest 5 active ads
-    )
+    // Fetch active ads - simplified query to avoid index requirements
+    // First try with orderBy, fallback to simple where if it fails
+    let snapshot
+    try {
+      const q = query(
+        collection(db, "ads"),
+        where("isActive", "==", true),
+        orderBy("createdAt", "desc"),
+        limit(10) // Get latest 10 active ads
+      )
+      snapshot = await getDocs(q)
+    } catch (indexError) {
+      // If index error, try without orderBy
+      console.warn("Index not found, fetching without orderBy:", indexError)
+      const q = query(
+        collection(db, "ads"),
+        where("isActive", "==", true),
+        limit(10)
+      )
+      snapshot = await getDocs(q)
+    }
     
-    const snapshot = await getDocs(q)
-    const ads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    const ads = snapshot.docs.map(doc => {
+      const data = doc.data()
+      return { 
+        id: doc.id, 
+        ...data,
+        // Ensure createdAt exists (fallback for old ads)
+        createdAt: data.createdAt || { seconds: 0, nanoseconds: 0 }
+      }
+    })
     
-    if (ads.length > 0) {
+    // Filter to only active ads (safety check)
+    const activeAds = ads.filter(ad => ad.isActive === true)
+    
+    if (activeAds.length > 0) {
       // Pick a random ad from the active pool to keep it fresh
-      const randomIndex = Math.floor(Math.random() * ads.length)
-      currentAd.value = ads[randomIndex]
+      const randomIndex = Math.floor(Math.random() * activeAds.length)
+      currentAd.value = activeAds[randomIndex]
+      console.log("Ad loaded:", {
+        content: currentAd.value.content,
+        link: currentAd.value.link,
+        type: currentAd.value.type,
+        validLink: validLink.value
+      })
+    } else {
+      console.log("No active ads found")
     }
   } catch (e) {
     console.error("Failed to load ads:", e)
@@ -79,7 +150,8 @@ onMounted(async () => {
 
 /* Text Ad Styles */
 .ad-text-link {
-  @apply flex items-center gap-3 bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 hover:bg-zinc-800 transition-colors no-underline;
+  @apply flex items-center gap-3 bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 hover:bg-zinc-800 transition-colors no-underline cursor-pointer;
+  text-decoration: none !important;
 }
 
 .ad-badge {
@@ -90,9 +162,18 @@ onMounted(async () => {
   @apply text-sm text-zinc-300 font-medium flex-1 truncate;
 }
 
+.ad-link-url {
+  @apply text-[10px] text-zinc-600 mt-1 truncate;
+}
+
+.ad-link-url-small {
+  @apply text-[9px] text-zinc-600 mb-1 truncate;
+}
+
 /* Banner/Affiliate Ad Styles */
 .ad-banner {
-  @apply flex bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-all no-underline h-24;
+  @apply flex bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-all no-underline h-24 cursor-pointer;
+  text-decoration: none !important;
 }
 
 .ad-image-wrapper {
