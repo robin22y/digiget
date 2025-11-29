@@ -261,6 +261,10 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
           console.error('🔒 PERMISSION DENIED: Check Firestore security rules!')
           console.error('Current user ID:', auth.currentUser?.uid)
         }
+        if (error.code === 'auth/admin-restricted-operation') {
+          console.error('🔒 ANONYMOUS AUTH DISABLED: Enable Anonymous authentication in Firebase Console!')
+          console.error('Go to: Firebase Console → Authentication → Sign-in method → Enable "Anonymous"')
+        }
         if (error.code === 'unavailable') {
           console.warn('⚠️ Network unavailable - data will be queued for offline sync')
         }
