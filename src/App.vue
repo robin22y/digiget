@@ -426,11 +426,19 @@ watch(safetyChecks, async (newChecks) => {
       const itemsChecked = completedItems.value.length
       const skippedTitles = skippedItems.value.map(item => item.title)
       // Pass the currentShift.value to Firebase!
-      await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
+      const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
+      
+      if (result) {
+        console.log('✅ Shift completion logged successfully to Firebase')
+      } else {
+        console.warn('⚠️ Shift completion not logged - Firebase not configured. Check console for details.')
+      }
       
       // Store the completion timestamp for cooldown check
       localStorage.setItem('digiget-last-completion', Date.now().toString())
-    } catch (e) { console.error(e) }
+    } catch (e) { 
+      console.error('❌ Failed to log shift completion:', e) 
+    }
   }
 }, { deep: true })
 

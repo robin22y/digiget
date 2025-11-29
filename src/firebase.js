@@ -27,6 +27,21 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 }
 
+// Debug: Log environment variable status (always log for debugging)
+const hasApiKey = !!import.meta.env.VITE_FIREBASE_API_KEY
+const hasAuthDomain = !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN
+const hasProjectId = !!import.meta.env.VITE_FIREBASE_PROJECT_ID
+
+console.log('🔍 Firebase Config Check:', {
+  hasApiKey,
+  hasAuthDomain,
+  hasProjectId,
+  apiKeyLength: import.meta.env.VITE_FIREBASE_API_KEY?.length || 0,
+  env: import.meta.env.MODE,
+  isDev: import.meta.env.DEV,
+  isProd: import.meta.env.PROD
+})
+
 // Warn if environment variables are not set (only in development)
 if (!import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.DEV) {
   console.warn('⚠️ Firebase environment variables not set. Firebase features will be disabled.')
@@ -36,8 +51,10 @@ if (!import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.DEV) {
 let app, auth, db
 try {
   if (import.meta.env.VITE_FIREBASE_API_KEY) {
+    console.log('✅ Initializing Firebase with config...')
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
+    console.log('✅ Firebase app and auth initialized')
     
     // Initialize Firestore with persistent cache (new API)
     // This replaces the deprecated enableIndexedDbPersistence()
@@ -48,22 +65,24 @@ try {
           tabManager: persistentMultipleTabManager()
         })
       })
+      console.log('✅ Firestore initialized with persistent cache')
     } catch (cacheError) {
       // Fallback to default Firestore if cache initialization fails
-      console.warn('Failed to initialize persistent cache, using default:', cacheError)
+      console.warn('⚠️ Failed to initialize persistent cache, using default:', cacheError)
       db = getFirestore(app)
+      console.log('✅ Firestore initialized with default cache')
     }
   } else {
-    // Only log in development
-    if (import.meta.env.DEV) {
-      console.warn('Firebase not initialized - environment variables missing')
-    }
+    console.warn('❌ Firebase not initialized - VITE_FIREBASE_API_KEY is missing')
+    console.warn('Available env vars:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')))
   }
 } catch (error) {
-  console.error('Failed to initialize Firebase:', error)
-    if (import.meta.env.DEV) {
-      console.warn('The app will continue to work, but Firebase features will be disabled.')
-    }
+  console.error('❌ Failed to initialize Firebase:', error)
+  console.error('Error details:', {
+    message: error.message,
+    code: error.code,
+    stack: error.stack
+  })
 }
 
 // Export auth and db (will be undefined if Firebase failed to initialize)
@@ -144,7 +163,8 @@ export const signInAnonymouslyUser = async () => {
  */
 export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftType = 'Unspecified') => {
   if (!db || !auth) {
-    console.warn('Firebase not available - shift log not saved')
+    // Always log this in both dev and prod so users know data isn't being saved
+    console.warn('⚠️ Firebase not available - shift log not saved to cloud. Data is stored locally only.')
     return null
   }
   
@@ -152,7 +172,9 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     const user = auth.currentUser
     
     if (!user) {
-      console.warn('No user authenticated, attempting to sign in...')
+      if (import.meta.env.DEV) {
+        console.warn('No user authenticated, attempting to sign in...')
+      }
       await signInAnonymouslyUser()
     }
 
@@ -173,10 +195,12 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     // Firestore will automatically queue this if offline and sync when online
     const docRef = await addDoc(collection(db, 'shift_logs'), shiftLog)
     
-    console.log('Shift log saved with ID:', docRef.id)
+    // Always log success so users know data was saved
+    console.log('✅ Shift log saved to Firebase with ID:', docRef.id)
     return docRef.id
   } catch (error) {
-    console.error('Error logging shift completion:', error)
+    // Always log errors so users know something went wrong
+    console.error('❌ Error logging shift completion:', error)
     // Even if there's an error, the data will be queued for sync when online
     // thanks to offline persistence
     throw error
