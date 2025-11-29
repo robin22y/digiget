@@ -17,6 +17,7 @@
           
           <h5>1. Information We Collect</h5>
           <p><strong>Usage Data:</strong> We collect anonymous usage statistics (e.g., completion of checklists) to improve the app. This data is not linked to your personal identity.</p>
+          <p><strong>Approximate Location:</strong> We use your internet connection to identify your general location (city and region level only) to help us understand where Digiget is being used. This helps us improve the app and ensure it works well for users in different areas. We do not track your precise GPS location, street address, or building. This information is collected automatically from your IP address and does not require your permission. We cannot identify you personally from this location data.</p>
           <p><strong>Local Storage:</strong> We use your device's local storage to save your custom checklist items and preferences. This data remains on your device and is not sent to our servers unless you sync anonymously.</p>
 
           <h5>2. No Personal Data</h5>
@@ -24,6 +25,19 @@
 
           <h5>3. Data Security</h5>
           <p>While no service is completely secure, we use industry-standard encryption (HTTPS) and secure database practices (Firestore) to protect the limited data we process.</p>
+
+          <div class="mt-8 pt-6 border-t border-zinc-800">
+            <h5 class="text-red-400 font-bold mb-2">Data Control</h5>
+            <p class="text-xs text-zinc-500 mb-4">
+              You have the right to delete your data. This will permanently wipe your shift history from our servers.
+            </p>
+            <button 
+              @click="handleDeleteData" 
+              class="w-full py-3 border border-red-900/30 text-red-400 rounded-xl hover:bg-red-900/10 transition-colors font-bold text-sm"
+            >
+              Delete My History from Cloud
+            </button>
+          </div>
         </div>
 
         <!-- Terms of Service -->
@@ -97,6 +111,7 @@
 <script setup>
 import { computed } from 'vue'
 import { X } from 'lucide-vue-next'
+import { deleteUserData } from '../firebase.js'
 
 const props = defineProps({
   page: {
@@ -117,6 +132,18 @@ const title = computed(() => {
     default: return 'Info'
   }
 })
+
+const handleDeleteData = async () => {
+  if (confirm("Are you sure? This will permanently delete your sync history from the cloud. This cannot be undone.")) {
+    try {
+      await deleteUserData()
+      alert("Your cloud data has been deleted.")
+    } catch (e) {
+      console.error('Error deleting data:', e)
+      alert("Error deleting data. Please try again.")
+    }
+  }
+}
 </script>
 
 <style scoped>

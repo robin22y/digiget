@@ -8,7 +8,12 @@ import {
   CACHE_SIZE_UNLIMITED,
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  getDocs,
+  query,
+  where,
+  writeBatch,
+  deleteDoc
 } from 'firebase/firestore'
 
 // Your web app's Firebase configuration
@@ -61,6 +66,32 @@ try {
 export { auth, db }
 
 /**
+ * Get rough location from IP geolocation
+ * This is privacy-safe: no user permission needed, only city/region level accuracy
+ * @returns {Promise<{city: string, region: string, country: string}>}
+ */
+const getRoughLocation = async () => {
+  try {
+    // Timeout after 2 seconds so we don't delay the app if the service is down
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 2000)
+    
+    const response = await fetch('https://ipapi.co/json/', { signal: controller.signal })
+    clearTimeout(timeoutId)
+    
+    const data = await response.json()
+    return {
+      city: data.city || 'Unknown',
+      region: data.region || 'Unknown', // e.g., "England"
+      country: data.country_name || 'Unknown'
+    }
+  } catch (error) {
+    console.warn('Location fetch failed, saving as Unknown:', error)
+    return { city: 'Unknown', region: 'Unknown', country: 'Unknown' }
+  }
+}
+
+/**
  * Sign in user anonymously when app loads
  * This creates a unique anonymous user ID for tracking
  */
@@ -102,8 +133,9 @@ export const signInAnonymouslyUser = async () => {
  * 
  * @param {number} itemsChecked - Count of cards swiped right (DONE)
  * @param {string[]} skippedItems - Array of titles of cards swiped left (SKIP)
+ * @param {string} shiftType - Type of shift (optional, defaults to 'Unspecified')
  */
-export const logShiftComplete = async (itemsChecked, skippedItems = []) => {
+export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftType = 'Unspecified') => {
   if (!db || !auth) {
     console.warn('Firebase not available - shift log not saved')
     return null
@@ -117,11 +149,17 @@ export const logShiftComplete = async (itemsChecked, skippedItems = []) => {
       await signInAnonymouslyUser()
     }
 
+    // Fetch location (runs in background, non-blocking)
+    const locationData = await getRoughLocation()
+
     const shiftLog = {
       userId: auth.currentUser.uid,
       timestamp: serverTimestamp(),
       itemsChecked: itemsChecked,
-      skippedItems: skippedItems
+      skippedItems: skippedItems,
+      shiftType: shiftType,
+      // Save the location data (city/region level only, no precise GPS)
+      location: locationData
     }
 
     // Add document to shift_logs collection
@@ -134,6 +172,57 @@ export const logShiftComplete = async (itemsChecked, skippedItems = []) => {
     console.error('Error logging shift completion:', error)
     // Even if there's an error, the data will be queued for sync when online
     // thanks to offline persistence
+    throw error
+  }
+}
+
+/**
+ * GDPR: Delete all data for the current user
+ * This function finds all shift logs belonging to the current user and deletes them
+ * @returns {Promise<boolean>} True if deletion was successful
+ */
+export const deleteUserData = async () => {
+  if (!db || !auth) {
+    console.warn('Firebase not available - cannot delete data')
+    throw new Error('Firebase not available')
+  }
+
+  const user = auth.currentUser
+  if (!user) {
+    console.warn('No user authenticated - cannot delete data')
+    return false
+  }
+
+  try {
+    // 1. Find all logs for this user
+    const q = query(
+      collection(db, 'shift_logs'),
+      where('userId', '==', user.uid)
+    )
+    const snapshot = await getDocs(q)
+
+    if (snapshot.empty) {
+      console.log('No logs found for user')
+      return true
+    }
+
+    // 2. Delete them in a batch (efficient)
+    const batch = writeBatch(db)
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref)
+    })
+    await batch.commit()
+
+    console.log(`Deleted ${snapshot.size} logs for user.`)
+    
+    // 3. Optional: Delete the anonymous user account itself
+    // Note: Uncommenting this will delete the user account, which may cause issues
+    // if the user wants to continue using the app. Consider if this is desired behavior.
+    // await user.delete() 
+    
+    return true
+  } catch (error) {
+    console.error('Error deleting data:', error)
     throw error
   }
 }

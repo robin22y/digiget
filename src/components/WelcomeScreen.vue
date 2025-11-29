@@ -24,8 +24,25 @@
             </p>
           </div>
 
-          <button class="start-btn" @click="$emit('start')">
-            Start Shift Check
+          <div class="shift-selector-container mt-8 w-full max-w-xs mx-auto px-4">
+            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block text-center">
+              Select Duty
+            </label>
+            <div class="grid grid-cols-4 gap-2">
+              <button 
+                v-for="shift in shifts" 
+                :key="shift"
+                @click="selectedShift = shift"
+                class="shift-chip"
+                :class="{ 'active': selectedShift === shift }"
+              >
+                {{ shift }}
+              </button>
+            </div>
+          </div>
+
+          <button class="start-btn" @click="handleStart">
+            Start {{ selectedShift }} Check
             <ArrowRight :size="20" />
           </button>
 
@@ -159,6 +176,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { WifiOff, Lock, Zap, ArrowRight, ArrowDown, Check } from 'lucide-vue-next'
 
 defineProps({
@@ -168,7 +186,16 @@ defineProps({
   }
 })
 
-defineEmits(['start', 'open-info', 'install'])
+const emit = defineEmits(['start', 'open-info', 'install'])
+
+// Data
+const shifts = ['Day', 'SE', 'SL', 'Night']
+const selectedShift = ref('Day') // Default
+
+const handleStart = () => {
+  // Send the selected shift back to App.vue
+  emit('start', selectedShift.value)
+}
 </script>
 
 <style scoped>
@@ -247,11 +274,29 @@ defineEmits(['start', 'open-info', 'install'])
   @apply flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-400 backdrop-blur-sm;
 }
 
+/* Shift Selector */
+.shift-selector-container {
+  opacity: 0;
+  animation: slideUpFade 0.8s ease-out forwards 1.0s;
+}
+
+.shift-chip {
+  @apply py-2.5 px-1 rounded-xl text-xs font-bold text-zinc-500 bg-zinc-900 border border-zinc-800 transition-all duration-200;
+}
+
+.shift-chip:hover {
+  @apply bg-zinc-800 text-zinc-300 border-zinc-700;
+}
+
+.shift-chip.active {
+  @apply bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40 scale-105;
+}
+
 /* CTA Button */
 .start-btn {
   @apply w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold text-lg py-4 rounded-2xl shadow-xl shadow-blue-900/30
          hover:from-blue-500 hover:to-blue-400 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300
-         flex items-center justify-center gap-2 border border-blue-400/20 mt-8;
+         flex items-center justify-center gap-2 border border-blue-400/20 mt-6;
   opacity: 0;
   animation: slideUpFade 0.8s ease-out forwards 1.0s;
 }

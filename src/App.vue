@@ -12,10 +12,65 @@
       />
     </Transition>
 
+    <!-- Shift Selection Modal (for returning users) -->
+    <div v-if="!showWelcome && showShiftModal" class="modal-backdrop z-[60]">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-xs w-full rounded-2xl">
+        <div class="text-center mb-6">
+          <div class="w-12 h-12 bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-400">
+            <Clock :size="24" />
+          </div>
+          <h3 class="text-xl font-bold text-white">End of Shift Check</h3>
+          <p class="text-zinc-400 text-sm mt-1">Which shift are you finishing?</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <button 
+            @click="selectShiftAndStart('Day')"
+            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
+          >
+            <span class="block text-2xl mb-2">☀️</span>
+            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">DAY</span>
+          </button>
+          
+          <button 
+            @click="selectShiftAndStart('SE')"
+            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
+          >
+            <span class="block text-2xl mb-2">🌅</span>
+            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">SE</span>
+          </button>
+          
+          <button 
+            @click="selectShiftAndStart('SL')"
+            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
+          >
+            <span class="block text-2xl mb-2">🌆</span>
+            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">SL</span>
+          </button>
+          
+          <button 
+            @click="selectShiftAndStart('Night')"
+            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
+          >
+            <span class="block text-2xl mb-2">🌙</span>
+            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">NIGHT</span>
+          </button>
+        </div>
+
+        <button 
+          @click="selectShiftAndStart('Day')"
+          class="w-full py-3 text-zinc-500 hover:text-zinc-300 text-sm font-medium transition-colors"
+        >
+          Use standard checklist
+        </button>
+      </div>
+    </div>
+
     <!-- 2. The Main App (Header + Checklist) -->
-    <template v-if="!showWelcome">
+    <template v-if="!showWelcome && !showShiftModal">
       <Header 
         v-if="!showAdminDashboard" 
+        :current-shift="currentShift"
         @add-click="openAddModal" 
         @admin-trigger="showAdminLogin = true" 
         @manage-cards="showCardManager = true"
@@ -41,6 +96,7 @@
           <ShiftComplete 
             :completed-items="completedItems"
             :skipped-items="skippedItems"
+            :shift-type="currentShift"
             @reset="handleResetShift"
             @edit="handleEditShift"
           />
@@ -170,7 +226,7 @@ import InfoPages from './components/InfoPages.vue'
 import { logShiftComplete } from './firebase.js'
 import { 
   Key, CreditCard, Lock, FileX, Pen, Radio, 
-  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download, Clock
 } from 'lucide-vue-next'
 
 const iconMap = {
@@ -184,9 +240,11 @@ const showAdminLogin = ref(false)
 const showAdminDashboard = ref(false)
 const adminPasswordInput = ref('')
 const showWelcome = ref(true)
+const showShiftModal = ref(false) // Controls the returning user popup
 const currentInfoPage = ref(null)
 const deferredPrompt = ref(null)
 const cardToEdit = ref(null)
+const currentShift = ref('Day') // Store the selected shift type
 
 // --- PWA Install Logic ---
 onMounted(() => {
@@ -237,19 +295,30 @@ const handleInstall = async () => {
 
 // --- App Flow (Persistent Visit Logic) ---
 const checkVisitHistory = () => {
-  // Check localStorage (persists forever unless cleared)
   const hasVisited = localStorage.getItem('digiget-visited')
   if (hasVisited) {
+    // Returning user: Skip welcome, but SHOW shift modal
     showWelcome.value = false
+    showShiftModal.value = true 
   } else {
+    // New user: Show welcome screen (which has its own selector)
     showWelcome.value = true
+    showShiftModal.value = false
   }
 }
 
-const startApp = () => {
+// Called by Welcome Screen (New Users)
+const startApp = (selectedShift) => {
+  currentShift.value = selectedShift || 'Day'
   showWelcome.value = false
-  // Mark as visited so they don't see it again
+  showShiftModal.value = false // Ensure this is closed
   localStorage.setItem('digiget-visited', 'true')
+}
+
+// Called by Modal (Returning Users)
+const selectShiftAndStart = (shift) => {
+  currentShift.value = shift
+  showShiftModal.value = false
 }
 
 const openInfoPage = (pageName) => {
@@ -354,7 +423,8 @@ watch(safetyChecks, async (newChecks) => {
     try {
       const itemsChecked = completedItems.value.length
       const skippedTitles = skippedItems.value.map(item => item.title)
-      await logShiftComplete(itemsChecked, skippedTitles)
+      // Pass the currentShift.value to Firebase!
+      await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
       
       // Store the completion timestamp for cooldown check
       localStorage.setItem('digiget-last-completion', Date.now().toString())
@@ -420,6 +490,9 @@ const handleResetDay = () => {
     skippedItems.value = []
     undoHistory.value = []
     window.scrollTo(0, 0)
+    
+    // IMPORTANT: Re-show the shift selector for the new shift
+    showShiftModal.value = true
   }
 }
 

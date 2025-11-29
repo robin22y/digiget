@@ -142,15 +142,96 @@
           </div>
         </div>
 
-        <!-- Geography (Placeholder) -->
+        <!-- Shift Distribution -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Activity :size="20" class="text-blue-400" />
+            Shift Distribution
+          </h3>
+          <div class="space-y-3">
+            <div v-for="shift in metrics.shiftDistribution" :key="shift.type" class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-lg">{{ shift.emoji }}</span>
+                <span class="text-zinc-300 font-medium">{{ shift.type }}</span>
+              </div>
+              <div class="flex items-center gap-3 flex-1 max-w-xs">
+                <div class="flex-1 bg-zinc-800 rounded-full h-2 overflow-hidden">
+                  <div 
+                    class="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
+                    :style="{ width: `${shift.percentage}%` }"
+                  ></div>
+                </div>
+                <span class="text-white font-bold text-sm w-12 text-right">{{ shift.percentage }}%</span>
+                <span class="text-zinc-500 text-xs w-16 text-right">({{ shift.count }})</span>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 text-xs text-zinc-500">
+            <span class="font-bold text-zinc-400">Insight:</span> {{ getShiftInsight(metrics.shiftDistribution) }}
+          </div>
+        </div>
+
+        <!-- Top Cities -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
           <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <Globe :size="20" class="text-purple-400" />
-            User Geography
+            Top Cities
           </h3>
-          <div class="text-zinc-400 text-sm">
-            <p>Geographic data collection coming soon.</p>
-            <p class="text-zinc-600 text-xs mt-2">This will show where your users are located (e.g., London, Mumbai, NYC)</p>
+          <div v-if="metrics.topCities.length === 0" class="text-zinc-500 text-sm">
+            No location data available yet.
+          </div>
+          <div v-else class="space-y-3">
+            <div 
+              v-for="(city, index) in metrics.topCities" 
+              :key="city.name"
+              class="flex items-center justify-between p-3 bg-zinc-950 rounded-lg border border-zinc-800"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 font-bold text-sm">
+                  {{ index + 1 }}
+                </div>
+                <div>
+                  <div class="text-white font-bold">{{ city.name }}</div>
+                  <div class="text-xs text-zinc-500">{{ city.region }}, {{ city.country }}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-white font-bold">{{ city.users }}</div>
+                <div class="text-xs text-zinc-500">{{ city.growth > 0 ? '+' : '' }}{{ city.growth }}% growth</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Peak Usage Times -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <BarChart3 :size="20" class="text-green-400" />
+            Peak Usage Times
+          </h3>
+          <div class="text-zinc-400 text-sm mb-4">
+            Most active hours (last 7 days)
+          </div>
+          <div class="h-32 flex items-end gap-1">
+            <div 
+              v-for="(hour, index) in metrics.peakHours" 
+              :key="index"
+              class="flex-1 bg-gradient-to-t from-green-600 to-green-400 rounded-t hover:from-green-500 hover:to-green-300 transition-colors cursor-pointer group relative"
+              :style="{ height: `${Math.max((hour / metrics.maxHourlyUsage) * 100, 5)}%` }"
+              :title="`${index}:00 - ${hour} sessions`"
+            >
+              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                {{ hour }} at {{ index }}:00
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-between mt-2 text-xs text-zinc-500">
+            <span>0:00</span>
+            <span>12:00</span>
+            <span>23:00</span>
+          </div>
+          <div v-if="metrics.peakHour" class="mt-4 text-sm text-zinc-400">
+            <span class="font-bold text-white">Peak:</span> {{ metrics.peakHour }}:00 with {{ metrics.peakHourCount }} sessions
           </div>
         </div>
       </div>
@@ -197,10 +278,82 @@
             <input v-model="newAd.link" type="text" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white" placeholder="https://amazon.com/..." />
           </div>
 
+          <!-- Targeting Options -->
+          <div class="border-t border-zinc-800 pt-4 mt-4">
+            <label class="block text-xs font-bold text-zinc-500 uppercase mb-3">Targeting (Optional)</label>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Target City</label>
+                <input 
+                  v-model="newAd.targetCity" 
+                  type="text" 
+                  class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white text-sm" 
+                  placeholder="e.g. London (leave empty for all)"
+                />
+                <p class="text-[10px] text-zinc-600 mt-1">Show only in this city</p>
+              </div>
+              
+              <div>
+                <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Target Region</label>
+                <input 
+                  v-model="newAd.targetRegion" 
+                  type="text" 
+                  class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white text-sm" 
+                  placeholder="e.g. England (leave empty for all)"
+                />
+                <p class="text-[10px] text-zinc-600 mt-1">Show only in this region</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Target Shift</label>
+              <div class="flex flex-wrap gap-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    v-model="newAd.targetShifts" 
+                    value="Day"
+                    class="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span class="text-sm text-zinc-300">Day</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    v-model="newAd.targetShifts" 
+                    value="SE"
+                    class="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span class="text-sm text-zinc-300">SE</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    v-model="newAd.targetShifts" 
+                    value="SL"
+                    class="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span class="text-sm text-zinc-300">SL</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    v-model="newAd.targetShifts" 
+                    value="Night"
+                    class="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span class="text-sm text-zinc-300">Night</span>
+                </label>
+              </div>
+              <p class="text-[10px] text-zinc-600 mt-2">Leave all unchecked to show to all shifts</p>
+            </div>
+          </div>
+
           <button 
             @click="createNewAd" 
             :disabled="isSavingAd"
-            class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg mt-2 disabled:opacity-50"
+            class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg mt-4 disabled:opacity-50"
           >
             {{ isSavingAd ? 'Publishing...' : 'Publish Ad' }}
           </button>
@@ -225,6 +378,17 @@
             <h4 class="font-bold text-zinc-200 mb-1">{{ ad.content }}</h4>
             <a :href="ad.link" target="_blank" class="text-xs text-blue-400 hover:underline truncate block max-w-md">{{ ad.link }}</a>
             <div v-if="ad.imageUrl" class="text-xs text-zinc-600 mt-1">Image: {{ ad.imageUrl.substring(0, 40) }}...</div>
+            <div v-if="ad.targetCity || ad.targetRegion || (ad.targetShifts && ad.targetShifts.length > 0)" class="mt-2 flex flex-wrap gap-2">
+              <span v-if="ad.targetCity" class="text-[10px] px-2 py-0.5 rounded bg-blue-900/20 text-blue-400 border border-blue-900/30">
+                📍 {{ ad.targetCity }}
+              </span>
+              <span v-if="ad.targetRegion" class="text-[10px] px-2 py-0.5 rounded bg-purple-900/20 text-purple-400 border border-purple-900/30">
+                🌍 {{ ad.targetRegion }}
+              </span>
+              <span v-if="ad.targetShifts && ad.targetShifts.length > 0" class="text-[10px] px-2 py-0.5 rounded bg-green-900/20 text-green-400 border border-green-900/30">
+                ⏰ {{ ad.targetShifts.join(', ') }}
+              </span>
+            </div>
           </div>
           
           <div class="flex items-center gap-2">
@@ -275,7 +439,13 @@ const metrics = ref({
   completedSessions: 0,
   totalSessions: 0,
   crashes: 0,
-  growthData: []
+  growthData: [],
+  shiftDistribution: [],
+  topCities: [],
+  peakHours: [],
+  maxHourlyUsage: 1,
+  peakHour: null,
+  peakHourCount: 0
 })
 const loadingMetrics = ref(true)
 
@@ -294,7 +464,10 @@ const newAd = ref({
   content: '',
   link: '',
   imageUrl: '',
-  isActive: true
+  isActive: true,
+  targetCity: '',
+  targetRegion: '',
+  targetShifts: [] // Array of shift types: ['Day', 'SE', 'SL', 'Night']
 })
 
 // Calculate Metrics from Logs
@@ -384,6 +557,91 @@ const calculateMetrics = (allLogs) => {
   const mau = last30DaysUserIds.size
   const retentionRate = mau > 0 ? Math.round((dau / mau) * 100) : 0
   
+  // Shift Distribution
+  const shiftCounts = { Day: 0, SE: 0, SL: 0, Night: 0 }
+  allLogs.forEach(log => {
+    if (log.shiftType && shiftCounts.hasOwnProperty(log.shiftType)) {
+      shiftCounts[log.shiftType]++
+    } else {
+      shiftCounts.Day++ // Default to Day if unknown
+    }
+  })
+  const totalShifts = Object.values(shiftCounts).reduce((a, b) => a + b, 0)
+  const shiftDistribution = [
+    { type: 'Day', count: shiftCounts.Day, percentage: totalShifts > 0 ? Math.round((shiftCounts.Day / totalShifts) * 100) : 0, emoji: '☀️' },
+    { type: 'SE', count: shiftCounts.SE, percentage: totalShifts > 0 ? Math.round((shiftCounts.SE / totalShifts) * 100) : 0, emoji: '🌅' },
+    { type: 'SL', count: shiftCounts.SL, percentage: totalShifts > 0 ? Math.round((shiftCounts.SL / totalShifts) * 100) : 0, emoji: '🌆' },
+    { type: 'Night', count: shiftCounts.Night, percentage: totalShifts > 0 ? Math.round((shiftCounts.Night / totalShifts) * 100) : 0, emoji: '🌙' }
+  ].filter(s => s.count > 0) // Only show shifts that have been used
+  
+  // City Analytics
+  const cityMap = new Map()
+  const cityGrowth = new Map() // Track growth per city
+  const sevenDaysAgo = new Date(today)
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  
+  allLogs.forEach(log => {
+    if (log.location && log.location.city && log.location.city !== 'Unknown') {
+      const cityKey = `${log.location.city}, ${log.location.region || 'Unknown'}`
+      if (!cityMap.has(cityKey)) {
+        cityMap.set(cityKey, {
+          name: log.location.city,
+          region: log.location.region || 'Unknown',
+          country: log.location.country || 'Unknown',
+          users: new Set(),
+          recentUsers: new Set()
+        })
+      }
+      const cityData = cityMap.get(cityKey)
+      if (log.userId) {
+        cityData.users.add(log.userId)
+        const logDate = getDate(log.timestamp)
+        if (logDate && logDate >= sevenDaysAgo) {
+          cityData.recentUsers.add(log.userId)
+        }
+      }
+    }
+  })
+  
+  // Calculate growth for each city
+  const topCities = Array.from(cityMap.entries())
+    .map(([key, data]) => {
+      const userCount = data.users.size
+      const recentCount = data.recentUsers.size
+      const previousCount = userCount - recentCount
+      const growth = previousCount > 0 ? Math.round(((recentCount / previousCount) * 100)) : (recentCount > 0 ? 100 : 0)
+      
+      return {
+        name: data.name,
+        region: data.region,
+        country: data.country,
+        users: userCount,
+        growth: growth
+      }
+    })
+    .sort((a, b) => b.users - a.users)
+    .slice(0, 10) // Top 10 cities
+  
+  // Peak Usage Times (last 7 days)
+  const last7DaysLogs = allLogs.filter(log => {
+    const logDate = getDate(log.timestamp)
+    return logDate && logDate >= sevenDaysAgo
+  })
+  
+  const hourlyUsage = new Array(24).fill(0)
+  last7DaysLogs.forEach(log => {
+    if (log.timestamp) {
+      const date = log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp)
+      const hour = date.getHours()
+      hourlyUsage[hour]++
+    }
+  })
+  
+  const maxHourlyUsage = Math.max(...hourlyUsage, 1)
+  const peakHourIndex = hourlyUsage.indexOf(maxHourlyUsage)
+  const peakHour = peakHourIndex !== -1 ? peakHourIndex : null
+  const peakHourCount = maxHourlyUsage
+  
   return {
     totalUsers: allUserIds.size,
     newUsersToday,
@@ -395,7 +653,13 @@ const calculateMetrics = (allLogs) => {
     totalSessions,
     crashes: 0, // TODO: Track crashes separately
     growthData,
-    maxDailyGrowth
+    maxDailyGrowth,
+    shiftDistribution,
+    topCities,
+    peakHours: hourlyUsage,
+    maxHourlyUsage,
+    peakHour,
+    peakHourCount
   }
 }
 
@@ -487,7 +751,10 @@ const createNewAd = async () => {
       content: '',
       link: '',
       imageUrl: '',
-      isActive: true
+      isActive: true,
+      targetCity: '',
+      targetRegion: '',
+      targetShifts: []
     }
     alert("Campaign published successfully.")
   } catch (e) {
@@ -556,6 +823,23 @@ const getRetentionStatus = (rate) => {
   if (rate >= 30) return 'Good retention. Room for improvement.'
   if (rate >= 20) return 'Moderate retention. Consider improving user experience.'
   return 'Low retention. Investigate why users aren\'t returning.'
+}
+
+const getShiftInsight = (shiftDist) => {
+  if (shiftDist.length === 0) return 'No shift data available yet.'
+  
+  const topShift = shiftDist[0]
+  const nightShift = shiftDist.find(s => s.type === 'Night')
+  
+  if (nightShift && nightShift.percentage >= 50) {
+    return `Night shift nurses use the app ${Math.round(nightShift.percentage / 20)}x more than other shifts. Consider adding night-specific features.`
+  }
+  
+  if (topShift.percentage >= 60) {
+    return `${topShift.type} shift is dominant (${topShift.percentage}%). Focus marketing on ${topShift.type} shift nurses.`
+  }
+  
+  return `Usage is distributed across shifts. ${topShift.type} shift leads with ${topShift.percentage}%.`
 }
 </script>
 

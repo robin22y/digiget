@@ -29,7 +29,7 @@
           Start Shift Check
         </button>
       </div>
-      <AdContainer />
+      <AdContainer :current-shift="shiftType" />
     </div>
 
     <!-- Edit Confirmation Modal -->
@@ -112,6 +112,10 @@ const props = defineProps({
   skippedItems: {
     type: Array,
     default: () => []
+  },
+  shiftType: {
+    type: String,
+    default: 'Day'
   }
 })
 
@@ -160,7 +164,12 @@ const formatShareMessage = () => {
   const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   
-  let message = `✅ Shift Handover Check - ${date} ${time}\n\n`
+  // Now includes the Shift Type boldly at the top
+  let message = `✅ ${props.shiftType} Shift Handover - ${date} ${time}\n\n`
+  
+  message += `Verified via Digiget App\n`
+  message += `━━━━━━━━━━━━━━━━━━━━\n\n`
+  
   message += `Completed: ${props.completedItems.length}\n`
   
   if (props.completedItems.length > 0) {
@@ -180,9 +189,7 @@ const formatShareMessage = () => {
   }
   
   message += `\n━━━━━━━━━━━━━━━━━━━━\n`
-  message += `✅ Verified via Digiget\n`
   message += `🔗 https://digiget.uk\n`
-  message += `━━━━━━━━━━━━━━━━━━━━`
   
   return message
 }

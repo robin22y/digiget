@@ -50,7 +50,15 @@ import { ExternalLink, ArrowRight } from 'lucide-vue-next'
 import { db } from '../firebase'
 import { collection, query, where, getDocs, limit } from 'firebase/firestore'
 
+const props = defineProps({
+  currentShift: {
+    type: String,
+    default: 'Day'
+  }
+})
+
 const currentAd = ref(null)
+const userLocation = ref({ city: 'Unknown', region: 'Unknown', country: 'Unknown' })
 
 // Ensure link has proper protocol
 const validLink = computed(() => {
@@ -85,7 +93,57 @@ const formatLink = (link) => {
   return link.replace(/^https?:\/\//, '').replace(/^www\./, '')
 }
 
+// Get user location
+const getUserLocation = async () => {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 2000)
+    
+    const response = await fetch('https://ipapi.co/json/', { signal: controller.signal })
+    clearTimeout(timeoutId)
+    
+    const data = await response.json()
+    userLocation.value = {
+      city: data.city || 'Unknown',
+      region: data.region || 'Unknown',
+      country: data.country_name || 'Unknown'
+    }
+  } catch (error) {
+    console.warn('Location fetch failed:', error)
+    // Keep default Unknown values
+  }
+}
+
+// Check if ad matches targeting criteria
+const matchesTargeting = (ad) => {
+  // If no targeting set, show to everyone
+  if (!ad.targetCity && !ad.targetRegion && (!ad.targetShifts || ad.targetShifts.length === 0)) {
+    return true
+  }
+  
+  // Check location targeting
+  if (ad.targetCity && ad.targetCity.toLowerCase() !== userLocation.value.city.toLowerCase()) {
+    return false
+  }
+  
+  if (ad.targetRegion && ad.targetRegion.toLowerCase() !== userLocation.value.region.toLowerCase()) {
+    return false
+  }
+  
+  // Check shift targeting
+  if (ad.targetShifts && ad.targetShifts.length > 0) {
+    if (!ad.targetShifts.includes(props.currentShift)) {
+      return false
+    }
+  }
+  
+  return true
+}
+
 onMounted(async () => {
+  // Get user location first
+  await getUserLocation()
+  
   try {
     // Fetch active ads - query without orderBy to avoid index requirements
     // We'll sort client-side instead
@@ -106,9 +164,10 @@ onMounted(async () => {
       }
     })
     
-    // Filter to only active ads (safety check) and sort by createdAt client-side
+    // Filter to only active ads, match targeting, and sort by createdAt client-side
     const activeAds = ads
       .filter(ad => ad.isActive === true)
+      .filter(ad => matchesTargeting(ad)) // Apply targeting filter
       .sort((a, b) => {
         // Sort by createdAt descending (newest first)
         const aTime = a.createdAt?.seconds || 0
@@ -125,10 +184,17 @@ onMounted(async () => {
         content: currentAd.value.content,
         link: currentAd.value.link,
         type: currentAd.value.type,
+        targeting: {
+          city: currentAd.value.targetCity,
+          region: currentAd.value.targetRegion,
+          shifts: currentAd.value.targetShifts
+        },
+        userLocation: userLocation.value,
+        userShift: props.currentShift,
         validLink: validLink.value
       })
     } else {
-      console.log("No active ads found")
+      console.log("No matching ads found for current location/shift")
     }
   } catch (e) {
     console.error("Failed to load ads:", e)
