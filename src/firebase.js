@@ -61,19 +61,27 @@ try {
     
     // Initialize Firestore with persistent cache (new API)
     // This replaces the deprecated enableIndexedDbPersistence()
+    // In production, use simpler initialization to avoid timeout issues
     try {
-      db = initializeFirestore(app, {
-        localCache: persistentLocalCache({
-          cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-          tabManager: persistentMultipleTabManager()
+      if (import.meta.env.PROD) {
+        // Production: Use default Firestore (more reliable, less features)
+        db = getFirestore(app)
+        console.log('✅ Firestore initialized (production mode - default cache)')
+      } else {
+        // Development: Use persistent cache for offline support
+        db = initializeFirestore(app, {
+          localCache: persistentLocalCache({
+            cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+            tabManager: persistentMultipleTabManager()
+          })
         })
-      })
-      console.log('✅ Firestore initialized with persistent cache')
+        console.log('✅ Firestore initialized with persistent cache (development)')
+      }
     } catch (cacheError) {
       // Fallback to default Firestore if cache initialization fails
       console.warn('⚠️ Failed to initialize persistent cache, using default:', cacheError)
       db = getFirestore(app)
-      console.log('✅ Firestore initialized with default cache')
+      console.log('✅ Firestore initialized with default cache (fallback)')
     }
   } else {
     console.warn('❌ Firebase not initialized - VITE_FIREBASE_API_KEY is missing')
@@ -208,11 +216,14 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     })
     
     console.log('📤 Sending to Firestore...')
+    console.log('📤 Network status:', navigator.onLine ? 'Online' : 'Offline')
     
-    // Add timeout to catch hanging requests
+    // Try to save with a longer timeout for production network issues
+    const timeoutDuration = import.meta.env.PROD ? 30000 : 10000 // 30s for prod, 10s for dev
+    
     const savePromise = addDoc(collection(db, 'shift_logs'), shiftLog)
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Firestore save timeout after 10 seconds')), 10000)
+      setTimeout(() => reject(new Error(`Firestore save timeout after ${timeoutDuration/1000} seconds`)), timeoutDuration)
     )
     
     const docRef = await Promise.race([savePromise, timeoutPromise])
