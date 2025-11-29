@@ -1,10 +1,24 @@
 import { defineConfig } from 'vite'
-
 import vue from '@vitejs/plugin-vue'
-
 import { VitePWA } from 'vite-plugin-pwa'
+import { readFileSync, writeFileSync } from 'fs'
+import { join } from 'path'
 
-
+// Plugin to format manifest after build
+const formatManifestPlugin = () => {
+  return {
+    name: 'format-manifest',
+    closeBundle() {
+      const manifestPath = join(process.cwd(), 'dist', 'manifest.webmanifest')
+      try {
+        const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+        writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf-8')
+      } catch (e) {
+        console.warn('Could not format manifest:', e)
+      }
+    }
+  }
+}
 
 export default defineConfig({
 
@@ -19,6 +33,8 @@ export default defineConfig({
       injectRegister: 'script',
 
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'logo.svg'],
+
+      manifestFilename: 'manifest.webmanifest',
 
       manifest: {
 
@@ -134,7 +150,9 @@ export default defineConfig({
 
       }
 
-    })
+    }),
+
+    formatManifestPlugin()
 
   ],
 
