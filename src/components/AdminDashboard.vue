@@ -8,11 +8,11 @@
         </h2>
         <div class="flex gap-4 mt-2 text-sm">
           <button 
-            @click="activeTab = 'logs'" 
+            @click="activeTab = 'metrics'" 
             class="pb-1 transition-colors"
-            :class="activeTab === 'logs' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-zinc-500 hover:text-zinc-300'"
+            :class="activeTab === 'metrics' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-zinc-500 hover:text-zinc-300'"
           >
-            System Logs
+            Metrics
           </button>
           <button 
             @click="activeTab = 'ads'" 
@@ -24,71 +24,136 @@
         </div>
       </div>
       <div class="flex gap-2">
-        <!-- Share/Download PDF Button (Only visible on Logs tab) -->
-        <button 
-          v-if="activeTab === 'logs' && logs.length > 0"
-          @click="shareOrDownloadPDF"
-          class="p-2 text-zinc-500 hover:text-blue-400 hover:bg-zinc-900 rounded-lg transition-colors flex items-center gap-2"
-          title="Share or Download Report"
-        >
-          <Download :size="20" />
-          <span class="hidden sm:inline text-xs font-bold uppercase">Share PDF</span>
-        </button>
-        
         <button @click="$emit('close')" class="exit-btn">
           <LogOut :size="20" />
         </button>
       </div>
     </div>
 
-    <!-- LOGS TAB -->
-    <div v-if="activeTab === 'logs'" class="table-container">
-      <div v-if="loadingLogs" class="p-8 text-center text-zinc-500">
-        Loading diagnostic data...
+    <!-- METRICS TAB (Cockpit Dashboard) -->
+    <div v-if="activeTab === 'metrics'" class="p-6 overflow-y-auto flex-1">
+      <div v-if="loadingMetrics" class="p-8 text-center text-zinc-500">
+        Calculating metrics...
       </div>
       
-      <div v-else-if="logs.length === 0" class="p-8 text-center text-zinc-500">
-        No logs found.
-      </div>
+      <div v-else class="space-y-6">
+        <!-- Key Metrics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Total Users -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <Users :size="20" class="text-blue-400" />
+              <span class="metric-label">Total Users</span>
+            </div>
+            <div class="metric-value">{{ metrics.totalUsers.toLocaleString() }}</div>
+            <div class="metric-change" :class="metrics.newUsersToday > 0 ? 'text-green-400' : 'text-zinc-500'">
+              {{ metrics.newUsersToday > 0 ? '+' : '' }}{{ metrics.newUsersToday }} today
+            </div>
+          </div>
 
-      <table v-else class="w-full text-left border-collapse">
-        <thead class="sticky top-0 bg-zinc-900 border-b border-zinc-800 text-xs uppercase text-zinc-500 font-bold tracking-wider">
-          <tr>
-            <th class="p-4">Time</th>
-            <th class="p-4">User ID</th>
-            <th class="p-4 text-center">Status</th>
-            <th class="p-4">Skipped Items</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-zinc-800/50">
-          <tr v-for="log in logs" :key="log.id" class="hover:bg-zinc-900/50 transition-colors text-sm">
-            <td class="p-4 text-zinc-300 whitespace-nowrap">
-              {{ formatTime(log.timestamp) }}
-              <div class="text-xs text-zinc-600">{{ formatDate(log.timestamp) }}</div>
-            </td>
-            <td class="p-4 font-mono text-zinc-500 text-xs">
-              {{ log.userId ? log.userId.slice(0, 8) + '...' : 'Anon' }}
-            </td>
-            <td class="p-4 text-center">
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900/30 text-green-400 border border-green-900/50">
-                {{ log.itemsChecked || 0 }} Checked
-              </span>
-            </td>
-            <td class="p-4">
-              <div v-if="log.skippedItems && log.skippedItems.length > 0" class="flex flex-wrap gap-1">
-                <span 
-                  v-for="(item, i) in log.skippedItems" 
-                  :key="i"
-                  class="text-xs px-2 py-0.5 rounded bg-red-900/20 text-red-400 border border-red-900/30"
-                >
-                  {{ item }}
-                </span>
+          <!-- Active Today (DAU) -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <Activity :size="20" class="text-green-400" />
+              <span class="metric-label">Active Today</span>
+            </div>
+            <div class="metric-value">{{ metrics.dau.toLocaleString() }}</div>
+            <div class="metric-change" :class="getEngagementClass(metrics.dau)">
+              {{ getEngagementText(metrics.dau) }}
+            </div>
+          </div>
+
+          <!-- Crashes -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <AlertTriangle :size="20" class="text-yellow-400" />
+              <span class="metric-label">Crashes</span>
+            </div>
+            <div class="metric-value">{{ metrics.crashes }}</div>
+            <div class="metric-change" :class="metrics.crashes === 0 ? 'text-green-400' : 'text-red-400'">
+              {{ metrics.crashes === 0 ? 'System Healthy' : 'Investigate' }}
+            </div>
+          </div>
+
+          <!-- Completion Rate -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <CheckCircle :size="20" class="text-purple-400" />
+              <span class="metric-label">Completion Rate</span>
+            </div>
+            <div class="metric-value">{{ metrics.completionRate }}%</div>
+            <div class="metric-change text-zinc-500">
+              {{ metrics.completedSessions }} / {{ metrics.totalSessions }} sessions
+            </div>
+          </div>
+        </div>
+
+        <!-- Retention Metric (DAU/MAU) -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <TrendingUp :size="20" class="text-blue-400" />
+            Retention (Stickiness)
+          </h3>
+          <div class="flex items-end gap-6">
+            <div>
+              <div class="text-4xl font-bold text-white">{{ metrics.retentionRate }}%</div>
+              <div class="text-sm text-zinc-500 mt-1">DAU / MAU Ratio</div>
+            </div>
+            <div class="flex-1">
+              <div class="text-sm text-zinc-400 mb-2">
+                <span class="text-green-400 font-bold">{{ metrics.dau }}</span> Daily Active Users / 
+                <span class="text-blue-400 font-bold">{{ metrics.mau }}</span> Monthly Active Users
               </div>
-              <span v-else class="text-zinc-700 text-xs italic">All Clear</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <div class="w-full bg-zinc-800 rounded-full h-3 overflow-hidden">
+                <div 
+                  class="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500"
+                  :style="{ width: `${metrics.retentionRate}%` }"
+                ></div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 text-xs text-zinc-500">
+            {{ getRetentionStatus(metrics.retentionRate) }}
+          </div>
+        </div>
+
+        <!-- Growth Chart (Last 30 Days) -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <BarChart3 :size="20" class="text-green-400" />
+            New User Growth (Last 30 Days)
+          </h3>
+          <div class="h-48 flex items-end gap-1">
+            <div 
+              v-for="(day, index) in metrics.growthData" 
+              :key="index"
+              class="flex-1 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t hover:from-blue-500 hover:to-blue-300 transition-colors cursor-pointer group relative"
+              :style="{ height: `${Math.max((day / metrics.maxDailyGrowth) * 100, 5)}%` }"
+              :title="`${day} new users on ${formatChartDate(index)}`"
+            >
+              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                {{ day }} users
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-between mt-2 text-xs text-zinc-500">
+            <span>30 days ago</span>
+            <span>Today</span>
+          </div>
+        </div>
+
+        <!-- Geography (Placeholder) -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Globe :size="20" class="text-purple-400" />
+            User Geography
+          </h3>
+          <div class="text-zinc-400 text-sm">
+            <p>Geographic data collection coming soon.</p>
+            <p class="text-zinc-600 text-xs mt-2">This will show where your users are located (e.g., London, Mumbai, NYC)</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ADS TAB -->
@@ -185,65 +250,36 @@
       </div>
     </div>
 
-    <!-- Share Modal -->
-    <div v-if="showShareModal" class="modal-backdrop" @click.self="showShareModal = false">
-      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-sm w-full rounded-2xl">
-        <h3 class="text-lg font-bold text-white mb-4">Share Report</h3>
-        
-        <div class="space-y-3">
-          <button 
-            @click="shareViaWhatsApp"
-            class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
-          >
-            <span>📱</span>
-            Share via WhatsApp
-          </button>
-          
-          <button 
-            @click="shareViaNative"
-            class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
-          >
-            <span>📤</span>
-            Share via System
-          </button>
-          
-          <button 
-            @click="downloadPDFOnly"
-            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
-          >
-            <Download :size="18" />
-            Download PDF Only
-          </button>
-        </div>
-        
-        <button 
-          @click="showShareModal = false" 
-          class="w-full mt-4 py-2 text-zinc-500 hover:text-white"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
 
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Database, LogOut, Trash2, Power, Download } from 'lucide-vue-next'
+import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe } from 'lucide-vue-next'
 import { db } from '../firebase'
 import { collection, query, orderBy, onSnapshot, limit, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 const emit = defineEmits(['close'])
 
-const activeTab = ref('logs') // 'logs' or 'ads'
-const showShareModal = ref(false)
+const activeTab = ref('metrics') // 'metrics' or 'ads'
 
-// Logs Data
-const logs = ref([])
-const loadingLogs = ref(true)
+// Metrics Data
+const metrics = ref({
+  totalUsers: 0,
+  newUsersToday: 0,
+  dau: 0,
+  mau: 0,
+  retentionRate: 0,
+  completionRate: 0,
+  completedSessions: 0,
+  totalSessions: 0,
+  crashes: 0,
+  growthData: []
+})
+const loadingMetrics = ref(true)
+
+// Logs Data (used for metrics calculation only, not displayed)
 let logsUnsubscribe = null
 
 // Ads Data
@@ -261,23 +297,130 @@ const newAd = ref({
   isActive: true
 })
 
+// Calculate Metrics from Logs
+const calculateMetrics = (allLogs) => {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const thirtyDaysAgo = new Date(today)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  
+  // Helper to get date from timestamp
+  const getDate = (timestamp) => {
+    if (!timestamp) return null
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  }
+  
+  // Filter logs by date
+  const todayLogs = allLogs.filter(log => {
+    const logDate = getDate(log.timestamp)
+    return logDate && logDate.getTime() === today.getTime()
+  })
+  
+  const last30DaysLogs = allLogs.filter(log => {
+    const logDate = getDate(log.timestamp)
+    return logDate && logDate >= thirtyDaysAgo
+  })
+  
+  // Calculate unique users
+  const allUserIds = new Set(allLogs.map(log => log.userId).filter(Boolean))
+  const todayUserIds = new Set(todayLogs.map(log => log.userId).filter(Boolean))
+  const last30DaysUserIds = new Set(last30DaysLogs.map(log => log.userId).filter(Boolean))
+  
+  // New users today (first time appearing today)
+  const userFirstSeen = new Map()
+  allLogs.forEach(log => {
+    if (!log.userId) return
+    const logDate = getDate(log.timestamp)
+    if (!logDate) return
+    
+    if (!userFirstSeen.has(log.userId) || logDate < userFirstSeen.get(log.userId)) {
+      userFirstSeen.set(log.userId, logDate)
+    }
+  })
+  
+  const newUsersToday = Array.from(todayUserIds).filter(userId => {
+    const firstSeen = userFirstSeen.get(userId)
+    return firstSeen && firstSeen.getTime() === today.getTime()
+  }).length
+  
+  // Session completion (sessions that completed = have itemsChecked)
+  const completedSessions = allLogs.filter(log => log.itemsChecked !== undefined && log.itemsChecked > 0).length
+  const totalSessions = allLogs.length
+  const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0
+  
+  // Growth data (last 30 days)
+  const growthMap = new Map()
+  last30DaysLogs.forEach(log => {
+    const logDate = getDate(log.timestamp)
+    if (!logDate) return
+    
+    const dateKey = logDate.toISOString().split('T')[0]
+    if (!growthMap.has(dateKey)) {
+      growthMap.set(dateKey, new Set())
+    }
+    if (log.userId) {
+      growthMap.get(dateKey).add(log.userId)
+    }
+  })
+  
+  // Build 30-day array
+  const growthData = []
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    const dateKey = date.toISOString().split('T')[0]
+    const newUsers = growthMap.get(dateKey) ? Array.from(growthMap.get(dateKey)).filter(userId => {
+      const firstSeen = userFirstSeen.get(userId)
+      return firstSeen && firstSeen.getTime() === date.getTime()
+    }).length : 0
+    growthData.push(newUsers)
+  }
+  
+  const maxDailyGrowth = Math.max(...growthData, 1)
+  
+  // DAU/MAU Retention
+  const dau = todayUserIds.size
+  const mau = last30DaysUserIds.size
+  const retentionRate = mau > 0 ? Math.round((dau / mau) * 100) : 0
+  
+  return {
+    totalUsers: allUserIds.size,
+    newUsersToday,
+    dau,
+    mau,
+    retentionRate,
+    completionRate,
+    completedSessions,
+    totalSessions,
+    crashes: 0, // TODO: Track crashes separately
+    growthData,
+    maxDailyGrowth
+  }
+}
+
 onMounted(() => {
-  // 1. Fetch Logs
-  const logsQuery = query(
+  // 1. Fetch All Logs for Metrics (fetch more for accurate metrics)
+  // Note: Firestore has a limit of fetching documents, but this should work for most cases
+  // For very large datasets, consider pagination or Cloud Functions
+  const allLogsQuery = query(
     collection(db, "shift_logs"),
     orderBy("timestamp", "desc"),
-    limit(50)
+    limit(1000) // Fetch up to 1000 most recent logs for metrics
   )
 
-  logsUnsubscribe = onSnapshot(logsQuery, (snapshot) => {
-    logs.value = snapshot.docs.map(doc => ({
+  logsUnsubscribe = onSnapshot(allLogsQuery, (snapshot) => {
+    const allLogs = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }))
-    loadingLogs.value = false
+    
+    // Calculate metrics from all fetched logs
+    metrics.value = calculateMetrics(allLogs)
+    loadingMetrics.value = false
   }, (error) => {
     console.error("Logs Access Error:", error)
-    loadingLogs.value = false
+    loadingMetrics.value = false
   })
 
   // 2. Fetch Ads
@@ -322,118 +465,6 @@ onUnmounted(() => {
   if (adsUnsubscribe) adsUnsubscribe()
 })
 
-// --- PDF Export Logic ---
-const generatePDF = () => {
-  const doc = new jsPDF()
-  
-  // Header
-  doc.setFontSize(18)
-  doc.text('Digiget Shift Report', 14, 22)
-  
-  doc.setFontSize(10)
-  doc.setTextColor(100)
-  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30)
-  
-  // Prepare data for table
-  const tableData = logs.value.map(log => [
-    formatDate(log.timestamp) + ' ' + formatTime(log.timestamp),
-    log.userId ? log.userId.slice(0, 8) + '...' : 'Anon',
-    `${log.itemsChecked || 0} Checked`,
-    log.skippedItems && log.skippedItems.length > 0 ? log.skippedItems.join(', ') : 'None'
-  ])
-
-  // Generate Table
-  autoTable(doc, {
-    startY: 36,
-    head: [['Time', 'User ID', 'Status', 'Skipped Items']],
-    body: tableData,
-    theme: 'grid',
-    headStyles: { fillColor: [24, 24, 27], textColor: 255 }, // Zinc 900
-    styles: { fontSize: 8, cellPadding: 3 },
-    alternateRowStyles: { fillColor: [245, 245, 245] }
-  })
-  
-  return doc
-}
-
-const shareOrDownloadPDF = () => {
-  showShareModal.value = true
-}
-
-const shareViaWhatsApp = async () => {
-  const doc = generatePDF()
-  const pdfBlob = doc.output('blob')
-  const pdfFile = new File([pdfBlob], 'digiget-report.pdf', { type: 'application/pdf' })
-  
-  // Try native share API first (works with WhatsApp on mobile)
-  if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-    try {
-      await navigator.share({
-        title: 'Digiget Shift Report',
-        text: 'Digiget shift completion report',
-        files: [pdfFile]
-      })
-      showShareModal.value = false
-      return
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        showShareModal.value = false
-        return
-      }
-    }
-  }
-  
-  // Fallback: Download PDF and open WhatsApp Web
-  doc.save('digiget-report.pdf')
-  
-  // Open WhatsApp Web with message (user can attach the downloaded PDF manually)
-  const message = encodeURIComponent('Digiget Shift Report - Please check the downloaded PDF file.')
-  const whatsappUrl = `https://web.whatsapp.com/send?text=${message}`
-  
-  setTimeout(() => {
-    window.open(whatsappUrl, '_blank')
-  }, 500)
-  
-  showShareModal.value = false
-}
-
-const shareViaNative = async () => {
-  const doc = generatePDF()
-  const pdfBlob = doc.output('blob')
-  const pdfFile = new File([pdfBlob], 'digiget-report.pdf', { type: 'application/pdf' })
-  
-  if (navigator.share) {
-    try {
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({
-          title: 'Digiget Shift Report',
-          text: 'Digiget shift completion report',
-          files: [pdfFile]
-        })
-        showShareModal.value = false
-        return
-      }
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Share failed:', error)
-        alert('Sharing not available. Downloading PDF instead.')
-      } else {
-        showShareModal.value = false
-        return
-      }
-    }
-  }
-  
-  // Fallback to download
-  doc.save('digiget-report.pdf')
-  showShareModal.value = false
-}
-
-const downloadPDFOnly = () => {
-  const doc = generatePDF()
-  doc.save('digiget-report.pdf')
-  showShareModal.value = false
-}
 
 // --- Ad Actions ---
 
@@ -501,6 +532,31 @@ const formatDate = (timestamp) => {
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' })
 }
+
+const formatChartDate = (daysAgo) => {
+  const date = new Date()
+  date.setDate(date.getDate() - (29 - daysAgo))
+  return date.toLocaleDateString([], { day: 'numeric', month: 'short' })
+}
+
+const getEngagementClass = (dau) => {
+  if (dau >= 100) return 'text-green-400'
+  if (dau >= 50) return 'text-yellow-400'
+  return 'text-zinc-500'
+}
+
+const getEngagementText = (dau) => {
+  if (dau >= 100) return 'High engagement!'
+  if (dau >= 50) return 'Good engagement'
+  return 'Low engagement'
+}
+
+const getRetentionStatus = (rate) => {
+  if (rate >= 50) return 'Excellent retention! Users are coming back regularly.'
+  if (rate >= 30) return 'Good retention. Room for improvement.'
+  if (rate >= 20) return 'Moderate retention. Consider improving user experience.'
+  return 'Low retention. Investigate why users aren\'t returning.'
+}
 </script>
 
 <style scoped>
@@ -532,5 +588,26 @@ const formatDate = (timestamp) => {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Metrics Card Styles */
+.metric-card {
+  @apply bg-zinc-900 border border-zinc-800 rounded-xl p-6;
+}
+
+.metric-header {
+  @apply flex items-center gap-2 mb-3;
+}
+
+.metric-label {
+  @apply text-xs font-bold text-zinc-500 uppercase tracking-wider;
+}
+
+.metric-value {
+  @apply text-3xl font-bold text-white mb-1;
+}
+
+.metric-change {
+  @apply text-sm font-medium;
 }
 </style>
