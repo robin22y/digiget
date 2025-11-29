@@ -146,7 +146,10 @@ onMounted(async () => {
   
   // Check if Firebase is available
   if (!db) {
-    console.log("Firebase not available - ads disabled")
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log("Firebase not available - ads disabled")
+    }
     return
   }
   
