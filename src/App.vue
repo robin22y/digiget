@@ -12,62 +12,8 @@
       />
     </Transition>
 
-    <!-- Shift Selection Modal (for returning users) -->
-    <div v-if="!showWelcome && showShiftModal" class="modal-backdrop z-[60]">
-      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-xs w-full rounded-2xl">
-        <div class="text-center mb-6">
-          <div class="w-12 h-12 bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-400">
-            <Clock :size="24" />
-          </div>
-          <h3 class="text-xl font-bold text-white">End of Shift Check</h3>
-          <p class="text-zinc-400 text-sm mt-1">Which shift are you finishing?</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 mb-4">
-          <button 
-            @click="selectShiftAndStart('Day')"
-            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
-          >
-            <span class="block text-2xl mb-2">☀️</span>
-            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">DAY</span>
-          </button>
-          
-          <button 
-            @click="selectShiftAndStart('SE')"
-            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
-          >
-            <span class="block text-2xl mb-2">🌅</span>
-            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">SE</span>
-          </button>
-          
-          <button 
-            @click="selectShiftAndStart('SL')"
-            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
-          >
-            <span class="block text-2xl mb-2">🌆</span>
-            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">SL</span>
-          </button>
-          
-          <button 
-            @click="selectShiftAndStart('Night')"
-            class="py-4 px-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-800 hover:border-zinc-700 transition-all text-center group"
-          >
-            <span class="block text-2xl mb-2">🌙</span>
-            <span class="block text-base font-bold text-zinc-200 group-hover:text-white">NIGHT</span>
-          </button>
-        </div>
-
-        <button 
-          @click="selectShiftAndStart('Day')"
-          class="w-full py-3 text-zinc-500 hover:text-zinc-300 text-sm font-medium transition-colors"
-        >
-          Use standard checklist
-        </button>
-      </div>
-    </div>
-
     <!-- 2. The Main App (Header + Checklist) -->
-    <template v-if="!showWelcome && !showShiftModal">
+    <template v-if="!showWelcome">
       <Header 
         v-if="!showAdminDashboard" 
         :current-shift="currentShift"
@@ -92,6 +38,24 @@
       </div>
       
       <main v-if="!showAdminDashboard" class="main-content">
+        <!-- Shift Selector Bar (shown when cards are visible) -->
+        <div v-if="safetyChecks.length > 0" class="shift-selector-wrapper mb-4">
+          <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block text-center">
+            SELECT SHIFT
+          </label>
+          <div class="shift-bar bg-zinc-900/80 p-1 rounded-xl border border-zinc-800 flex gap-1 shadow-lg backdrop-blur-sm z-10 relative max-w-xs mx-auto">
+            <button 
+              v-for="shift in ['Day', 'SE', 'SL', 'Night']" 
+              :key="shift"
+              @click="currentShift = shift"
+              class="flex-1 py-2 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200"
+              :class="currentShift === shift ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'"
+            >
+              {{ shift }}
+            </button>
+          </div>
+        </div>
+
         <div v-if="safetyChecks.length === 0" class="card-stack-container">
           <ShiftComplete 
             :completed-items="completedItems"
@@ -227,7 +191,7 @@ import { logShiftComplete } from './firebase.js'
 import { inject } from '@vercel/analytics'
 import { 
   Key, CreditCard, Lock, FileX, Pen, Radio, 
-  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download, Clock
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download
 } from 'lucide-vue-next'
 
 const iconMap = {
@@ -241,7 +205,6 @@ const showAdminLogin = ref(false)
 const showAdminDashboard = ref(false)
 const adminPasswordInput = ref('')
 const showWelcome = ref(true)
-const showShiftModal = ref(false) // Controls the returning user popup
 const currentInfoPage = ref(null)
 const deferredPrompt = ref(null)
 const cardToEdit = ref(null)
@@ -298,13 +261,11 @@ const handleInstall = async () => {
 const checkVisitHistory = () => {
   const hasVisited = localStorage.getItem('digiget-visited')
   if (hasVisited) {
-    // Returning user: Skip welcome, but SHOW shift modal
+    // Returning user: Skip welcome, go straight to app
     showWelcome.value = false
-    showShiftModal.value = true 
   } else {
     // New user: Show welcome screen (which has its own selector)
     showWelcome.value = true
-    showShiftModal.value = false
   }
 }
 
@@ -312,14 +273,7 @@ const checkVisitHistory = () => {
 const startApp = (selectedShift) => {
   currentShift.value = selectedShift || 'Day'
   showWelcome.value = false
-  showShiftModal.value = false // Ensure this is closed
   localStorage.setItem('digiget-visited', 'true')
-}
-
-// Called by Modal (Returning Users)
-const selectShiftAndStart = (shift) => {
-  currentShift.value = shift
-  showShiftModal.value = false
 }
 
 const openInfoPage = (pageName) => {
@@ -491,9 +445,6 @@ const handleResetDay = () => {
     skippedItems.value = []
     undoHistory.value = []
     window.scrollTo(0, 0)
-    
-    // IMPORTANT: Re-show the shift selector for the new shift
-    showShiftModal.value = true
   }
 }
 
@@ -768,7 +719,15 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 }
 
 .main-content {
-  @apply flex-1 flex items-center justify-center p-6 overflow-hidden;
+  @apply flex-1 flex flex-col items-center justify-center p-6 overflow-hidden;
+}
+
+.shift-selector-wrapper {
+  @apply w-full flex flex-col items-center;
+}
+
+.shift-bar {
+  @apply w-full;
 }
 
 .card-stack-container {
