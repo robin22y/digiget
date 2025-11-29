@@ -173,14 +173,26 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
   }
   
   try {
-    const user = auth.currentUser
-    
-    if (!user) {
-      if (import.meta.env.DEV) {
-        console.warn('No user authenticated, attempting to sign in...')
-      }
-      await signInAnonymouslyUser()
-    }
+        let user = auth.currentUser
+
+        if (!user) {
+          console.warn('⚠️ No user authenticated, attempting to sign in...')
+          try {
+            user = await signInAnonymouslyUser()
+            if (!user) {
+              console.error('❌ Failed to sign in anonymously - authentication may be disabled')
+              return null
+            }
+            console.log('✅ Successfully signed in anonymously:', user.uid)
+          } catch (authError) {
+            console.error('❌ Failed to sign in anonymously:', authError)
+            if (authError.code === 'auth/admin-restricted-operation') {
+              console.error('🔒 ANONYMOUS AUTH DISABLED!')
+              console.error('Go to: Firebase Console → Authentication → Sign-in method → Enable "Anonymous"')
+            }
+            return null
+          }
+        }
 
     // Fetch location (runs in background, non-blocking)
     const locationData = await getRoughLocation()
@@ -221,6 +233,20 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       hasCollection: typeof db?.collection === 'function'
     })
     
+    // Verify user is authenticated before attempting write
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      console.error('❌ No authenticated user - cannot save to Firestore')
+      console.error('This usually means Anonymous authentication failed or is disabled')
+      return null
+    }
+    
+    console.log('✅ User authenticated:', {
+      uid: currentUser.uid,
+      isAnonymous: currentUser.isAnonymous,
+      providerId: currentUser.providerData[0]?.providerId || 'none'
+    })
+    
     // Try to get the collection reference first to verify connection
     let colRef
     try {
@@ -233,7 +259,7 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
     
     // Fire-and-forget: Don't await - let it run in background
     // This prevents UI blocking even if network is slow
-    console.log('📤 Calling addDoc...')
+    console.log('📤 Calling addDoc with authenticated user...')
     const savePromise = addDoc(colRef, shiftLog)
     
     console.log('📤 addDoc promise created, setting up handlers...')
@@ -278,6 +304,18 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       console.warn('   1. Firestore security rules blocking writes')
       console.warn('   2. Network connectivity issues')
       console.warn('   3. Anonymous authentication not enabled')
+      console.warn('📋 Diagnostic info:', {
+        userAuthenticated: !!auth.currentUser,
+        userId: auth.currentUser?.uid || 'none',
+        isAnonymous: auth.currentUser?.isAnonymous || false,
+        dbExists: !!db,
+        networkOnline: navigator.onLine,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
+      })
+      console.warn('🔧 Fix steps:')
+      console.warn('   1. Firebase Console → Authentication → Sign-in method → Enable "Anonymous"')
+      console.warn('   2. Firebase Console → Firestore → Rules → Add rules from FRESH_FIREBASE_SETUP.md')
+      console.warn('   3. Make sure rules are PUBLISHED (not just saved)')
     }, 10000)
     
     // Return immediately without waiting

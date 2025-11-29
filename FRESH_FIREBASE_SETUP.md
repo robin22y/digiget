@@ -42,7 +42,8 @@ service cloud.firestore {
       // Allow read for authenticated users (for admin dashboard)
       allow read: if request.auth != null;
       // No updates or deletes via client (use admin functions if needed)
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if false;
     }
     
     // Ads collection - public read, no client writes

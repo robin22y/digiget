@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anonymous users to create shift logs
+    match /shift_logs/{document=**} {
+      // Allow create if user is authenticated and userId matches
+      allow create: if request.auth != null && 
+                     request.resource.data.userId == request.auth.uid;
+      // Allow read for authenticated users (for admin dashboard)
+      allow read: if request.auth != null;
+      // No updates or deletes via client (use admin functions if needed)
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Ads collection - public read, no client writes
+    match /ads/{document=**} {
+      allow read: if true; // Anyone can read ads
+      allow write: if false; // Only admins via Firebase Console
+    }
+  }
+}
+
