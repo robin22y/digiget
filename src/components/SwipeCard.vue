@@ -74,10 +74,36 @@ const props = defineProps({
   index: {
     type: Number,
     default: 0
+  },
+  color: {
+    type: String,
+    default: '#27272a' // Default zinc-800 color
   }
 })
 
 const emit = defineEmits(['swiped'])
+
+// Helper function to darken color for gradient
+const getDarkerColor = (color) => {
+  // If it's a hex color, darken it
+  if (color.startsWith('#')) {
+    const hex = color.slice(1)
+    const r = parseInt(hex.slice(0, 2), 16)
+    const g = parseInt(hex.slice(2, 4), 16)
+    const b = parseInt(hex.slice(4, 6), 16)
+    // Darken by 20%
+    const darkerR = Math.max(0, Math.floor(r * 0.8))
+    const darkerG = Math.max(0, Math.floor(g * 0.8))
+    const darkerB = Math.max(0, Math.floor(b * 0.8))
+    return `#${darkerR.toString(16).padStart(2, '0')}${darkerG.toString(16).padStart(2, '0')}${darkerB.toString(16).padStart(2, '0')}`
+  }
+  // Fallback to darker version of default
+  return '#18181b'
+}
+
+// Computed properties for CSS variables
+const cardColor = computed(() => props.color || '#27272a')
+const cardColorDark = computed(() => getDarkerColor(props.color || '#27272a'))
 
 const isDragging = ref(false)
 const startX = ref(0)
@@ -209,9 +235,16 @@ const handleEnd = (e) => {
 }
 
 .card-inner {
-  @apply h-full w-full bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[20px] flex flex-col items-center justify-between p-8 relative overflow-hidden;
+  @apply h-full w-full rounded-[20px] flex flex-col items-center justify-between p-8 relative overflow-hidden;
   /* Inner shadow for depth */
   box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  /* Dynamic background color using CSS variables */
+  background: linear-gradient(to bottom, var(--card-color), var(--card-color-dark));
+}
+
+.card-inner {
+  --card-color: v-bind('cardColor');
+  --card-color-dark: v-bind('cardColorDark');
 }
 
 .icon-container {

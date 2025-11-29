@@ -2,7 +2,7 @@
   <div class="modal-backdrop" @click.self="$emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="text-xl font-bold text-white">Add Custom Card</h3>
+        <h3 class="text-xl font-bold text-white">{{ isEditMode ? 'Edit Card' : 'Add Custom Card' }}</h3>
         <button @click="$emit('close')" class="text-zinc-500 hover:text-white">
           <X :size="24" />
         </button>
@@ -80,7 +80,7 @@
           class="btn-confirm"
           :disabled="!title.trim()"
         >
-          Add Card
+          {{ isEditMode ? 'Save Changes' : 'Add Card' }}
         </button>
       </div>
     </div>
@@ -88,10 +88,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { X, Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Check } from 'lucide-vue-next'
+import { ref, onMounted, computed, watch } from 'vue'
+import { X, Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Check, Key, Lock, FileX, Pen, Radio, CreditCard } from 'lucide-vue-next'
 
-const emit = defineEmits(['close', 'add'])
+const props = defineProps({
+  card: {
+    type: Object,
+    default: null
+  }
+})
+
+const emit = defineEmits(['close', 'add', 'update'])
+
+const isEditMode = computed(() => !!props.card)
 
 const title = ref('')
 const selectedIcon = ref('Clipboard')
@@ -109,7 +118,8 @@ const quickTags = [
 ]
 
 const iconMap = {
-  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer,
+  Key, Lock, FileX, Pen, Radio, CreditCard
 }
 
 const availableIcons = Object.keys(iconMap)
@@ -127,14 +137,38 @@ const availableColors = [
 const handleAdd = () => {
   if (!title.value.trim()) return
   
-  emit('add', {
-    title: title.value.trim(),
-    iconName: selectedIcon.value,
-    color: selectedColor.value
-  })
+  if (isEditMode.value) {
+    emit('update', {
+      id: props.card.id,
+      title: title.value.trim(),
+      iconName: selectedIcon.value,
+      color: selectedColor.value
+    })
+  } else {
+    emit('add', {
+      title: title.value.trim(),
+      iconName: selectedIcon.value,
+      color: selectedColor.value
+    })
+  }
 }
 
+// Initialize form when editing
+watch(() => props.card, (card) => {
+  if (card) {
+    title.value = card.title || ''
+    selectedIcon.value = card.iconName || 'Clipboard'
+    selectedColor.value = card.color || '#27272a'
+  }
+}, { immediate: true })
+
 onMounted(() => {
+  // Initialize if editing
+  if (props.card) {
+    title.value = props.card.title || ''
+    selectedIcon.value = props.card.iconName || 'Clipboard'
+    selectedColor.value = props.card.color || '#27272a'
+  }
   // Focus input on open
   if (inputRef.value) inputRef.value.focus()
 })

@@ -20,6 +20,7 @@
         @add-click="openAddModal" 
         @admin-trigger="showAdminLogin = true" 
         @install="handleInstall"
+        @manage-cards="showCardManager = true"
       />
       
       <main v-if="!showAdminDashboard" class="main-content">
@@ -37,6 +38,7 @@
             :title="check.title"
             :icon="check.icon"
             :index="index"
+            :color="check.color || '#27272a'"
             :style="{ zIndex: safetyChecks.length - index }"
             @swiped="handleSwipe(check.id, $event)"
           />
@@ -85,11 +87,6 @@
         </div>
       </div>
 
-      <AddCardModal 
-        v-if="showAddModal" 
-        @close="showAddModal = false"
-        @add="handleAddNewCard"
-      />
     </template>
 
     <!-- Info Pages Modal (Global) -->
@@ -98,16 +95,36 @@
       :page="currentInfoPage" 
       @close="currentInfoPage = null" 
     />
+
+    <!-- Card Manager Modal -->
+    <CardManager 
+      v-if="showCardManager"
+      :cards="allCardsForManagement"
+      @close="showCardManager = false"
+      @edit="handleEditCard"
+      @delete="handleDeleteCard"
+      @add-new="handleAddNewFromManager"
+    />
+
+    <!-- Add/Edit Card Modal -->
+    <AddCardModal 
+      v-if="showAddModal"
+      :card="cardToEdit"
+      @close="closeCardModal"
+      @add="handleAddNewCard"
+      @update="handleUpdateCard"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import Header from './components/Header.vue'
 import SwipeCard from './components/SwipeCard.vue'
 import ShiftComplete from './components/ShiftComplete.vue'
 import UndoButton from './components/UndoButton.vue'
 import AddCardModal from './components/AddCardModal.vue'
+import CardManager from './components/CardManager.vue'
 import AdminDashboard from './components/AdminDashboard.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import InfoPages from './components/InfoPages.vue'
@@ -123,12 +140,14 @@ const iconMap = {
 }
 
 const showAddModal = ref(false)
+const showCardManager = ref(false)
 const showAdminLogin = ref(false)
 const showAdminDashboard = ref(false)
 const adminPasswordInput = ref('')
 const showWelcome = ref(true)
 const currentInfoPage = ref(null)
 const deferredPrompt = ref(null)
+const cardToEdit = ref(null)
 
 // --- PWA Install Logic ---
 onMounted(() => {
@@ -206,11 +225,11 @@ const handleAdminLogin = () => {
 
 // --- Data Logic ---
 const getFreshChecks = () => [
-  { id: 1, title: 'Keys Returned', iconName: 'Key', icon: Key },
-  { id: 2, title: 'Skin Check', iconName: 'AlertCircle', icon: AlertCircle },
-  { id: 3, title: 'CDs Locked', iconName: 'Lock', icon: Lock },
-  { id: 4, title: 'Handovers Destroyed', iconName: 'FileX', icon: FileX },
-  { id: 5, title: 'Critical Meds Signed', iconName: 'Pen', icon: Pen },
+  { id: 1, title: 'Keys Returned', iconName: 'Key', icon: Key, color: '#27272a' },
+  { id: 2, title: 'Skin Check', iconName: 'AlertCircle', icon: AlertCircle, color: '#27272a' },
+  { id: 3, title: 'CDs Locked', iconName: 'Lock', icon: Lock, color: '#27272a' },
+  { id: 4, title: 'Handovers Destroyed', iconName: 'FileX', icon: FileX, color: '#27272a' },
+  { id: 5, title: 'Critical Meds Signed', iconName: 'Pen', icon: Pen, color: '#27272a' },
 ]
 
 const defaultChecks = ref([])
@@ -223,7 +242,8 @@ const undoHistory = ref([])
 const restoreIcons = (items) => {
   return items.map(item => ({
     ...item,
-    icon: item.iconName ? iconMap[item.iconName] : item.icon
+    icon: item.iconName ? iconMap[item.iconName] : item.icon,
+    color: item.color || '#27272a' // Ensure color is always present
   }))
 }
 
@@ -324,7 +344,26 @@ const handleUndo = () => {
 
 const handleResetShift = () => {
   if (confirm('Start a new shift checklist?')) {
-    safetyChecks.value = [...getFreshChecks(), ...customChecks.value]
+    // Get all cards (including edited defaults that are now in customChecks)
+    // Start with fresh defaults, but replace with custom versions if they exist
+    const freshDefaults = getFreshChecks()
+    const allCards = freshDefaults.map(defaultCard => {
+      // Check if this default card has been customized
+      const customVersion = customChecks.value.find(c => 
+        c.id === defaultCard.id || 
+        (c.title === defaultCard.title && c.iconName === defaultCard.iconName)
+      )
+      return customVersion || defaultCard
+    })
+    
+    // Add any additional custom cards that aren't defaults
+    const defaultTitles = new Set(freshDefaults.map(c => c.title))
+    const additionalCustoms = customChecks.value.filter(c => 
+      !defaultTitles.has(c.title) && 
+      !freshDefaults.some(d => d.id === c.id)
+    )
+    
+    safetyChecks.value = [...allCards, ...additionalCustoms]
     completedItems.value = []
     skippedItems.value = []
     undoHistory.value = []
@@ -332,12 +371,98 @@ const handleResetShift = () => {
   }
 }
 
+// Get all cards for management (combine default and custom, but use current state)
+const allCardsForManagement = computed(() => {
+  // Get all unique cards - always include defaults, plus any custom/edited versions
+  const allCardIds = new Set()
+  const allCards = []
+  
+  // Start with default cards - these are always available for editing
+  const defaultCards = getFreshChecks()
+  defaultCards.forEach(card => {
+    // Check if there's a custom/edited version of this default card
+    const customVersion = customChecks.value.find(c => 
+      c.id === card.id || 
+      (c.title === card.title && c.iconName === card.iconName)
+    )
+    
+    // Use custom version if it exists, otherwise use default
+    const cardToAdd = customVersion || card
+    if (!allCardIds.has(cardToAdd.id)) {
+      allCardIds.add(cardToAdd.id)
+      allCards.push(cardToAdd)
+    }
+  })
+  
+  // Add any additional custom cards that aren't defaults
+  customChecks.value.forEach(card => {
+    const isDefault = defaultCards.some(d => d.id === card.id)
+    if (!isDefault && !allCardIds.has(card.id)) {
+      allCardIds.add(card.id)
+      allCards.push(card)
+    }
+  })
+  
+  // Add cards from current safety checks (in case they're not in defaults or custom)
+  safetyChecks.value.forEach(card => {
+    if (!allCardIds.has(card.id)) {
+      allCardIds.add(card.id)
+      allCards.push(card)
+    }
+  })
+  
+  // Add cards from completed/skipped that might have been removed from stack
+  const completedAndSkipped = [...completedItems.value, ...skippedItems.value]
+  completedAndSkipped.forEach(card => {
+    if (!allCardIds.has(card.id)) {
+      allCardIds.add(card.id)
+      allCards.push(card)
+    }
+  })
+  
+  return allCards.sort((a, b) => a.title.localeCompare(b.title))
+})
+
 const openAddModal = () => {
-  if (customChecks.value.length >= 3) {
-    alert("You can only add up to 3 custom cards.")
+  cardToEdit.value = null
+  if (allCardsForManagement.value.length >= 10) {
+    alert("You can only have up to 10 cards total.")
     return
   }
   showAddModal.value = true
+}
+
+const closeCardModal = () => {
+  showAddModal.value = false
+  cardToEdit.value = null
+}
+
+const handleAddNewFromManager = () => {
+  showCardManager.value = false
+  openAddModal()
+}
+
+const handleEditCard = (card) => {
+  cardToEdit.value = card
+  showCardManager.value = false
+  showAddModal.value = true
+}
+
+const handleDeleteCard = (card) => {
+  // Remove from custom checks if it's there
+  customChecks.value = customChecks.value.filter(c => c.id !== card.id)
+  
+  // Remove from safety checks
+  safetyChecks.value = safetyChecks.value.filter(c => c.id !== card.id)
+  
+  // Remove from completed items
+  completedItems.value = completedItems.value.filter(c => c.id !== card.id)
+  
+  // Remove from skipped items
+  skippedItems.value = skippedItems.value.filter(c => c.id !== card.id)
+  
+  // Remove from undo history
+  undoHistory.value = undoHistory.value.filter(item => item.check.id !== card.id)
 }
 
 const handleAddNewCard = ({ title, iconName, color }) => {
@@ -350,7 +475,53 @@ const handleAddNewCard = ({ title, iconName, color }) => {
   }
   customChecks.value.push(newCard)
   safetyChecks.value.unshift(newCard)
-  showAddModal.value = false
+  closeCardModal()
+}
+
+const handleUpdateCard = ({ id, title, iconName, color }) => {
+  const updatedCard = {
+    id: id,
+    title: title,
+    iconName: iconName,
+    icon: iconMap[iconName],
+    color: color
+  }
+  
+  // Update in custom checks if it exists there
+  const customIndex = customChecks.value.findIndex(c => c.id === id)
+  if (customIndex !== -1) {
+    customChecks.value[customIndex] = updatedCard
+  } else {
+    // If it's a default card, add it to custom checks so it persists
+    customChecks.value.push(updatedCard)
+  }
+  
+  // Update in safety checks
+  const safetyIndex = safetyChecks.value.findIndex(c => c.id === id)
+  if (safetyIndex !== -1) {
+    safetyChecks.value[safetyIndex] = updatedCard
+  }
+  
+  // Update in completed items
+  const completedIndex = completedItems.value.findIndex(c => c.id === id)
+  if (completedIndex !== -1) {
+    completedItems.value[completedIndex] = updatedCard
+  }
+  
+  // Update in skipped items
+  const skippedIndex = skippedItems.value.findIndex(c => c.id === id)
+  if (skippedIndex !== -1) {
+    skippedItems.value[skippedIndex] = updatedCard
+  }
+  
+  // Update in undo history
+  undoHistory.value.forEach(item => {
+    if (item.check.id === id) {
+      item.check = updatedCard
+    }
+  })
+  
+  closeCardModal()
 }
 </script>
 

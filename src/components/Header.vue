@@ -24,9 +24,19 @@
       </button>
 
       <button 
+        class="action-button manage-btn"
+        @click="$emit('manage-cards')"
+        aria-label="Manage Cards"
+        title="Manage Cards"
+      >
+        <Settings :size="20" />
+      </button>
+
+      <button 
         class="action-button add-btn"
         @click="$emit('add-click')"
         aria-label="Add Card"
+        title="Add Card"
       >
         <Plus :size="24" />
       </button>
@@ -36,7 +46,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Plus, Download } from 'lucide-vue-next'
+import { Plus, Download, Settings } from 'lucide-vue-next'
 
 defineProps({
   canInstall: {
@@ -45,7 +55,7 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['add-click', 'admin-trigger', 'install'])
+const emit = defineEmits(['add-click', 'admin-trigger', 'install', 'manage-cards'])
 
 // Secret Click Logic (5 clicks = Admin)
 const clickCount = ref(0)
