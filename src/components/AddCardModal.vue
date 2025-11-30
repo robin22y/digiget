@@ -15,13 +15,13 @@
           <input 
             v-model="title" 
             type="text" 
-            placeholder="e.g. Check Fluids"
+            placeholder="e.g. Did I check the fluid balance?"
             class="input-field"
-            maxlength="25"
+            maxlength="50"
             ref="inputRef"
           />
           <p class="text-xs text-zinc-500 mt-2">
-            This card will be saved for your future shifts.
+            Tip: Write it as a question (e.g., 'Did I...?') to help your memory.
           </p>
         </div>
 
@@ -89,7 +89,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { X, Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Check, Key, Lock, FileX, Pen, Radio, CreditCard } from 'lucide-vue-next'
+import { X, Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Check, Key, Lock, FileX, FileText, Pen, Radio, CreditCard } from 'lucide-vue-next'
 
 const props = defineProps({
   card: {
@@ -119,7 +119,7 @@ const quickTags = [
 
 const iconMap = {
   Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer,
-  Key, Lock, FileX, Pen, Radio, CreditCard
+  Key, Lock, FileX, FileText, Pen, Radio, CreditCard
 }
 
 const availableIcons = Object.keys(iconMap)

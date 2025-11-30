@@ -55,7 +55,15 @@
       
       <main v-if="!showAdminDashboard" class="main-content">
 
-        <div v-if="safetyChecks.length === 0" class="card-stack-container">
+        <div v-if="showReviewScreen" class="card-stack-container">
+          <ShiftReview 
+            :completed-items="completedItems"
+            :skipped-items="skippedItems"
+            @retry="handleRetry"
+            @confirm="handleConfirm"
+          />
+        </div>
+        <div v-else-if="safetyChecks.length === 0" class="card-stack-container">
           <ShiftComplete 
             :completed-items="completedItems"
             :skipped-items="skippedItems"
@@ -225,6 +233,7 @@ import { ref, watch, onMounted, computed, nextTick } from 'vue'
 import Header from './components/Header.vue'
 import SwipeCard from './components/SwipeCard.vue'
 import ShiftComplete from './components/ShiftComplete.vue'
+import ShiftReview from './components/ShiftReview.vue'
 import UndoButton from './components/UndoButton.vue'
 import AddCardModal from './components/AddCardModal.vue'
 import CardManager from './components/CardManager.vue'
@@ -234,12 +243,12 @@ import InfoPages from './components/InfoPages.vue'
 import { logShiftComplete } from './supabase.js'
 import { inject } from '@vercel/analytics'
 import { 
-  Key, CreditCard, Lock, FileX, Pen, Radio, 
+  Key, CreditCard, Lock, FileX, FileText, Pen, Radio, 
   Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download, X
 } from 'lucide-vue-next'
 
 const iconMap = {
-  Key, CreditCard, Lock, FileX, Pen, Radio,
+  Key, CreditCard, Lock, FileX, FileText, Pen, Radio,
   Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer
 }
 
@@ -341,11 +350,12 @@ const handleAdminLogin = () => {
 
 // --- Data Logic ---
 const getFreshChecks = () => [
-  { id: 1, title: 'Keys Returned', iconName: 'Key', icon: Key, color: '#27272a' },
-  { id: 2, title: 'Skin Check', iconName: 'AlertCircle', icon: AlertCircle, color: '#27272a' },
-  { id: 3, title: 'CDs Locked', iconName: 'Lock', icon: Lock, color: '#27272a' },
-  { id: 4, title: 'Handovers Destroyed', iconName: 'FileX', icon: FileX, color: '#27272a' },
-  { id: 5, title: 'Critical Meds Signed', iconName: 'Pen', icon: Pen, color: '#27272a' },
+  { id: 1, title: 'Did I return my keys?', iconName: 'Key', icon: Key, color: '#27272a' },
+  { id: 2, title: 'Did I lock the controlled drugs?', iconName: 'Lock', icon: Lock, color: '#27272a' },
+  { id: 3, title: 'Did I sign all medications?', iconName: 'Pen', icon: Pen, color: '#27272a' },
+  { id: 4, title: 'Did I complete handover?', iconName: 'Clipboard', icon: Clipboard, color: '#27272a' },
+  { id: 5, title: 'Did I remove my ID badge?', iconName: 'CreditCard', icon: CreditCard, color: '#27272a' },
+  { id: 6, title: 'Did I document everything?', iconName: 'FileText', icon: FileText, color: '#27272a' },
 ]
 
 const defaultChecks = ref([])
@@ -421,24 +431,33 @@ watch([safetyChecks, customChecks, completedItems, skippedItems, undoHistory], (
 }, { deep: true })
 
 watch(safetyChecks, async (newChecks) => {
-  if (newChecks.length === 0 && (completedItems.value.length > 0 || skippedItems.value.length > 0)) {
-    try {
-      const itemsChecked = completedItems.value.length
-      const skippedTitles = skippedItems.value.map(item => item.title)
-      // Pass the currentShift.value to Firebase!
-      console.log('🔄 Starting Firebase save process...')
-      const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
-      
-      if (result) {
-        console.log('✅ Shift completion logged successfully to Firebase. Document ID:', result)
-      } else {
-        console.warn('⚠️ Shift completion not logged - Firebase not configured. Check console for details.')
+  if (newChecks.length === 0) {
+    // If there are skipped items, show review screen instead of logging immediately
+    if (skippedItems.value.length > 0) {
+      showReviewScreen.value = true
+      return
+    }
+    
+    // If no skipped items, log immediately (existing flow)
+    if (completedItems.value.length > 0) {
+      try {
+        const itemsChecked = completedItems.value.length
+        const skippedTitles = skippedItems.value.map(item => item.title)
+        // Pass the currentShift.value to Supabase!
+        console.log('🔄 Starting Supabase save process...')
+        const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
+        
+        if (result) {
+          console.log('✅ Shift completion logged successfully to Supabase. Document ID:', result)
+        } else {
+          console.warn('⚠️ Shift completion not logged - Supabase not configured. Check console for details.')
+        }
+        
+        // Store the completion timestamp for cooldown check
+        localStorage.setItem('digiget-last-completion', Date.now().toString())
+      } catch (e) { 
+        console.error('❌ Failed to log shift completion:', e) 
       }
-      
-      // Store the completion timestamp for cooldown check
-      localStorage.setItem('digiget-last-completion', Date.now().toString())
-    } catch (e) { 
-      console.error('❌ Failed to log shift completion:', e) 
     }
   }
 }, { deep: true })
@@ -548,6 +567,7 @@ const handleResetDay = () => {
 }
 
 const showCooldownWarning = ref(false)
+const showReviewScreen = ref(false)
 
 const handleResetShift = () => {
   // Check if last completion was less than 4 hours ago
@@ -575,6 +595,40 @@ const handleCooldownConfirm = () => {
 const handleCooldownCancel = () => {
   showCooldownWarning.value = false
   // Stay on the green screen (do nothing)
+}
+
+// Safety Review Handlers
+const handleRetry = () => {
+  // Move skipped items back to safetyChecks
+  // Restore icons for skipped items before adding them back
+  const skippedToRestore = restoreIcons([...skippedItems.value])
+  safetyChecks.value = [...skippedToRestore, ...safetyChecks.value]
+  skippedItems.value = []
+  showReviewScreen.value = false
+}
+
+const handleConfirm = async () => {
+  // Log the shift as-is (with skips) and proceed to success screen
+  showReviewScreen.value = false
+  
+  try {
+    const itemsChecked = completedItems.value.length
+    const skippedTitles = skippedItems.value.map(item => item.title)
+    // Pass the currentShift.value to Supabase!
+    console.log('🔄 Starting Supabase save process...')
+    const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
+    
+    if (result) {
+      console.log('✅ Shift completion logged successfully to Supabase. Document ID:', result)
+    } else {
+      console.warn('⚠️ Shift completion not logged - Supabase not configured. Check console for details.')
+    }
+    
+    // Store the completion timestamp for cooldown check
+    localStorage.setItem('digiget-last-completion', Date.now().toString())
+  } catch (e) { 
+    console.error('❌ Failed to log shift completion:', e) 
+  }
 }
 
 const handleEditShift = () => {

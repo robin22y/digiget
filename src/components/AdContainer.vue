@@ -159,10 +159,11 @@ onMounted(async () => {
   
   try {
     // Fetch active ads from Supabase
+    // Note: Supabase uses snake_case column names (is_active, not isActive)
     const { data: ads, error } = await supabase
       .from('ads')
       .select('*')
-      .eq('isActive', true)
+      .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(20)
     
@@ -177,8 +178,9 @@ onMounted(async () => {
     }
     
     // Filter to match targeting and sort by createdAt client-side
+    // Support both snake_case (Supabase) and camelCase (legacy) field names
     const activeAds = ads
-      .filter(ad => ad.isActive === true)
+      .filter(ad => (ad.is_active !== undefined ? ad.is_active : ad.isActive) === true)
       .filter(ad => matchesTargeting(ad)) // Apply targeting filter
       .sort((a, b) => {
         // Sort by createdAt descending (newest first)

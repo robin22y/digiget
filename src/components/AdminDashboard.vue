@@ -171,11 +171,11 @@
           </div>
         </div>
 
-        <!-- Top Cities -->
+        <!-- Top Cities by Users -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
           <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <Globe :size="20" class="text-purple-400" />
-            Top Cities
+            Top Cities (by Users)
           </h3>
           <div v-if="metrics.topCities.length === 0" class="text-zinc-500 text-sm">
             No location data available yet.
@@ -183,7 +183,7 @@
           <div v-else class="space-y-3">
             <div 
               v-for="(city, index) in metrics.topCities" 
-              :key="city.name"
+              :key="`top-${city.name}`"
               class="flex items-center justify-between p-3 bg-zinc-950 rounded-lg border border-zinc-800"
             >
               <div class="flex items-center gap-3">
@@ -197,7 +197,103 @@
               </div>
               <div class="text-right">
                 <div class="text-white font-bold">{{ city.users }}</div>
-                <div class="text-xs text-zinc-500">{{ city.growth > 0 ? '+' : '' }}{{ city.growth }}% growth</div>
+                <div class="text-xs text-zinc-500">{{ city.sessions }} sessions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Most Active Cities -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Activity :size="20" class="text-green-400" />
+            Most Active Cities
+          </h3>
+          <div v-if="metrics.mostActiveCities.length === 0" class="text-zinc-500 text-sm">
+            No activity data available yet.
+          </div>
+          <div v-else class="space-y-3">
+            <div 
+              v-for="(city, index) in metrics.mostActiveCities" 
+              :key="`active-${city.name}`"
+              class="flex items-center justify-between p-3 bg-zinc-950 rounded-lg border border-green-800/30"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-green-400 font-bold text-sm">
+                  {{ index + 1 }}
+                </div>
+                <div>
+                  <div class="text-white font-bold">{{ city.name }}</div>
+                  <div class="text-xs text-zinc-500">{{ city.region }}, {{ city.country }}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-white font-bold">{{ city.sessions }}</div>
+                <div class="text-xs text-zinc-500">{{ city.users }} users</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Growing Cities -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <TrendingUp :size="20" class="text-blue-400" />
+            Growing Cities
+          </h3>
+          <div v-if="metrics.growingCities.length === 0" class="text-zinc-500 text-sm">
+            No growth data available yet.
+          </div>
+          <div v-else class="space-y-3">
+            <div 
+              v-for="(city, index) in metrics.growingCities" 
+              :key="`growing-${city.name}`"
+              class="flex items-center justify-between p-3 bg-zinc-950 rounded-lg border border-blue-800/30"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 font-bold text-sm">
+                  {{ index + 1 }}
+                </div>
+                <div>
+                  <div class="text-white font-bold">{{ city.name }}</div>
+                  <div class="text-xs text-zinc-500">{{ city.region }}, {{ city.country }}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-green-400 font-bold">+{{ city.growth }}%</div>
+                <div class="text-xs text-zinc-500">{{ city.users }} users</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Least Active Cities -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <AlertTriangle :size="20" class="text-yellow-400" />
+            Least Active Cities
+          </h3>
+          <div v-if="metrics.leastActiveCities.length === 0" class="text-zinc-500 text-sm">
+            No activity data available yet.
+          </div>
+          <div v-else class="space-y-3">
+            <div 
+              v-for="(city, index) in metrics.leastActiveCities" 
+              :key="`least-${city.name}`"
+              class="flex items-center justify-between p-3 bg-zinc-950 rounded-lg border border-yellow-800/30"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center text-yellow-400 font-bold text-sm">
+                  {{ index + 1 }}
+                </div>
+                <div>
+                  <div class="text-white font-bold">{{ city.name }}</div>
+                  <div class="text-xs text-zinc-500">{{ city.region }}, {{ city.country }}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-yellow-400 font-bold">{{ city.sessions }}</div>
+                <div class="text-xs text-zinc-500">{{ city.users }} users</div>
               </div>
             </div>
           </div>
@@ -441,6 +537,9 @@ const metrics = ref({
   growthData: [],
   shiftDistribution: [],
   topCities: [],
+  mostActiveCities: [],
+  leastActiveCities: [],
+  growingCities: [],
   peakHours: [],
   maxHourlyUsage: 1,
   peakHour: null,
@@ -575,7 +674,6 @@ const calculateMetrics = (allLogs) => {
   
   // City Analytics
   const cityMap = new Map()
-  const cityGrowth = new Map() // Track growth per city
   const sevenDaysAgo = new Date(today)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   
@@ -588,22 +686,30 @@ const calculateMetrics = (allLogs) => {
           region: log.location.region || 'Unknown',
           country: log.location.country || 'Unknown',
           users: new Set(),
-          recentUsers: new Set()
+          recentUsers: new Set(),
+          sessions: 0, // Total sessions/activity
+          recentSessions: 0 // Sessions in last 7 days
         })
       }
       const cityData = cityMap.get(cityKey)
-      if (log.userId) {
-        cityData.users.add(log.userId)
-        const logDate = getDate(log.timestamp)
-        if (logDate && logDate >= sevenDaysAgo) {
+      cityData.sessions++ // Count all sessions
+      
+      const logDate = getDate(log.timestamp)
+      if (logDate && logDate >= sevenDaysAgo) {
+        cityData.recentSessions++ // Count recent sessions
+        if (log.userId) {
           cityData.recentUsers.add(log.userId)
         }
+      }
+      
+      if (log.userId) {
+        cityData.users.add(log.userId)
       }
     }
   })
   
-  // Calculate growth for each city
-  const topCities = Array.from(cityMap.entries())
+  // Calculate metrics for each city
+  const allCities = Array.from(cityMap.entries())
     .map(([key, data]) => {
       const userCount = data.users.size
       const recentCount = data.recentUsers.size
@@ -615,11 +721,32 @@ const calculateMetrics = (allLogs) => {
         region: data.region,
         country: data.country,
         users: userCount,
+        sessions: data.sessions,
         growth: growth
       }
     })
+  
+  // Top Cities (by user count)
+  const topCities = [...allCities]
     .sort((a, b) => b.users - a.users)
-    .slice(0, 10) // Top 10 cities
+    .slice(0, 10)
+  
+  // Most Active Cities (by total sessions/activity)
+  const mostActiveCities = [...allCities]
+    .sort((a, b) => b.sessions - a.sessions)
+    .slice(0, 10)
+  
+  // Least Active Cities (cities with lowest activity, but at least 1 session)
+  const leastActiveCities = [...allCities]
+    .filter(city => city.sessions > 0) // Only cities with at least 1 session
+    .sort((a, b) => a.sessions - b.sessions)
+    .slice(0, 10)
+  
+  // Growing Cities (cities with positive growth, sorted by growth rate)
+  const growingCities = [...allCities]
+    .filter(city => city.growth > 0 && city.users >= 2) // At least 2 users to show meaningful growth
+    .sort((a, b) => b.growth - a.growth)
+    .slice(0, 10)
   
   // Peak Usage Times (last 7 days)
   const last7DaysLogs = allLogs.filter(log => {
@@ -655,6 +782,9 @@ const calculateMetrics = (allLogs) => {
     maxDailyGrowth,
     shiftDistribution,
     topCities,
+    mostActiveCities,
+    leastActiveCities,
+    growingCities,
     peakHours: hourlyUsage,
     maxHourlyUsage,
     peakHour,

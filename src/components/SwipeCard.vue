@@ -28,7 +28,7 @@
     >
       <div class="stamp skip-stamp">
         <XCircle :size="64" weight="fill" />
-        <span>SKIP</span>
+        <span>NOT DONE</span>
       </div>
     </div>
 
@@ -47,7 +47,7 @@
       <div class="action-guides">
         <div class="guide left">
           <ArrowLeft :size="20" />
-          <span>Skip</span>
+          <span>Not Done</span>
         </div>
         <div class="guide right">
           <span>Done</span>
