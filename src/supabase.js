@@ -41,14 +41,23 @@ if (supabaseUrl && supabaseAnonKey) {
       }
     })
     console.log('✅ Supabase client initialized')
+    console.log('✅ Supabase URL:', supabaseUrl)
+    console.log('✅ Supabase client object:', !!supabase)
   } catch (error) {
     console.error('❌ Failed to initialize Supabase:', error)
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack
+    })
   }
 } else {
-  if (import.meta.env.DEV) {
-    console.warn('⚠️ Supabase environment variables not set. Supabase features will be disabled.')
-    console.warn('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file')
-  }
+  console.warn('⚠️ Supabase environment variables not set. Supabase features will be disabled.')
+  console.warn('Missing:', {
+    url: !supabaseUrl,
+    key: !supabaseAnonKey
+  })
+  console.warn('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file')
+  console.warn('Then restart your dev server')
 }
 
 // Export supabase client
@@ -229,34 +238,63 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
  */
 export const deleteUserData = async () => {
   if (!supabase) {
-    if (import.meta.env.DEV) {
-      console.warn('Supabase not available - cannot delete data')
-    }
+    console.warn('Supabase not available - cannot delete data')
+    console.warn('Debug info:', {
+      supabaseClient: !!supabase,
+      hasUrl: !!import.meta.env.VITE_SUPABASE_URL,
+      hasKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+      url: import.meta.env.VITE_SUPABASE_URL || 'MISSING',
+      keyPreview: import.meta.env.VITE_SUPABASE_ANON_KEY ? import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 20) + '...' : 'MISSING'
+    })
     return { success: false, message: 'Cloud sync is not available. Your data is stored locally on your device only.' }
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Check if user is authenticated, try to sign in if not
+  let { data: { user } } = await supabase.auth.getUser()
+  
   if (!user) {
-    if (import.meta.env.DEV) {
-      console.warn('No user authenticated - cannot delete data')
+    console.log('No user authenticated, attempting anonymous sign-in...')
+    try {
+      user = await signInAnonymouslyUser()
+      if (!user) {
+        console.warn('Failed to sign in anonymously - cannot delete data')
+        return { success: false, message: 'Unable to authenticate. Please refresh the page and try again.' }
+      }
+    } catch (authError) {
+      console.error('Error signing in:', authError)
+      return { success: false, message: 'Unable to authenticate. Please make sure signups are enabled in Supabase.' }
     }
-    return { success: false, message: 'No user authenticated. Cannot delete cloud data.' }
   }
 
+  console.log('User authenticated for delete operation:', user.id)
+
   try {
+    // First, check how many logs exist for this user
+    const { count: logCount } = await supabase
+      .from('shift_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+
+    if (logCount === 0) {
+      return { success: true, message: 'No cloud data found to delete. Your data is stored locally only.' }
+    }
+
     // Delete all logs for this user
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('shift_logs')
       .delete()
       .eq('user_id', user.id)
 
     if (error) {
       console.error('Error deleting data:', error)
+      if (error.code === 'PGRST301' || error.message.includes('permission')) {
+        return { success: false, message: 'Permission denied. Please check Supabase RLS policies are configured correctly.' }
+      }
       return { success: false, message: `Error deleting cloud data: ${error.message}. Please try again.` }
     }
 
-    console.log(`Deleted logs for user: ${user.id}`)
-    return { success: true, message: `Successfully deleted your cloud logs.` }
+    console.log(`Deleted ${logCount} logs for user: ${user.id}`)
+    return { success: true, message: `Successfully deleted ${logCount} cloud log${logCount === 1 ? '' : 's'}.` }
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('Error deleting data:', error)
