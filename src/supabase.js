@@ -152,7 +152,7 @@ export const signInAnonymouslyUser = async () => {
  * @param {string[]} skippedItems - Array of titles of cards swiped left (SKIP)
  * @param {string} shiftType - Type of shift (optional, defaults to 'Unspecified')
  */
-export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftType = 'Unspecified') => {
+export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftType = 'Unspecified', isTest = false) => {
   if (!supabase) {
     console.warn('⚠️ Supabase not available - shift log not saved to cloud. Data is stored locally only.')
     return null
@@ -192,6 +192,7 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       skipped_items: skippedItems,
       shift_type: shiftType,
       location: locationData,
+      is_test: isTest,
       created_at: new Date().toISOString()
     }
 

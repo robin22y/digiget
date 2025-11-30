@@ -1,5 +1,8 @@
 <template>
   <div class="app-container">
+    <div v-if="isTestMode" class="bg-yellow-500/20 border-b border-yellow-500/30 text-yellow-200 text-xs font-bold py-1 text-center uppercase tracking-widest fixed top-0 left-0 w-full z-[120]">
+      Test Mode Active
+    </div>
     
     <!-- 1. The New Home Page (Welcome Screen) -->
     <Transition name="fade">
@@ -18,7 +21,7 @@
       <Header 
         v-if="!showAdminDashboard" 
         @add-click="openAddModal" 
-        @admin-trigger="showAdminLogin = true" 
+        @admin-trigger="handleAdminTrigger" 
         @manage-cards="showCardManager = true"
         @reset-day="handleResetDay"
       />
@@ -336,6 +339,14 @@ const currentShift = ref('Day') // Store the selected shift type
 
 // --- PWA Install Logic ---
 onMounted(() => {
+  // Check if this device is already trusted as admin
+  if (localStorage.getItem('digiget_admin_device') === 'true') {
+    isAdminDevice.value = true
+  }
+  
+  // Check Test Mode
+  isTestMode.value = localStorage.getItem('digiget_test_mode') === 'true'
+  
   // Detect iOS
   const userAgent = window.navigator.userAgent.toLowerCase()
   isIOS.value = /iphone|ipad|ipod/.test(userAgent) || 
@@ -417,12 +428,34 @@ const openInfoPage = (pageName) => {
 }
 
 // --- Admin Logic ---
+// Handle admin trigger (from secret click)
+const handleAdminTrigger = () => {
+  if (isAdminDevice.value) {
+    // Recognized device? Go straight in.
+    showAdminDashboard.value = true
+  } else {
+    // Stranger? Ask for password.
+    showAdminLogin.value = true
+  }
+}
+
 const handleAdminLogin = () => {
   if (adminPasswordInput.value === 'Rncdm@2025') {
+    // Success!
     showAdminDashboard.value = true
     showAdminLogin.value = false
     adminPasswordInput.value = ''
+    
+    // Ask before tagging device as admin
+    if (!isAdminDevice.value) {
+      const shouldTag = confirm('Would you like to trust this device? You won\'t need to enter the password next time.')
+      if (shouldTag) {
+        localStorage.setItem('digiget_admin_device', 'true')
+        isAdminDevice.value = true
+      }
+    }
   } else {
+    alert("Incorrect Access Code")
     showAdminLogin.value = false
     adminPasswordInput.value = ''
   }
@@ -536,7 +569,7 @@ watch(safetyChecks, async (newChecks) => {
         const skippedTitles = skippedItems.value.map(item => item.title)
         // Pass the currentShift.value to Supabase!
         console.log('🔄 Starting Supabase save process...')
-        const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
+        const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value, isTestMode.value)
         
         if (result) {
           console.log('✅ Shift completion logged successfully to Supabase. Document ID:', result)
@@ -663,6 +696,12 @@ const showIOSInstallHelp = ref(false)
 
 // Detect iOS
 const isIOS = ref(false)
+
+// Admin Device Tagging
+const isAdminDevice = ref(false)
+
+// Test Mode
+const isTestMode = ref(false)
 
 const handleResetShift = () => {
   // Check if last completion was less than 4 hours ago

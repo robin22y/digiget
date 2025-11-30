@@ -21,9 +21,23 @@
           >
             Ad Manager
           </button>
+          <button 
+            @click="activeTab = 'testing'" 
+            class="pb-1 transition-colors"
+            :class="activeTab === 'testing' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-zinc-500 hover:text-zinc-300'"
+          >
+            Testing
+          </button>
         </div>
       </div>
       <div class="flex gap-2">
+        <button 
+          @click="handleLogout" 
+          class="p-2 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-lg transition-colors"
+          title="Untrust Device"
+        >
+          <Lock :size="20" />
+        </button>
         <button @click="$emit('close')" class="exit-btn">
           <LogOut :size="20" />
         </button>
@@ -510,16 +524,74 @@
       </div>
     </div>
 
+    <!-- TESTING TAB -->
+    <div v-if="activeTab === 'testing'" class="p-6 overflow-y-auto flex-1">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6">
+        <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+          <Beaker :size="20" class="text-yellow-400" />
+          Test Mode Settings
+        </h3>
+        <p class="text-zinc-400 text-sm mb-6">
+          Enable test mode on this device to mark all your future shift logs as "Test Data". 
+          These will not affect production metrics and can be bulk deleted.
+        </p>
+
+        <div class="flex items-center justify-between bg-zinc-950 p-4 rounded-lg border border-zinc-800 mb-6">
+          <div>
+            <div class="font-bold text-white">Device Test Mode</div>
+            <div class="text-xs text-zinc-500">
+              Current Status: 
+              <span :class="isTestMode ? 'text-green-400' : 'text-zinc-500'">
+                {{ isTestMode ? 'ENABLED' : 'DISABLED' }}
+              </span>
+            </div>
+          </div>
+          <button 
+            @click="toggleTestMode"
+            class="px-4 py-2 rounded-lg font-bold text-sm transition-colors"
+            :class="isTestMode ? 'bg-green-900/30 text-green-400 border border-green-900/50' : 'bg-zinc-800 text-zinc-400'"
+          >
+            {{ isTestMode ? 'Turn Off' : 'Turn On' }}
+          </button>
+        </div>
+
+        <div class="border-t border-zinc-800 pt-6">
+          <h4 class="font-bold text-red-400 mb-2 text-sm uppercase tracking-wider">Danger Zone</h4>
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-zinc-400">
+              Bulk delete all logs marked as "Test Data" (`is_test = true`) from the database.
+            </div>
+            <button 
+              @click="purgeTestData"
+              :disabled="isPurging"
+              class="px-4 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/50 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <Trash2 :size="16" />
+              {{ isPurging ? 'Purging...' : 'Purge Test Data' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe } from 'lucide-vue-next'
+import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker } from 'lucide-vue-next'
 import { supabase } from '../supabase'
 
 const emit = defineEmits(['close'])
+
+// Logout handler to remove admin device status
+const handleLogout = () => {
+  if (confirm("Remove admin access from this device? You will need the password to enter next time.")) {
+    localStorage.removeItem('digiget_admin_device')
+    // Reload to reset state immediately
+    window.location.reload()
+  }
+}
 
 const activeTab = ref('metrics') // 'metrics' or 'ads'
 
@@ -555,6 +627,10 @@ const ads = ref([])
 const loadingAds = ref(true)
 const isSavingAd = ref(false)
 let adsChannel = null
+
+// Test Mode
+const isTestMode = ref(false)
+const isPurging = ref(false)
 
 // New Ad Form State
 const newAd = ref({
@@ -793,6 +869,9 @@ const calculateMetrics = (allLogs) => {
 }
 
 onMounted(async () => {
+  // Check local storage for test mode status
+  isTestMode.value = localStorage.getItem('digiget_test_mode') === 'true'
+  
   // 1. Fetch All Logs for Metrics (fetch more for accurate metrics)
   // Note: Firestore has a limit of fetching documents, but this should work for most cases
   // For very large datasets, consider pagination or Cloud Functions
@@ -971,6 +1050,33 @@ onUnmounted(() => {
   }
 })
 
+// --- Test Mode Actions ---
+const toggleTestMode = () => {
+  isTestMode.value = !isTestMode.value
+  localStorage.setItem('digiget_test_mode', isTestMode.value.toString())
+  // Force reload to apply the "Test Mode" banner in App.vue
+  window.location.reload()
+}
+
+const purgeTestData = async () => {
+  if (!confirm("Are you sure? This will delete ALL logs marked as 'is_test = true' from the database. This cannot be undone.")) return
+
+  isPurging.value = true
+  try {
+    const { error, count } = await supabase
+      .from('shift_logs')
+      .delete({ count: 'exact' })
+      .eq('is_test', true)
+
+    if (error) throw error
+    alert(`Successfully deleted ${count || 'test'} records.`)
+  } catch (e) {
+    console.error("Purge error:", e)
+    alert("Failed to delete data. Check console.")
+  } finally {
+    isPurging.value = false
+  }
+}
 
 // --- Ad Actions ---
 

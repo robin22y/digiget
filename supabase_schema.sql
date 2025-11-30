@@ -11,12 +11,14 @@ CREATE TABLE IF NOT EXISTS shift_logs (
   skipped_items TEXT[] DEFAULT '{}',
   shift_type TEXT NOT NULL DEFAULT 'Unspecified',
   location JSONB,
+  is_test BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_shift_logs_user_id ON shift_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_shift_logs_created_at ON shift_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_shift_logs_is_test ON shift_logs(is_test);
 
 -- Enable Row Level Security
 ALTER TABLE shift_logs ENABLE ROW LEVEL SECURITY;
@@ -114,4 +116,11 @@ CREATE POLICY "Authenticated users can delete ads"
   FOR DELETE
   TO authenticated
   USING (true);
+
+-- ============================================
+-- 3. Migration: Add is_test column (for existing databases)
+-- ============================================
+-- Run this if you already have the shift_logs table and need to add the is_test column
+-- ALTER TABLE shift_logs ADD COLUMN IF NOT EXISTS is_test BOOLEAN NOT NULL DEFAULT false;
+-- CREATE INDEX IF NOT EXISTS idx_shift_logs_is_test ON shift_logs(is_test);
 
