@@ -52,6 +52,7 @@ The SQL creates:
 - `shift_logs` table with proper indexes and RLS policies
 - `ads` table with proper indexes and RLS policies
 - All necessary security policies for anonymous and authenticated users
+- **Admin policy** that allows authenticated users to read all shift logs (for admin dashboard metrics)
 
 ## Step 5: Enable Anonymous Authentication
 

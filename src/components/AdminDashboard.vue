@@ -675,7 +675,15 @@ onMounted(async () => {
   }
 
   try {
+    // Ensure user is authenticated for admin access
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      console.warn("⚠️ Admin dashboard: No authenticated session. Attempting anonymous sign-in...")
+      await supabase.auth.signInAnonymously()
+    }
+
     // Fetch logs (up to 1000 most recent)
+    // Note: This requires RLS policy that allows authenticated users to read all logs
     const { data: allLogs, error: logsError } = await supabase
       .from('shift_logs')
       .select('*')
@@ -683,10 +691,32 @@ onMounted(async () => {
       .limit(1000)
 
     if (logsError) {
-      console.error("Logs Access Error:", logsError)
+      console.error("❌ Logs Access Error:", logsError)
+      console.error("Error details:", {
+        code: logsError.code,
+        message: logsError.message,
+        hint: logsError.hint
+      })
+      
+      // Check if it's a permission error
+      if (logsError.code === 'PGRST301' || logsError.message?.includes('permission') || logsError.message?.includes('policy')) {
+        console.error("🔒 RLS POLICY ISSUE:")
+        console.error("The admin dashboard needs to read all logs, but RLS policies may be blocking access.")
+        console.error("Add this policy to Supabase SQL Editor:")
+        console.error(`
+-- Allow authenticated users to read all shift logs (for admin dashboard)
+CREATE POLICY "Admins can read all shift logs"
+  ON shift_logs
+  FOR SELECT
+  TO authenticated
+  USING (true);
+        `)
+      }
+      
       loadingMetrics.value = false
     } else {
       // Convert Supabase format to expected format for calculateMetrics
+      // Supabase returns ISO date strings, which getDate() can handle directly
       const convertedLogs = (allLogs || []).map(log => ({
         id: log.id,
         userId: log.user_id,
@@ -694,11 +724,20 @@ onMounted(async () => {
         skippedItems: log.skipped_items || [],
         shiftType: log.shift_type,
         location: log.location,
-        timestamp: log.created_at ? { seconds: Math.floor(new Date(log.created_at).getTime() / 1000) } : null
+        timestamp: log.created_at || null // Pass ISO string directly, getDate() handles it
       }))
+      
+      console.log(`✅ Admin Dashboard: Fetched ${convertedLogs.length} logs from Supabase`)
+      console.log("📊 Sample log:", convertedLogs[0] || "No logs found")
       
       // Calculate metrics from all fetched logs
       metrics.value = calculateMetrics(convertedLogs)
+      console.log("📈 Calculated metrics:", {
+        totalUsers: metrics.value.totalUsers,
+        dau: metrics.value.dau,
+        mau: metrics.value.mau,
+        totalSessions: metrics.value.totalSessions
+      })
       loadingMetrics.value = false
 
       // Set up real-time subscription for logs
@@ -722,7 +761,7 @@ onMounted(async () => {
                 skippedItems: log.skipped_items || [],
                 shiftType: log.shift_type,
                 location: log.location,
-                timestamp: log.created_at ? { seconds: Math.floor(new Date(log.created_at).getTime() / 1000) } : null
+                timestamp: log.created_at || null // Pass ISO string directly, getDate() handles it
               }))
               metrics.value = calculateMetrics(converted)
             }

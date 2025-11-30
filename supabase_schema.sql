@@ -47,6 +47,16 @@ CREATE POLICY "Users can delete their own shift logs"
   TO authenticated
   USING (auth.uid() = user_id);
 
+-- Create policy: Admins can read all shift logs (for admin dashboard metrics)
+-- This allows authenticated users to read all logs for analytics
+-- Note: In production, you may want to restrict this to specific admin users
+DROP POLICY IF EXISTS "Admins can read all shift logs" ON shift_logs;
+CREATE POLICY "Admins can read all shift logs"
+  ON shift_logs
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
 -- ============================================
 -- 2. Create ads table
 -- ============================================
