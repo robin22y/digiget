@@ -43,10 +43,9 @@
         <!-- Install Button (right side) -->
         <button 
           class="install-banner-button"
-          :class="{ 'install-available': deferredPrompt, 'install-disabled': !deferredPrompt }"
+          :class="{ 'install-available': isIOS ? true : deferredPrompt, 'install-disabled': !isIOS && !deferredPrompt }"
           @click="handleInstall"
-          :disabled="!deferredPrompt"
-          :title="deferredPrompt ? 'Install Digiget App' : 'Install not available'"
+          :title="isIOS ? 'How to install on iOS' : (deferredPrompt ? 'Install Digiget App' : 'Install not available')"
         >
           <Download :size="18" />
           <span>Install</span>
@@ -201,6 +200,75 @@
       </div>
     </div>
 
+    <!-- iOS Install Help Modal -->
+    <div v-if="showIOSInstallHelp" class="modal-backdrop" @click.self="showIOSInstallHelp = false">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-md w-full rounded-2xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-white">Install Digiget on iOS</h3>
+          <button @click="showIOSInstallHelp = false" class="text-zinc-500 hover:text-white">
+            <X :size="24" />
+          </button>
+        </div>
+        
+        <div class="space-y-4 text-zinc-300">
+          <p class="text-sm">
+            To install Digiget on your iPhone or iPad, follow these steps:
+          </p>
+          
+          <div class="space-y-3">
+            <div class="flex gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm">
+                1
+              </div>
+              <div class="flex-1">
+                <p class="text-sm">Tap the <strong class="text-white">Share</strong> button <span class="text-2xl">📤</span> at the bottom of your Safari browser</p>
+              </div>
+            </div>
+            
+            <div class="flex gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm">
+                2
+              </div>
+              <div class="flex-1">
+                <p class="text-sm">Scroll down and tap <strong class="text-white">"Add to Home Screen"</strong></p>
+              </div>
+            </div>
+            
+            <div class="flex gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm">
+                3
+              </div>
+              <div class="flex-1">
+                <p class="text-sm">Tap <strong class="text-white">"Add"</strong> in the top right corner</p>
+              </div>
+            </div>
+            
+            <div class="flex gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm">
+                4
+              </div>
+              <div class="flex-1">
+                <p class="text-sm">Digiget will appear on your home screen like a regular app!</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-6 p-4 bg-zinc-800 rounded-lg border border-zinc-700">
+            <p class="text-xs text-zinc-400">
+              <strong class="text-zinc-300">Note:</strong> Make sure you're using Safari browser. Chrome on iOS doesn't support this feature.
+            </p>
+          </div>
+        </div>
+        
+        <button 
+          @click="showIOSInstallHelp = false" 
+          class="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors"
+        >
+          Got it!
+        </button>
+      </div>
+    </div>
+
     <!-- Cooldown Warning Modal -->
     <div v-if="showCooldownWarning" class="modal-backdrop" @click.self="handleCooldownCancel">
       <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-sm w-full rounded-2xl">
@@ -268,7 +336,12 @@ const currentShift = ref('Day') // Store the selected shift type
 
 // --- PWA Install Logic ---
 onMounted(() => {
-  // Listen for the beforeinstallprompt event
+  // Detect iOS
+  const userAgent = window.navigator.userAgent.toLowerCase()
+  isIOS.value = /iphone|ipad|ipod/.test(userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  
+  // Listen for the beforeinstallprompt event (not available on iOS)
   window.addEventListener('beforeinstallprompt', (e) => {
     console.log('✅ PWA install prompt available!')
     e.preventDefault()
@@ -305,6 +378,13 @@ onMounted(() => {
 })
 
 const handleInstall = async () => {
+  // Show iOS help modal for iOS users
+  if (isIOS.value) {
+    showIOSInstallHelp.value = true
+    return
+  }
+  
+  // Regular install flow for other platforms
   if (!deferredPrompt.value) return
   deferredPrompt.value.prompt()
   const { outcome } = await deferredPrompt.value.userChoice
@@ -579,6 +659,10 @@ const handleResetDay = () => {
 
 const showCooldownWarning = ref(false)
 const showReviewScreen = ref(false)
+const showIOSInstallHelp = ref(false)
+
+// Detect iOS
+const isIOS = ref(false)
 
 const handleResetShift = () => {
   // Check if last completion was less than 4 hours ago
