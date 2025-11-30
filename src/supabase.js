@@ -341,6 +341,7 @@ const getDeviceId = () => {
 
 /**
  * Register this device as an admin device in Supabase
+ * Uses Edge Function for secure registration (bypasses RLS)
  */
 export const registerAdminDevice = async () => {
   if (!supabase) {
@@ -351,9 +352,27 @@ export const registerAdminDevice = async () => {
 
   try {
     const deviceId = getDeviceId()
-    const deviceName = navigator.userAgentData?.brands?.[0]?.brand || 'Unknown Device'
+    const deviceName = navigator.userAgentData?.brands?.[0]?.brand || navigator.platform || 'Unknown Device'
     const userAgent = navigator.userAgent
 
+    // Try Edge Function first (secure, bypasses RLS)
+    try {
+      const result = await registerAdminDeviceSecure(deviceId, deviceName, userAgent)
+      if (result.device && !result.error) {
+        localStorage.setItem('digiget_admin_device', 'true')
+        if (import.meta.env.DEV) {
+          console.log('✅ Admin device registered via Edge Function:', result.device)
+        }
+        return { success: true, device: result.device }
+      }
+    } catch (edgeError) {
+      if (import.meta.env.DEV) {
+        console.warn('Edge Function not available, trying direct insert:', edgeError)
+      }
+    }
+
+    // Fallback to direct insert (requires INSERT policy)
+    // This will fail if RLS policies don't allow INSERT
     const { data, error } = await supabase
       .from('admin_devices')
       .upsert({
@@ -368,14 +387,22 @@ export const registerAdminDevice = async () => {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error registering admin device (direct insert failed):', error)
+        console.warn('💡 Tip: Deploy Edge Functions to enable secure device registration')
+      }
+      throw error
+    }
 
     // Also set localStorage for backward compatibility
     localStorage.setItem('digiget_admin_device', 'true')
     return { success: true, device: data }
   } catch (error) {
-    console.error('Error registering admin device:', error)
-    // Fallback to localStorage
+    if (import.meta.env.DEV) {
+      console.error('Error registering admin device:', error)
+    }
+    // Fallback to localStorage (device will work but won't show in admin dashboard)
     localStorage.setItem('digiget_admin_device', 'true')
     return { success: true, localOnly: true, error: error.message }
   }

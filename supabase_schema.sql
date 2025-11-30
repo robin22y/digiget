@@ -157,6 +157,7 @@ DROP POLICY IF EXISTS "Authenticated users can delete admin devices" ON admin_de
 -- Drop existing policies if they exist (for clean setup)
 DROP POLICY IF EXISTS "Users can check admin device status" ON admin_devices;
 DROP POLICY IF EXISTS "Users can update their admin device last_used_at" ON admin_devices;
+DROP POLICY IF EXISTS "Users can insert their own admin device" ON admin_devices;
 
 CREATE POLICY "Users can check admin device status"
   ON admin_devices
@@ -172,8 +173,16 @@ CREATE POLICY "Users can update their admin device last_used_at"
   USING (true)
   WITH CHECK (true);
 
--- Admin operations (insert/delete) are handled via: supabase/functions/admin-devices
--- This ensures only authorized admins can manage devices
+-- Allow users to register their own device as admin (needed for device registration)
+-- This allows the device registration flow to work
+CREATE POLICY "Users can insert their own admin device"
+  ON admin_devices
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+-- Admin operations (delete) are handled via: supabase/functions/admin-devices
+-- This ensures only authorized admins can delete devices
 --
 -- If you need to allow specific admin user IDs to manage devices, uncomment below:
 -- CREATE POLICY "Only admins can insert admin devices"
