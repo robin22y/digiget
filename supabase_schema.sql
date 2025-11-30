@@ -153,6 +153,11 @@ DROP POLICY IF EXISTS "Authenticated users can delete admin devices" ON admin_de
 -- Minimal policy for checking admin device status (needed for app functionality)
 -- Users can read admin_devices to check if their device is admin
 -- Full management (insert/delete) is handled via Edge Functions
+
+-- Drop existing policies if they exist (for clean setup)
+DROP POLICY IF EXISTS "Users can check admin device status" ON admin_devices;
+DROP POLICY IF EXISTS "Users can update their admin device last_used_at" ON admin_devices;
+
 CREATE POLICY "Users can check admin device status"
   ON admin_devices
   FOR SELECT
