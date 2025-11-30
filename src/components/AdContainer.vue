@@ -81,7 +81,9 @@ const handleAdClick = (e) => {
     return false
   }
   // Log for debugging - let the natural link behavior work
-  console.log("Ad clicked, navigating to:", validLink.value)
+  if (import.meta.env.DEV) {
+    console.log("Ad clicked, navigating to:", validLink.value)
+  }
   // Don't prevent default - let the <a> tag handle navigation naturally
   return true
 }
@@ -150,10 +152,6 @@ onMounted(async () => {
   
   // Check if Supabase is available
   if (!supabase) {
-    // Only log in development
-    if (import.meta.env.DEV) {
-      console.log("Supabase not available - ads disabled")
-    }
     return
   }
   
@@ -173,7 +171,9 @@ onMounted(async () => {
     }
     
     if (!ads || ads.length === 0) {
-      console.log("No active ads found")
+      if (import.meta.env.DEV) {
+        console.log("No active ads found")
+      }
       return
     }
     
@@ -194,21 +194,25 @@ onMounted(async () => {
       // Pick a random ad from the active pool to keep it fresh
       const randomIndex = Math.floor(Math.random() * activeAds.length)
       currentAd.value = activeAds[randomIndex]
-      console.log("Ad loaded:", {
-        content: currentAd.value.content,
-        link: currentAd.value.link,
-        type: currentAd.value.type,
-        targeting: {
-          city: currentAd.value.target_city,
-          region: currentAd.value.target_region,
-          shifts: currentAd.value.target_shifts
-        },
-        userLocation: userLocation.value,
-        userShift: props.currentShift,
-        validLink: validLink.value
-      })
+      if (import.meta.env.DEV) {
+        console.log("Ad loaded:", {
+          content: currentAd.value.content,
+          link: currentAd.value.link,
+          type: currentAd.value.type,
+          targeting: {
+            city: currentAd.value.target_city,
+            region: currentAd.value.target_region,
+            shifts: currentAd.value.target_shifts
+          },
+          userLocation: userLocation.value,
+          userShift: props.currentShift,
+          validLink: validLink.value
+        })
+      }
     } else {
-      console.log("No matching ads found for current location/shift")
+      if (import.meta.env.DEV) {
+        console.log("No matching ads found for current location/shift")
+      }
     }
   } catch (e) {
     console.error("Failed to load ads:", e)

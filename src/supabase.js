@@ -5,23 +5,25 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Debug: Log environment variable status
-const keyPreview = supabaseAnonKey 
-  ? `${supabaseAnonKey.substring(0, 30)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 20)}` 
-  : 'MISSING'
+// Debug: Log environment variable status (only in development)
+if (import.meta.env.DEV) {
+  const keyPreview = supabaseAnonKey 
+    ? `${supabaseAnonKey.substring(0, 30)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 20)}` 
+    : 'MISSING'
 
-console.log('🔍 Supabase Config Check:', {
-  hasUrl: !!supabaseUrl,
-  hasAnonKey: !!supabaseAnonKey,
-  url: supabaseUrl || 'MISSING',
-  keyPreview: keyPreview,
-  keyLength: supabaseAnonKey?.length || 0,
-  keyStartsWith: supabaseAnonKey?.substring(0, 10) || 'N/A',
-  keyEndsWith: supabaseAnonKey?.substring(supabaseAnonKey?.length - 10) || 'N/A',
-  env: import.meta.env.MODE,
-  isDev: import.meta.env.DEV,
-  isProd: import.meta.env.PROD
-})
+  console.log('🔍 Supabase Config Check:', {
+    hasUrl: !!supabaseUrl,
+    hasAnonKey: !!supabaseAnonKey,
+    url: supabaseUrl || 'MISSING',
+    keyPreview: keyPreview,
+    keyLength: supabaseAnonKey?.length || 0,
+    keyStartsWith: supabaseAnonKey?.substring(0, 10) || 'N/A',
+    keyEndsWith: supabaseAnonKey?.substring(supabaseAnonKey?.length - 10) || 'N/A',
+    env: import.meta.env.MODE,
+    isDev: import.meta.env.DEV,
+    isProd: import.meta.env.PROD
+  })
+}
 
 // Verify key format (should be a JWT)
 if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) {
@@ -40,9 +42,11 @@ if (supabaseUrl && supabaseAnonKey) {
         detectSessionInUrl: false
       }
     })
-    console.log('✅ Supabase client initialized')
-    console.log('✅ Supabase URL:', supabaseUrl)
-    console.log('✅ Supabase client object:', !!supabase)
+    if (import.meta.env.DEV) {
+      console.log('✅ Supabase client initialized')
+      console.log('✅ Supabase URL:', supabaseUrl)
+      console.log('✅ Supabase client object:', !!supabase)
+    }
   } catch (error) {
     console.error('❌ Failed to initialize Supabase:', error)
     console.error('Error details:', {
@@ -106,7 +110,9 @@ export const signInAnonymouslyUser = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     
     if (session) {
-      console.log('User already signed in:', session.user.id)
+      if (import.meta.env.DEV) {
+        console.log('User already signed in:', session.user.id)
+      }
       return session.user
     }
 
@@ -136,7 +142,9 @@ export const signInAnonymouslyUser = async () => {
       return null
     }
 
-    console.log('Anonymous user signed in:', data.user.id)
+    if (import.meta.env.DEV) {
+      console.log('Anonymous user signed in:', data.user.id)
+    }
     return data.user
   } catch (error) {
     console.error('Error in signInAnonymouslyUser:', error)
@@ -178,10 +186,12 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       return null
     }
 
-    console.log('✅ User authenticated:', {
-      uid: user.id,
-      isAnonymous: user.is_anonymous || true
-    })
+    if (import.meta.env.DEV) {
+      console.log('✅ User authenticated:', {
+        uid: user.id,
+        isAnonymous: user.is_anonymous || true
+      })
+    }
 
     // Fetch location (runs in background, non-blocking)
     const locationData = await getRoughLocation()
@@ -196,13 +206,15 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       created_at: new Date().toISOString()
     }
 
-    console.log('📝 Attempting to save shift log to Supabase...', {
-      userId: user.id,
-      itemsChecked,
-      shiftType,
-      skippedCount: skippedItems.length,
-      networkStatus: navigator.onLine ? 'Online' : 'Offline'
-    })
+    if (import.meta.env.DEV) {
+      console.log('📝 Attempting to save shift log to Supabase...', {
+        userId: user.id,
+        itemsChecked,
+        shiftType,
+        skippedCount: skippedItems.length,
+        networkStatus: navigator.onLine ? 'Online' : 'Offline'
+      })
+    }
 
     // Insert into Supabase
     const { data: insertedData, error } = await supabase
@@ -224,7 +236,9 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
       throw error
     }
 
-    console.log('✅ Shift log saved successfully. Document ID:', insertedData.id)
+    if (import.meta.env.DEV) {
+      console.log('✅ Shift log saved successfully. Document ID:', insertedData.id)
+    }
     return insertedData
   } catch (error) {
     console.error('❌ Error logging shift completion:', error)
@@ -254,7 +268,9 @@ export const deleteUserData = async () => {
   let { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
-    console.log('No user authenticated, attempting anonymous sign-in...')
+    if (import.meta.env.DEV) {
+      console.log('No user authenticated, attempting anonymous sign-in...')
+    }
     try {
       user = await signInAnonymouslyUser()
       if (!user) {
@@ -267,7 +283,9 @@ export const deleteUserData = async () => {
     }
   }
 
-  console.log('User authenticated for delete operation:', user.id)
+  if (import.meta.env.DEV) {
+    console.log('User authenticated for delete operation:', user.id)
+  }
 
   try {
     // First, check how many logs exist for this user
@@ -294,7 +312,9 @@ export const deleteUserData = async () => {
       return { success: false, message: `Error deleting cloud data: ${error.message}. Please try again.` }
     }
 
-    console.log(`Deleted ${logCount} logs for user: ${user.id}`)
+    if (import.meta.env.DEV) {
+      console.log(`Deleted ${logCount} logs for user: ${user.id}`)
+    }
     return { success: true, message: `Successfully deleted ${logCount} cloud log${logCount === 1 ? '' : 's'}.` }
   } catch (error) {
     if (import.meta.env.DEV) {

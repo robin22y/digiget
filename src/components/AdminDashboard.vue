@@ -998,17 +998,21 @@ CREATE POLICY "Admins can read all shift logs"
         timestamp: log.created_at || null // Pass ISO string directly, getDate() handles it
       }))
       
-      console.log(`✅ Admin Dashboard: Fetched ${convertedLogs.length} logs from Supabase`)
-      console.log("📊 Sample log:", convertedLogs[0] || "No logs found")
+      if (import.meta.env.DEV) {
+        console.log(`✅ Admin Dashboard: Fetched ${convertedLogs.length} logs from Supabase`)
+        console.log("📊 Sample log:", convertedLogs[0] || "No logs found")
+      }
       
       // Calculate metrics from all fetched logs
       metrics.value = calculateMetrics(convertedLogs)
-      console.log("📈 Calculated metrics:", {
-        totalUsers: metrics.value.totalUsers,
-        dau: metrics.value.dau,
-        mau: metrics.value.mau,
-        totalSessions: metrics.value.totalSessions
-      })
+      if (import.meta.env.DEV) {
+        console.log("📈 Calculated metrics:", {
+          totalUsers: metrics.value.totalUsers,
+          dau: metrics.value.dau,
+          mau: metrics.value.mau,
+          totalSessions: metrics.value.totalSessions
+        })
+      }
       loadingMetrics.value = false
 
       // Set up real-time subscription for logs

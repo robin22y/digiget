@@ -354,13 +354,15 @@ onMounted(() => {
   
   // Listen for the beforeinstallprompt event (not available on iOS)
   window.addEventListener('beforeinstallprompt', (e) => {
-    console.log('✅ PWA install prompt available!')
+    if (import.meta.env.DEV) {
+      console.log('✅ PWA install prompt available!')
+    }
     e.preventDefault()
     deferredPrompt.value = e
   })
 
   // Debug: Check if service worker is registered
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && import.meta.env.DEV) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
       console.log('Service Workers registered:', registrations.length)
       registrations.forEach(reg => {
@@ -377,7 +379,9 @@ onMounted(() => {
         return res.json()
       })
       .then(manifest => {
-        console.log('✅ Manifest loaded:', manifest)
+        if (import.meta.env.DEV) {
+          console.log('✅ Manifest loaded:', manifest)
+        }
       })
       .catch(err => {
         // Silently fail in development, only log in production
@@ -571,11 +575,15 @@ watch(safetyChecks, async (newChecks) => {
         const itemsChecked = completedItems.value.length
         const skippedTitles = skippedItems.value.map(item => item.title)
         // Pass the currentShift.value to Supabase!
-        console.log('🔄 Starting Supabase save process...')
+        if (import.meta.env.DEV) {
+          console.log('🔄 Starting Supabase save process...')
+        }
         const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value, isTestMode.value)
         
         if (result) {
-          console.log('✅ Shift completion logged successfully to Supabase. Document ID:', result)
+          if (import.meta.env.DEV) {
+            console.log('✅ Shift completion logged successfully to Supabase. Document ID:', result)
+          }
         } else {
           console.warn('⚠️ Shift completion not logged - Supabase not configured. Check console for details.')
         }
@@ -773,16 +781,20 @@ const handleEditShift = () => {
   // Restore all cards from completed/skipped back to safetyChecks
   // This allows the user to edit their choices
   
-  console.log('handleEditShift called')
-  console.log('completedItems:', completedItems.value.length)
-  console.log('skippedItems:', skippedItems.value.length)
+  if (import.meta.env.DEV) {
+    console.log('handleEditShift called')
+    console.log('completedItems:', completedItems.value.length)
+    console.log('skippedItems:', skippedItems.value.length)
+  }
   
   // Combine completed and skipped items
   const allSwipedCards = [...completedItems.value, ...skippedItems.value]
   
-  console.log('All swiped cards:', allSwipedCards.length)
-  if (allSwipedCards.length > 0) {
-    console.log('Sample card:', allSwipedCards[0])
+  if (import.meta.env.DEV) {
+    console.log('All swiped cards:', allSwipedCards.length)
+    if (allSwipedCards.length > 0) {
+      console.log('Sample card:', allSwipedCards[0])
+    }
   }
   
   // Ensure icons are properly restored and all properties are present
@@ -809,9 +821,11 @@ const handleEditShift = () => {
     }
   })
   
-  console.log('Restored cards:', restoredCards.length)
-  if (restoredCards.length > 0) {
-    console.log('Sample restored card:', restoredCards[0])
+  if (import.meta.env.DEV) {
+    console.log('Restored cards:', restoredCards.length)
+    if (restoredCards.length > 0) {
+      console.log('Sample restored card:', restoredCards[0])
+    }
   }
   
   // If no cards to restore, something went wrong - restore from defaults
@@ -846,7 +860,9 @@ const handleEditShift = () => {
   
   window.scrollTo(0, 0)
   
-  console.log('Edit shift complete. safetyChecks now has', safetyChecks.value.length, 'cards')
+  if (import.meta.env.DEV) {
+    console.log('Edit shift complete. safetyChecks now has', safetyChecks.value.length, 'cards')
+  }
 }
 
 // Get all cards for management (combine default and custom, but use current state)
