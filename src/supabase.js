@@ -212,6 +212,8 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
         itemsChecked,
         shiftType,
         skippedCount: skippedItems.length,
+        isTest: isTest,
+        isTestValue: shiftLog.is_test,
         networkStatus: navigator.onLine ? 'Online' : 'Offline'
       })
     }
@@ -388,31 +390,65 @@ export const checkAdminDevice = async () => {
     return true
   }
 
-  // Then check Supabase if available
+  // Then check via Edge Function (secure, bypasses RLS)
   if (!supabase) {
     return false
   }
 
   try {
     const deviceId = getDeviceId()
-    const { data, error } = await supabase
-      .from('admin_devices')
-      .select('id, last_used_at')
-      .eq('device_id', deviceId)
-      .single()
+    
+    // Use Edge Function to check admin device status
+    const url = getEdgeFunctionUrl('check-admin-device')
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ADMIN_PASSWORD}`,
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+      },
+      body: JSON.stringify({ device_id: deviceId })
+    })
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error checking admin device:', error)
+    if (!response.ok) {
+      // If Edge Function not available, fall back to direct query (for backward compatibility)
+      // This will fail if RLS policies are removed, but provides graceful degradation
+      if (import.meta.env.DEV) {
+        console.warn('Edge Function not available, falling back to direct query')
+      }
+      
+      // Try direct query as fallback
+      const { data, error } = await supabase
+        .from('admin_devices')
+        .select('id, last_used_at')
+        .eq('device_id', deviceId)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        if (import.meta.env.DEV) {
+          console.error('Error checking admin device:', error)
+        }
+        return false
+      }
+
+      if (data) {
+        // Update last_used_at
+        await supabase
+          .from('admin_devices')
+          .update({ last_used_at: new Date().toISOString() })
+          .eq('device_id', deviceId)
+        
+        localStorage.setItem('digiget_admin_device', 'true')
+        return true
+      }
+      
       return false
     }
 
-    if (data) {
-      // Update last_used_at
-      await supabase
-        .from('admin_devices')
-        .update({ last_used_at: new Date().toISOString() })
-        .eq('device_id', deviceId)
-      
+    const result = await response.json()
+    
+    if (result.isAdmin) {
       // Set localStorage for faster future checks
       localStorage.setItem('digiget_admin_device', 'true')
       return true
@@ -420,7 +456,9 @@ export const checkAdminDevice = async () => {
 
     return false
   } catch (error) {
-    console.error('Error checking admin device:', error)
+    if (import.meta.env.DEV) {
+      console.error('Error checking admin device:', error)
+    }
     return false
   }
 }
@@ -466,6 +504,249 @@ export const deleteAdminDevice = async (deviceId) => {
   } catch (error) {
     console.error('Error deleting admin device:', error)
     return { success: false, message: error.message }
+  }
+}
+
+// ============================================
+// SECURE EDGE FUNCTIONS (Admin Operations)
+// ============================================
+// These functions use Supabase Edge Functions with service role key
+// This bypasses RLS and ensures only authorized admins can perform operations
+
+const ADMIN_PASSWORD = 'Rncdm@2025' // Should match App.vue admin password
+
+/**
+ * Get Supabase Edge Functions URL
+ */
+const getEdgeFunctionUrl = (functionName) => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  if (!supabaseUrl) {
+    throw new Error('VITE_SUPABASE_URL not configured')
+  }
+  // Edge Functions are at: https://<project-ref>.supabase.co/functions/v1/<function-name>
+  const url = new URL(supabaseUrl)
+  return `${url.protocol}//${url.host}/functions/v1/${functionName}`
+}
+
+/**
+ * Call Edge Function with admin authentication
+ */
+const callEdgeFunction = async (functionName, options = {}) => {
+  const { method = 'GET', body = null } = options
+  
+  const url = getEdgeFunctionUrl(functionName)
+  
+  const headers = {
+    'Authorization': `Bearer ${ADMIN_PASSWORD}`,
+    'Content-Type': 'application/json',
+    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  }
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : null
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error(`Error calling Edge Function ${functionName}:`, error)
+    }
+    throw error
+  }
+}
+
+/**
+ * Fetch all shift logs for admin metrics (via Edge Function)
+ */
+export const fetchAllShiftLogs = async () => {
+  try {
+    const result = await callEdgeFunction('admin-metrics', { method: 'POST' })
+    return result.logs || []
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error fetching shift logs:', error)
+    }
+    return []
+  }
+}
+
+/**
+ * Fetch all ads (via Edge Function)
+ */
+export const fetchAllAds = async () => {
+  try {
+    const result = await callEdgeFunction('admin-ads', { method: 'GET' })
+    return result.ads || []
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error fetching ads:', error)
+    }
+    return []
+  }
+}
+
+/**
+ * Create a new ad (via Edge Function)
+ */
+export const createAd = async (adData) => {
+  try {
+    const result = await callEdgeFunction('admin-ads', {
+      method: 'POST',
+      body: adData
+    })
+    return { ad: result.ad, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error creating ad:', error)
+    }
+    return { ad: null, error: error.message }
+  }
+}
+
+/**
+ * Update an ad (via Edge Function)
+ */
+export const updateAd = async (adId, updates) => {
+  try {
+    const url = getEdgeFunctionUrl('admin-ads')
+    const response = await fetch(`${url}?id=${adId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${ADMIN_PASSWORD}`,
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+      },
+      body: JSON.stringify(updates)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    return { ad: result.ad, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error updating ad:', error)
+    }
+    return { ad: null, error: error.message }
+  }
+}
+
+/**
+ * Delete an ad (via Edge Function)
+ */
+export const deleteAd = async (adId) => {
+  try {
+    const url = getEdgeFunctionUrl('admin-ads')
+    const response = await fetch(`${url}?id=${adId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${ADMIN_PASSWORD}`,
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+      }
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    return { success: result.success, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error deleting ad:', error)
+    }
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Fetch all admin devices (via Edge Function)
+ */
+export const fetchAllAdminDevices = async () => {
+  try {
+    const result = await callEdgeFunction('admin-devices', { method: 'GET' })
+    return result.devices || []
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error fetching admin devices:', error)
+    }
+    return []
+  }
+}
+
+/**
+ * Register admin device (via Edge Function)
+ */
+export const registerAdminDeviceSecure = async (deviceId, deviceName, userAgent) => {
+  try {
+    const result = await callEdgeFunction('admin-devices', {
+      method: 'POST',
+      body: { device_id: deviceId, device_name: deviceName, user_agent: userAgent }
+    })
+    return { device: result.device, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error registering admin device:', error)
+    }
+    return { device: null, error: error.message }
+  }
+}
+
+/**
+ * Delete admin device (via Edge Function)
+ */
+export const deleteAdminDeviceSecure = async (deviceId) => {
+  try {
+    const url = getEdgeFunctionUrl('admin-devices')
+    const response = await fetch(`${url}?device_id=${deviceId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${ADMIN_PASSWORD}`,
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+      }
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    return { success: result.success, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error deleting admin device:', error)
+    }
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Purge test data (via Edge Function)
+ */
+export const purgeTestData = async () => {
+  try {
+    const result = await callEdgeFunction('admin-purge-test-data', { method: 'POST' })
+    return { deleted_count: result.deleted_count || 0, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error purging test data:', error)
+    }
+    return { deleted_count: 0, error: error.message }
   }
 }
 

@@ -510,7 +510,7 @@
               <Power :size="18" :class="ad.isActive ? 'text-green-400' : 'text-zinc-500'" />
             </button>
             <button 
-              @click="deleteAd(ad.id)"
+              @click="deleteAdHandler(ad.id)"
               class="p-2 rounded-lg bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 transition-colors"
               title="Delete Campaign"
             >
@@ -562,7 +562,7 @@
               Bulk delete all logs marked as "Test Data" (`is_test = true`) from the database.
             </div>
             <button 
-              @click="purgeTestData"
+              @click="purgeTestDataHandler"
               :disabled="isPurging"
               class="px-4 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/50 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors disabled:opacity-50"
             >
@@ -629,7 +629,16 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker } from 'lucide-vue-next'
 import { supabase } from '../supabase'
-import { getAllAdminDevices, deleteAdminDevice } from '../supabase'
+import { 
+  fetchAllShiftLogs,
+  fetchAllAds,
+  createAd,
+  updateAd,
+  deleteAd,
+  fetchAllAdminDevices,
+  deleteAdminDeviceSecure,
+  purgeTestData
+} from '../supabase'
 
 const emit = defineEmits(['close'])
 
@@ -951,39 +960,10 @@ onMounted(async () => {
       await supabase.auth.signInAnonymously()
     }
 
-    // Fetch logs (up to 1000 most recent)
-    // Note: This requires RLS policy that allows authenticated users to read all logs
-    const { data: allLogs, error: logsError } = await supabase
-      .from('shift_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1000)
-
-    if (logsError) {
-      console.error("❌ Logs Access Error:", logsError)
-      console.error("Error details:", {
-        code: logsError.code,
-        message: logsError.message,
-        hint: logsError.hint
-      })
+    // Fetch logs via Edge Function (secure, bypasses RLS)
+    try {
+      const allLogs = await fetchAllShiftLogs()
       
-      // Check if it's a permission error
-      if (logsError.code === 'PGRST301' || logsError.message?.includes('permission') || logsError.message?.includes('policy')) {
-        console.error("🔒 RLS POLICY ISSUE:")
-        console.error("The admin dashboard needs to read all logs, but RLS policies may be blocking access.")
-        console.error("Add this policy to Supabase SQL Editor:")
-        console.error(`
--- Allow authenticated users to read all shift logs (for admin dashboard)
-CREATE POLICY "Admins can read all shift logs"
-  ON shift_logs
-  FOR SELECT
-  TO authenticated
-  USING (true);
-        `)
-      }
-      
-      loadingMetrics.value = false
-    } else {
       // Convert Supabase format to expected format for calculateMetrics
       // Supabase returns ISO date strings, which getDate() can handle directly
       // Note: Test data is filtered out in calculateMetrics function
@@ -999,7 +979,7 @@ CREATE POLICY "Admins can read all shift logs"
       }))
       
       if (import.meta.env.DEV) {
-        console.log(`✅ Admin Dashboard: Fetched ${convertedLogs.length} logs from Supabase`)
+        console.log(`✅ Admin Dashboard: Fetched ${convertedLogs.length} logs via Edge Function`)
         console.log("📊 Sample log:", convertedLogs[0] || "No logs found")
       }
       
@@ -1015,19 +995,16 @@ CREATE POLICY "Admins can read all shift logs"
       }
       loadingMetrics.value = false
 
-      // Set up real-time subscription for logs
+      // Set up real-time subscription for logs (still works for notifications)
+      // Note: Edge Functions don't support real-time, so we poll periodically
+      // or use Supabase real-time for notifications and refetch via Edge Function
       logsChannel = supabase
         .channel('shift_logs_changes')
         .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'shift_logs' },
           async () => {
-            // Refetch logs when changes occur
-            const { data: updatedLogs } = await supabase
-              .from('shift_logs')
-              .select('*')
-              .order('created_at', { ascending: false })
-              .limit(1000)
-            
+            // Refetch logs via Edge Function when changes occur
+            const updatedLogs = await fetchAllShiftLogs()
             if (updatedLogs) {
               const converted = updatedLogs.map(log => ({
                 id: log.id,
@@ -1036,26 +1013,23 @@ CREATE POLICY "Admins can read all shift logs"
                 skippedItems: log.skipped_items || [],
                 shiftType: log.shift_type,
                 location: log.location,
-                isTest: log.is_test || false, // Include is_test flag for filtering
-                timestamp: log.created_at || null // Pass ISO string directly, getDate() handles it
+                isTest: log.is_test || false,
+                timestamp: log.created_at || null
               }))
               metrics.value = calculateMetrics(converted)
             }
           }
         )
         .subscribe()
+    } catch (error) {
+      console.error("❌ Logs Access Error:", error)
+      loadingMetrics.value = false
     }
 
-    // 2. Fetch Ads
-    const { data: adsData, error: adsError } = await supabase
-      .from('ads')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (adsError) {
-      console.error("Ads Access Error:", adsError)
-      loadingAds.value = false
-    } else {
+    // 2. Fetch Ads via Edge Function (secure, bypasses RLS)
+    try {
+      const adsData = await fetchAllAds()
+      
       // Convert snake_case to camelCase for compatibility
       ads.value = (adsData || []).map(ad => ({
         id: ad.id,
@@ -1071,18 +1045,14 @@ CREATE POLICY "Admins can read all shift logs"
       }))
       loadingAds.value = false
 
-      // Set up real-time subscription for ads
+      // Set up real-time subscription for ads (still works for notifications)
       adsChannel = supabase
         .channel('ads_changes')
         .on('postgres_changes',
           { event: '*', schema: 'public', table: 'ads' },
           async () => {
-            // Refetch ads when changes occur
-            const { data: updatedAds } = await supabase
-              .from('ads')
-              .select('*')
-              .order('created_at', { ascending: false })
-            
+            // Refetch ads via Edge Function when changes occur
+            const updatedAds = await fetchAllAds()
             if (updatedAds) {
               ads.value = updatedAds.map(ad => ({
                 id: ad.id,
@@ -1100,6 +1070,9 @@ CREATE POLICY "Admins can read all shift logs"
           }
         )
         .subscribe()
+    } catch (error) {
+      console.error("Ads Access Error:", error)
+      loadingAds.value = false
     }
   } catch (error) {
     console.error("Error initializing dashboard:", error)
@@ -1125,18 +1098,18 @@ const toggleTestMode = () => {
   window.location.reload()
 }
 
-const purgeTestData = async () => {
+const purgeTestDataHandler = async () => {
   if (!confirm("Are you sure? This will delete ALL logs marked as 'is_test = true' from the database. This cannot be undone.")) return
 
   isPurging.value = true
   try {
-    const { error, count } = await supabase
-      .from('shift_logs')
-      .delete({ count: 'exact' })
-      .eq('is_test', true)
-
-    if (error) throw error
-    alert(`Successfully deleted ${count || 'test'} records.`)
+    const result = await purgeTestData()
+    if (result.error) {
+      throw new Error(result.error)
+    }
+    alert(`Successfully deleted ${result.deleted_count || 0} test records.`)
+    // Refetch metrics after purge
+    await loadMetrics()
   } catch (e) {
     console.error("Purge error:", e)
     alert("Failed to delete data. Check console.")
@@ -1149,7 +1122,7 @@ const purgeTestData = async () => {
 const loadAdminDevices = async () => {
   loadingDevices.value = true
   try {
-    const devices = await getAllAdminDevices()
+    const devices = await fetchAllAdminDevices()
     adminDevices.value = devices
   } catch (e) {
     console.error("Error loading admin devices:", e)
@@ -1163,7 +1136,7 @@ const deleteDevice = async (deviceId) => {
 
   isDeletingDevice.value = deviceId
   try {
-    const result = await deleteAdminDevice(deviceId)
+    const result = await deleteAdminDeviceSecure(deviceId)
     if (result.success) {
       // Remove from local list
       adminDevices.value = adminDevices.value.filter(d => d.device_id !== deviceId)
@@ -1201,20 +1174,20 @@ const createNewAd = async () => {
 
   isSavingAd.value = true
   try {
-    const { error } = await supabase
-      .from('ads')
-      .insert([{
-        type: newAd.value.type,
-        content: newAd.value.content,
-        link: newAd.value.link,
-        image_url: newAd.value.imageUrl || null,
-        is_active: newAd.value.isActive,
-        target_city: newAd.value.targetCity || null,
-        target_region: newAd.value.targetRegion || null,
-        target_shifts: newAd.value.targetShifts || []
-      }])
+    const result = await createAd({
+      type: newAd.value.type,
+      content: newAd.value.content,
+      link: newAd.value.link,
+      image_url: newAd.value.imageUrl || null,
+      is_active: newAd.value.isActive,
+      target_city: newAd.value.targetCity || null,
+      target_region: newAd.value.targetRegion || null,
+      target_shifts: newAd.value.targetShifts || []
+    })
     
-    if (error) throw error
+    if (result.error) {
+      throw new Error(result.error)
+    }
     
     // Reset Form
     newAd.value = {
@@ -1227,6 +1200,24 @@ const createNewAd = async () => {
       targetRegion: '',
       targetShifts: []
     }
+    
+    // Refetch ads
+    const updatedAds = await fetchAllAds()
+    if (updatedAds) {
+      ads.value = updatedAds.map(ad => ({
+        id: ad.id,
+        type: ad.type,
+        content: ad.content,
+        link: ad.link,
+        imageUrl: ad.image_url || ad.imageUrl,
+        isActive: ad.is_active !== undefined ? ad.is_active : ad.isActive,
+        targetCity: ad.target_city || ad.targetCity,
+        targetRegion: ad.target_region || ad.targetRegion,
+        targetShifts: ad.target_shifts || ad.targetShifts || [],
+        createdAt: ad.created_at ? { seconds: Math.floor(new Date(ad.created_at).getTime() / 1000) } : null
+      }))
+    }
+    
     alert("Campaign published successfully.")
   } catch (e) {
     console.error("Error creating ad:", e)
@@ -1238,26 +1229,31 @@ const createNewAd = async () => {
 
 const toggleAdStatus = async (ad) => {
   try {
-    const { error } = await supabase
-      .from('ads')
-      .update({ is_active: !ad.isActive })
-      .eq('id', ad.id)
+    const result = await updateAd(ad.id, { is_active: !ad.isActive })
+    if (result.error) {
+      throw new Error(result.error)
+    }
     
-    if (error) throw error
+    // Update local state
+    const adIndex = ads.value.findIndex(a => a.id === ad.id)
+    if (adIndex !== -1) {
+      ads.value[adIndex].isActive = !ad.isActive
+    }
   } catch (e) {
     console.error("Error toggling ad:", e)
   }
 }
 
-const deleteAd = async (id) => {
+const deleteAdHandler = async (id) => {
   if (!confirm("Are you sure you want to delete this campaign? This cannot be undone.")) return
   try {
-    const { error } = await supabase
-      .from('ads')
-      .delete()
-      .eq('id', id)
+    const result = await deleteAd(id)
+    if (result.error) {
+      throw new Error(result.error)
+    }
     
-    if (error) throw error
+    // Remove from local state
+    ads.value = ads.value.filter(ad => ad.id !== id)
     alert("Campaign deleted successfully.")
   } catch (e) {
     console.error("Error deleting ad:", e)

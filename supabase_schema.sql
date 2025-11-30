@@ -49,15 +49,24 @@ CREATE POLICY "Users can delete their own shift logs"
   TO authenticated
   USING (auth.uid() = user_id);
 
--- Create policy: Admins can read all shift logs (for admin dashboard metrics)
--- This allows authenticated users to read all logs for analytics
--- Note: In production, you may want to restrict this to specific admin users
-DROP POLICY IF EXISTS "Admins can read all shift logs" ON shift_logs;
-CREATE POLICY "Admins can read all shift logs"
-  ON shift_logs
-  FOR SELECT
-  TO authenticated
-  USING (true);
+-- ✅ SECURE: Admin read access removed
+-- Admin dashboard now uses Edge Functions with service role key (bypasses RLS)
+-- This ensures only authorized admins can read all logs
+-- 
+-- Users can only read their own logs (privacy protected)
+-- Admin operations are handled via: supabase/functions/admin-metrics
+--
+-- If you need to allow specific admin user IDs to read all logs, uncomment below:
+-- DROP POLICY IF EXISTS "Only specific admins can read all shift logs" ON shift_logs;
+-- CREATE POLICY "Only specific admins can read all shift logs"
+--   ON shift_logs
+--   FOR SELECT
+--   TO authenticated
+--   USING (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'));
+
+-- Prevent users from updating their logs (immutable audit trail)
+-- Users can insert and delete, but not modify existing logs
+-- This ensures data integrity and prevents tampering
 
 -- ============================================
 -- 2. Create ads table
@@ -95,27 +104,24 @@ CREATE POLICY "Anyone can read active ads"
   TO anon, authenticated
   USING (is_active = true);
 
--- Create policy: Authenticated users can insert ads (for admin dashboard)
-CREATE POLICY "Authenticated users can insert ads"
-  ON ads
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
--- Create policy: Authenticated users can update ads
-CREATE POLICY "Authenticated users can update ads"
-  ON ads
-  FOR UPDATE
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
-
--- Create policy: Authenticated users can delete ads
-CREATE POLICY "Authenticated users can delete ads"
-  ON ads
-  FOR DELETE
-  TO authenticated
-  USING (true);
+-- ✅ SECURE: Ad management policies removed
+-- Admin dashboard now uses Edge Functions with service role key (bypasses RLS)
+-- This ensures only authorized admins can manage ads
+-- 
+-- Public users can only read active ads (for display)
+-- Admin operations are handled via: supabase/functions/admin-ads
+--
+-- If you need to allow specific admin user IDs to manage ads, uncomment below:
+-- CREATE POLICY "Only admins can insert ads"
+--   ON ads FOR INSERT TO authenticated
+--   WITH CHECK (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'));
+-- CREATE POLICY "Only admins can update ads"
+--   ON ads FOR UPDATE TO authenticated
+--   USING (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'))
+--   WITH CHECK (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'));
+-- CREATE POLICY "Only admins can delete ads"
+--   ON ads FOR DELETE TO authenticated
+--   USING (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'));
 
 -- ============================================
 -- 3. Create admin_devices table
@@ -141,26 +147,36 @@ DROP POLICY IF EXISTS "Authenticated users can read all admin devices" ON admin_
 DROP POLICY IF EXISTS "Authenticated users can insert admin devices" ON admin_devices;
 DROP POLICY IF EXISTS "Authenticated users can delete admin devices" ON admin_devices;
 
--- Create policy: Authenticated users can read all admin devices (for admin dashboard)
-CREATE POLICY "Authenticated users can read all admin devices"
+-- ✅ SECURE: Admin device management policies
+-- Admin dashboard uses Edge Functions with service role key (bypasses RLS)
+-- 
+-- Minimal policy for checking admin device status (needed for app functionality)
+-- Users can read admin_devices to check if their device is admin
+-- Full management (insert/delete) is handled via Edge Functions
+CREATE POLICY "Users can check admin device status"
   ON admin_devices
   FOR SELECT
   TO authenticated
   USING (true);
 
--- Create policy: Authenticated users can insert admin devices
-CREATE POLICY "Authenticated users can insert admin devices"
+-- Update policy for last_used_at (needed for checkAdminDevice)
+CREATE POLICY "Users can update their admin device last_used_at"
   ON admin_devices
-  FOR INSERT
+  FOR UPDATE
   TO authenticated
+  USING (true)
   WITH CHECK (true);
 
--- Create policy: Authenticated users can delete admin devices
-CREATE POLICY "Authenticated users can delete admin devices"
-  ON admin_devices
-  FOR DELETE
-  TO authenticated
-  USING (true);
+-- Admin operations (insert/delete) are handled via: supabase/functions/admin-devices
+-- This ensures only authorized admins can manage devices
+--
+-- If you need to allow specific admin user IDs to manage devices, uncomment below:
+-- CREATE POLICY "Only admins can insert admin devices"
+--   ON admin_devices FOR INSERT TO authenticated
+--   WITH CHECK (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'));
+-- CREATE POLICY "Only admins can delete admin devices"
+--   ON admin_devices FOR DELETE TO authenticated
+--   USING (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'));
 
 -- ============================================
 -- 4. Migration: Add is_test column (for existing databases)

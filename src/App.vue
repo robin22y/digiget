@@ -572,11 +572,19 @@ watch(safetyChecks, async (newChecks) => {
     // If no skipped items, log immediately (existing flow)
     if (completedItems.value.length > 0) {
       try {
+        // Ensure test mode is up-to-date from localStorage
+        const currentTestMode = localStorage.getItem('digiget_test_mode') === 'true'
+        isTestMode.value = currentTestMode
+        
         const itemsChecked = completedItems.value.length
         const skippedTitles = skippedItems.value.map(item => item.title)
-        // Pass the currentShift.value to Supabase!
+        // Pass the currentShift.value and isTestMode to Supabase!
         if (import.meta.env.DEV) {
-          console.log('🔄 Starting Supabase save process...')
+          console.log('🔄 Starting Supabase save process...', {
+            isTestMode: isTestMode.value,
+            currentTestMode: currentTestMode,
+            testModeFromStorage: localStorage.getItem('digiget_test_mode')
+          })
         }
         const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value, isTestMode.value)
         
@@ -757,11 +765,21 @@ const handleConfirm = async () => {
   showReviewScreen.value = false
   
   try {
+    // Ensure test mode is up-to-date from localStorage
+    const currentTestMode = localStorage.getItem('digiget_test_mode') === 'true'
+    isTestMode.value = currentTestMode
+    
     const itemsChecked = completedItems.value.length
     const skippedTitles = skippedItems.value.map(item => item.title)
-    // Pass the currentShift.value to Supabase!
-    console.log('🔄 Starting Supabase save process...')
-    const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value)
+    // Pass the currentShift.value and isTestMode to Supabase!
+    if (import.meta.env.DEV) {
+      console.log('🔄 Starting Supabase save process (from review screen)...', {
+        isTestMode: isTestMode.value,
+        currentTestMode: currentTestMode,
+        testModeFromStorage: localStorage.getItem('digiget_test_mode')
+      })
+    }
+    const result = await logShiftComplete(itemsChecked, skippedTitles, currentShift.value, isTestMode.value)
     
     if (result) {
       console.log('✅ Shift completion logged successfully to Supabase. Document ID:', result)
