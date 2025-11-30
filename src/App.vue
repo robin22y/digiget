@@ -351,11 +351,15 @@ const handleAdminLogin = () => {
 // --- Data Logic ---
 const getFreshChecks = () => [
   { id: 1, title: 'Did I return my keys?', iconName: 'Key', icon: Key, color: '#27272a' },
-  { id: 2, title: 'Did I lock the controlled drugs?', iconName: 'Lock', icon: Lock, color: '#27272a' },
-  { id: 3, title: 'Did I sign all medications?', iconName: 'Pen', icon: Pen, color: '#27272a' },
-  { id: 4, title: 'Did I complete handover?', iconName: 'Clipboard', icon: Clipboard, color: '#27272a' },
-  { id: 5, title: 'Did I remove my ID badge?', iconName: 'CreditCard', icon: CreditCard, color: '#27272a' },
+  { id: 2, title: 'Did I remove my ID badge?', iconName: 'CreditCard', icon: CreditCard, color: '#27272a' },
+  { id: 3, title: 'Did I lock the controlled drugs?', iconName: 'Lock', icon: Lock, color: '#27272a' },
+  { id: 4, title: 'Did I sign all medications?', iconName: 'Pen', icon: Pen, color: '#27272a' },
+  { id: 5, title: 'Did I complete handover?', iconName: 'Clipboard', icon: Clipboard, color: '#27272a' },
   { id: 6, title: 'Did I document everything?', iconName: 'FileText', icon: FileText, color: '#27272a' },
+  { id: 7, title: 'Did I complete skin checks?', iconName: 'AlertCircle', icon: AlertCircle, color: '#27272a' },
+  { id: 8, title: 'Did I do cannula care?', iconName: 'Syringe', icon: Syringe, color: '#27272a' },
+  { id: 9, title: 'Did I do catheter care?', iconName: 'Droplets', icon: Droplets, color: '#27272a' },
+  { id: 10, title: 'Did I do central line care?', iconName: 'Syringe', icon: Syringe, color: '#27272a' },
 ]
 
 const defaultChecks = ref([])
@@ -376,14 +380,21 @@ const restoreIcons = (items) => {
 const loadState = () => {
   try {
     const saved = localStorage.getItem('digiget-state')
+    const freshDefaults = getFreshChecks()
+    
     if (saved) {
       const state = JSON.parse(saved)
       customChecks.value = restoreIcons(state.customChecks || [])
       
       if (state.safetyChecks) {
-        safetyChecks.value = restoreIcons(state.safetyChecks)
+        const savedChecks = restoreIcons(state.safetyChecks)
+        // Merge new default cards with saved state
+        // Add any new default cards that don't exist in saved state
+        const savedIds = new Set(savedChecks.map(c => c.id))
+        const newDefaults = freshDefaults.filter(d => !savedIds.has(d.id))
+        safetyChecks.value = [...savedChecks, ...newDefaults]
       } else {
-        safetyChecks.value = [...getFreshChecks(), ...customChecks.value]
+        safetyChecks.value = [...freshDefaults, ...customChecks.value]
       }
       
       completedItems.value = restoreIcons(state.completedItems || [])
@@ -395,7 +406,7 @@ const loadState = () => {
         
     } else {
       customChecks.value = []
-      safetyChecks.value = getFreshChecks()
+      safetyChecks.value = freshDefaults
     }
   } catch (e) {
     safetyChecks.value = getFreshChecks()
