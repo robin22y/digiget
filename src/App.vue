@@ -311,7 +311,7 @@ import CardManager from './components/CardManager.vue'
 import AdminDashboard from './components/AdminDashboard.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import InfoPages from './components/InfoPages.vue'
-import { logShiftComplete } from './supabase.js'
+import { logShiftComplete, checkAdminDevice, registerAdminDevice } from './supabase.js'
 import { inject } from '@vercel/analytics'
 import { 
   Key, CreditCard, Lock, FileX, FileText, Pen, Radio, 
@@ -340,9 +340,9 @@ const currentShift = ref('Day') // Store the selected shift type
 // --- PWA Install Logic ---
 onMounted(() => {
   // Check if this device is already trusted as admin
-  if (localStorage.getItem('digiget_admin_device') === 'true') {
-    isAdminDevice.value = true
-  }
+  checkAdminDevice().then(isAdmin => {
+    isAdminDevice.value = isAdmin
+  })
   
   // Check Test Mode
   isTestMode.value = localStorage.getItem('digiget_test_mode') === 'true'
@@ -450,8 +450,11 @@ const handleAdminLogin = () => {
     if (!isAdminDevice.value) {
       const shouldTag = confirm('Would you like to trust this device? You won\'t need to enter the password next time.')
       if (shouldTag) {
-        localStorage.setItem('digiget_admin_device', 'true')
-        isAdminDevice.value = true
+        registerAdminDevice().then(result => {
+          if (result.success) {
+            isAdminDevice.value = true
+          }
+        })
       }
     }
   } else {

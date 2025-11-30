@@ -572,6 +572,54 @@
           </div>
         </div>
       </div>
+
+      <!-- Admin Devices Section -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mt-6">
+        <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+          <Lock :size="20" class="text-blue-400" />
+          Admin Activated Devices
+        </h3>
+        <p class="text-zinc-400 text-sm mb-6">
+          View and manage devices that have been granted admin access.
+        </p>
+
+        <div v-if="loadingDevices" class="text-zinc-500 text-sm text-center py-4">
+          Loading devices...
+        </div>
+        <div v-else-if="adminDevices.length === 0" class="text-zinc-500 text-sm text-center py-4">
+          No admin devices found.
+        </div>
+        <div v-else class="space-y-3">
+          <div 
+            v-for="device in adminDevices" 
+            :key="device.id"
+            class="flex items-center justify-between p-4 bg-zinc-950 rounded-lg border border-zinc-800"
+          >
+            <div class="flex-1">
+              <div class="text-white font-bold mb-1">
+                {{ device.device_name || 'Unknown Device' }}
+              </div>
+              <div class="text-xs text-zinc-500 mb-1">
+                ID: {{ device.device_id.substring(0, 20) }}...
+              </div>
+              <div class="text-xs text-zinc-500">
+                Last used: {{ formatDeviceDate(device.last_used_at) }}
+              </div>
+              <div class="text-xs text-zinc-400 mt-1 truncate max-w-md">
+                {{ device.user_agent }}
+              </div>
+            </div>
+            <button 
+              @click="deleteDevice(device.device_id)"
+              :disabled="isDeletingDevice === device.device_id"
+              class="ml-4 p-2 rounded-lg bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/50 transition-colors disabled:opacity-50"
+              title="Remove admin access"
+            >
+              <Trash2 :size="18" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -581,6 +629,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker } from 'lucide-vue-next'
 import { supabase } from '../supabase'
+import { getAllAdminDevices, deleteAdminDevice } from '../supabase'
 
 const emit = defineEmits(['close'])
 
@@ -632,6 +681,11 @@ let adsChannel = null
 const isTestMode = ref(false)
 const isPurging = ref(false)
 
+// Admin Devices
+const adminDevices = ref([])
+const loadingDevices = ref(false)
+const isDeletingDevice = ref(null)
+
 // New Ad Form State
 const newAd = ref({
   type: 'text',
@@ -646,6 +700,9 @@ const newAd = ref({
 
 // Calculate Metrics from Logs
 const calculateMetrics = (allLogs) => {
+  // Filter out test data from metrics calculation
+  const productionLogs = allLogs.filter(log => !log.isTest)
+  
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const thirtyDaysAgo = new Date(today)
@@ -658,25 +715,25 @@ const calculateMetrics = (allLogs) => {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate())
   }
   
-  // Filter logs by date
-  const todayLogs = allLogs.filter(log => {
+  // Filter logs by date (using production logs only)
+  const todayLogs = productionLogs.filter(log => {
     const logDate = getDate(log.timestamp)
     return logDate && logDate.getTime() === today.getTime()
   })
   
-  const last30DaysLogs = allLogs.filter(log => {
+  const last30DaysLogs = productionLogs.filter(log => {
     const logDate = getDate(log.timestamp)
     return logDate && logDate >= thirtyDaysAgo
   })
   
-  // Calculate unique users
-  const allUserIds = new Set(allLogs.map(log => log.userId).filter(Boolean))
+  // Calculate unique users (from production logs only)
+  const allUserIds = new Set(productionLogs.map(log => log.userId).filter(Boolean))
   const todayUserIds = new Set(todayLogs.map(log => log.userId).filter(Boolean))
   const last30DaysUserIds = new Set(last30DaysLogs.map(log => log.userId).filter(Boolean))
   
   // New users today (first time appearing today)
   const userFirstSeen = new Map()
-  allLogs.forEach(log => {
+  productionLogs.forEach(log => {
     if (!log.userId) return
     const logDate = getDate(log.timestamp)
     if (!logDate) return
@@ -692,8 +749,8 @@ const calculateMetrics = (allLogs) => {
   }).length
   
   // Session completion (sessions that completed = have itemsChecked)
-  const completedSessions = allLogs.filter(log => log.itemsChecked !== undefined && log.itemsChecked > 0).length
-  const totalSessions = allLogs.length
+  const completedSessions = productionLogs.filter(log => log.itemsChecked !== undefined && log.itemsChecked > 0).length
+  const totalSessions = productionLogs.length
   const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0
   
   // Growth data (last 30 days)
@@ -733,7 +790,7 @@ const calculateMetrics = (allLogs) => {
   
   // Shift Distribution
   const shiftCounts = { Day: 0, SE: 0, SL: 0, Night: 0 }
-  allLogs.forEach(log => {
+  productionLogs.forEach(log => {
     if (log.shiftType && shiftCounts.hasOwnProperty(log.shiftType)) {
       shiftCounts[log.shiftType]++
     } else {
@@ -753,7 +810,7 @@ const calculateMetrics = (allLogs) => {
   const sevenDaysAgo = new Date(today)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   
-  allLogs.forEach(log => {
+  productionLogs.forEach(log => {
     if (log.location && log.location.city && log.location.city !== 'Unknown') {
       const cityKey = `${log.location.city}, ${log.location.region || 'Unknown'}`
       if (!cityMap.has(cityKey)) {
@@ -825,7 +882,7 @@ const calculateMetrics = (allLogs) => {
     .slice(0, 10)
   
   // Peak Usage Times (last 7 days)
-  const last7DaysLogs = allLogs.filter(log => {
+  const last7DaysLogs = productionLogs.filter(log => {
     const logDate = getDate(log.timestamp)
     return logDate && logDate >= sevenDaysAgo
   })
@@ -871,6 +928,9 @@ const calculateMetrics = (allLogs) => {
 onMounted(async () => {
   // Check local storage for test mode status
   isTestMode.value = localStorage.getItem('digiget_test_mode') === 'true'
+  
+  // Load admin devices
+  await loadAdminDevices()
   
   // 1. Fetch All Logs for Metrics (fetch more for accurate metrics)
   // Note: Firestore has a limit of fetching documents, but this should work for most cases
@@ -926,6 +986,7 @@ CREATE POLICY "Admins can read all shift logs"
     } else {
       // Convert Supabase format to expected format for calculateMetrics
       // Supabase returns ISO date strings, which getDate() can handle directly
+      // Note: Test data is filtered out in calculateMetrics function
       const convertedLogs = (allLogs || []).map(log => ({
         id: log.id,
         userId: log.user_id,
@@ -933,6 +994,7 @@ CREATE POLICY "Admins can read all shift logs"
         skippedItems: log.skipped_items || [],
         shiftType: log.shift_type,
         location: log.location,
+        isTest: log.is_test || false, // Include is_test flag for filtering
         timestamp: log.created_at || null // Pass ISO string directly, getDate() handles it
       }))
       
@@ -970,6 +1032,7 @@ CREATE POLICY "Admins can read all shift logs"
                 skippedItems: log.skipped_items || [],
                 shiftType: log.shift_type,
                 location: log.location,
+                isTest: log.is_test || false, // Include is_test flag for filtering
                 timestamp: log.created_at || null // Pass ISO string directly, getDate() handles it
               }))
               metrics.value = calculateMetrics(converted)
@@ -1076,6 +1139,52 @@ const purgeTestData = async () => {
   } finally {
     isPurging.value = false
   }
+}
+
+// --- Admin Devices Actions ---
+const loadAdminDevices = async () => {
+  loadingDevices.value = true
+  try {
+    const devices = await getAllAdminDevices()
+    adminDevices.value = devices
+  } catch (e) {
+    console.error("Error loading admin devices:", e)
+  } finally {
+    loadingDevices.value = false
+  }
+}
+
+const deleteDevice = async (deviceId) => {
+  if (!confirm("Remove admin access from this device? The device will need to enter the password next time.")) return
+
+  isDeletingDevice.value = deviceId
+  try {
+    const result = await deleteAdminDevice(deviceId)
+    if (result.success) {
+      // Remove from local list
+      adminDevices.value = adminDevices.value.filter(d => d.device_id !== deviceId)
+      alert("Device removed successfully.")
+    } else {
+      alert(`Failed to remove device: ${result.message}`)
+    }
+  } catch (e) {
+    console.error("Error deleting device:", e)
+    alert("Failed to remove device. Check console.")
+  } finally {
+    isDeletingDevice.value = null
+  }
+}
+
+const formatDeviceDate = (dateString) => {
+  if (!dateString) return 'Unknown'
+  const date = new Date(dateString)
+  return date.toLocaleString('en-GB', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 // --- Ad Actions ---

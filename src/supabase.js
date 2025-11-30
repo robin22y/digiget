@@ -304,3 +304,148 @@ export const deleteUserData = async () => {
   }
 }
 
+/**
+ * Generate a unique device ID (stored in localStorage)
+ */
+const getDeviceId = () => {
+  let deviceId = localStorage.getItem('digiget_device_id')
+  if (!deviceId) {
+    // Generate a unique ID
+    deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    localStorage.setItem('digiget_device_id', deviceId)
+  }
+  return deviceId
+}
+
+/**
+ * Register this device as an admin device in Supabase
+ */
+export const registerAdminDevice = async () => {
+  if (!supabase) {
+    console.warn('Supabase not available - using localStorage only')
+    localStorage.setItem('digiget_admin_device', 'true')
+    return { success: true, localOnly: true }
+  }
+
+  try {
+    const deviceId = getDeviceId()
+    const deviceName = navigator.userAgentData?.brands?.[0]?.brand || 'Unknown Device'
+    const userAgent = navigator.userAgent
+
+    const { data, error } = await supabase
+      .from('admin_devices')
+      .upsert({
+        device_id: deviceId,
+        device_name: deviceName,
+        user_agent: userAgent,
+        last_used_at: new Date().toISOString()
+      }, {
+        onConflict: 'device_id',
+        ignoreDuplicates: false
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    // Also set localStorage for backward compatibility
+    localStorage.setItem('digiget_admin_device', 'true')
+    return { success: true, device: data }
+  } catch (error) {
+    console.error('Error registering admin device:', error)
+    // Fallback to localStorage
+    localStorage.setItem('digiget_admin_device', 'true')
+    return { success: true, localOnly: true, error: error.message }
+  }
+}
+
+/**
+ * Check if this device is registered as admin
+ */
+export const checkAdminDevice = async () => {
+  // First check localStorage (fast, works offline)
+  if (localStorage.getItem('digiget_admin_device') === 'true') {
+    return true
+  }
+
+  // Then check Supabase if available
+  if (!supabase) {
+    return false
+  }
+
+  try {
+    const deviceId = getDeviceId()
+    const { data, error } = await supabase
+      .from('admin_devices')
+      .select('id, last_used_at')
+      .eq('device_id', deviceId)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error checking admin device:', error)
+      return false
+    }
+
+    if (data) {
+      // Update last_used_at
+      await supabase
+        .from('admin_devices')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('device_id', deviceId)
+      
+      // Set localStorage for faster future checks
+      localStorage.setItem('digiget_admin_device', 'true')
+      return true
+    }
+
+    return false
+  } catch (error) {
+    console.error('Error checking admin device:', error)
+    return false
+  }
+}
+
+/**
+ * Get all admin devices
+ */
+export const getAllAdminDevices = async () => {
+  if (!supabase) {
+    return []
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('admin_devices')
+      .select('*')
+      .order('last_used_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching admin devices:', error)
+    return []
+  }
+}
+
+/**
+ * Delete an admin device
+ */
+export const deleteAdminDevice = async (deviceId) => {
+  if (!supabase) {
+    return { success: false, message: 'Supabase not available' }
+  }
+
+  try {
+    const { error } = await supabase
+      .from('admin_devices')
+      .delete()
+      .eq('device_id', deviceId)
+
+    if (error) throw error
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting admin device:', error)
+    return { success: false, message: error.message }
+  }
+}
+

@@ -118,7 +118,52 @@ CREATE POLICY "Authenticated users can delete ads"
   USING (true);
 
 -- ============================================
--- 3. Migration: Add is_test column (for existing databases)
+-- 3. Create admin_devices table
+-- ============================================
+CREATE TABLE IF NOT EXISTS admin_devices (
+  id BIGSERIAL PRIMARY KEY,
+  device_id TEXT NOT NULL UNIQUE,
+  device_name TEXT,
+  user_agent TEXT,
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_admin_devices_device_id ON admin_devices(device_id);
+CREATE INDEX IF NOT EXISTS idx_admin_devices_last_used ON admin_devices(last_used_at DESC);
+
+-- Enable Row Level Security
+ALTER TABLE admin_devices ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Authenticated users can read all admin devices" ON admin_devices;
+DROP POLICY IF EXISTS "Authenticated users can insert admin devices" ON admin_devices;
+DROP POLICY IF EXISTS "Authenticated users can delete admin devices" ON admin_devices;
+
+-- Create policy: Authenticated users can read all admin devices (for admin dashboard)
+CREATE POLICY "Authenticated users can read all admin devices"
+  ON admin_devices
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- Create policy: Authenticated users can insert admin devices
+CREATE POLICY "Authenticated users can insert admin devices"
+  ON admin_devices
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+-- Create policy: Authenticated users can delete admin devices
+CREATE POLICY "Authenticated users can delete admin devices"
+  ON admin_devices
+  FOR DELETE
+  TO authenticated
+  USING (true);
+
+-- ============================================
+-- 4. Migration: Add is_test column (for existing databases)
 -- ============================================
 -- Run this if you already have the shift_logs table and need to add the is_test column
 -- ALTER TABLE shift_logs ADD COLUMN IF NOT EXISTS is_test BOOLEAN NOT NULL DEFAULT false;
