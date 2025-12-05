@@ -13,6 +13,23 @@
       </p>
     </div>
 
+    <!-- Completed Items List -->
+    <div v-if="completedItems.length > 0" class="completed-list-section">
+      <div class="list-header">✅ Completed Items</div>
+      <div class="review-list">
+        <div 
+          v-for="item in completedItems" 
+          :key="item.id"
+          class="review-item completed"
+        >
+          <div class="item-icon-wrapper bg-green-900/30 border border-green-800/50">
+            <CheckCircle :size="20" class="text-green-400" />
+          </div>
+          <span class="item-text">{{ item.title }}</span>
+        </div>
+      </div>
+    </div>
+
     <div class="action-section">
       <div class="buttons-row">
         <button class="share-button" @click="handleShare">
@@ -360,15 +377,21 @@ onUnmounted(() => {
   @apply text-lg font-medium text-center text-zinc-400 px-4;
 }
 
+/* Completed Items Section */
+.completed-list-section {
+  @apply flex-none w-full max-w-md px-6 mb-4 relative z-10;
+}
+
 /* Scrollable Review List */
 .review-list {
   @apply flex-1 w-full overflow-y-auto px-2 mb-4 scrollbar-hide relative z-10;
+  max-height: 300px;
   mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
 }
 
 .list-header {
-  @apply text-xs uppercase tracking-wider text-zinc-500 font-bold mb-4 text-center;
+  @apply text-xs uppercase tracking-wider text-zinc-500 font-bold mb-3 text-center;
 }
 
 .review-item {
@@ -383,6 +406,13 @@ onUnmounted(() => {
 .review-item:nth-child(3) { animation-delay: 0.2s; }
 .review-item:nth-child(4) { animation-delay: 0.25s; }
 .review-item:nth-child(5) { animation-delay: 0.3s; }
+.review-item:nth-child(6) { animation-delay: 0.35s; }
+.review-item:nth-child(7) { animation-delay: 0.4s; }
+.review-item:nth-child(8) { animation-delay: 0.45s; }
+
+.review-item.completed {
+  @apply border-green-900/30 bg-green-950/10;
+}
 
 .review-item.skipped {
   @apply border-red-900/30 bg-red-950/10;
