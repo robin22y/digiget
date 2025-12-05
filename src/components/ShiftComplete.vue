@@ -5,7 +5,7 @@
 
     <div class="header-section">
       <div class="success-icon">
-        <CheckCircle :size="64" />
+        <CheckCircle :size="52" />
       </div>
       <h1 class="success-title">{{ currentMessage.title }}</h1>
       <p class="success-message text-zinc-400">
@@ -31,19 +31,18 @@
     </div>
 
     <div class="action-section">
-      <!-- Share Button - Prominent on Mobile -->
-      <button class="share-button-primary" @click="handleShare">
-        <Share2 :size="22" />
-        <span>Share Report</span>
-      </button>
-      
+      <!-- Three Equal Buttons Row -->
       <div class="buttons-row">
-        <button class="edit-button" @click="handleEditClick">
-          <Edit :size="20" />
-          Edit
+        <button class="action-button share-button" @click="handleShare">
+          <Share2 :size="20" />
+          <span>Share</span>
         </button>
-        <button class="start-shift-button-inline" @click="$emit('reset')">
-          Start New Shift
+        <button class="action-button new-button" @click="$emit('reset')">
+          <span>New</span>
+        </button>
+        <button class="action-button edit-button" @click="handleEditClick">
+          <Edit :size="20" />
+          <span>Edit</span>
         </button>
       </div>
       <AdContainer :current-shift="shiftType" />
@@ -80,12 +79,16 @@
         <h3 class="text-lg font-bold text-white mb-4">Share Report</h3>
         
         <div class="space-y-3">
+          <!-- WhatsApp - Prominent green button -->
           <button 
             @click="shareViaWhatsApp"
-            class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+            class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-4 rounded-lg flex items-center justify-center gap-2 shadow-lg"
+            style="box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);"
           >
-            <span>📱</span>
-            Share via WhatsApp
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            <span>Share via WhatsApp</span>
           </button>
           
           <button 
@@ -141,39 +144,27 @@ const emit = defineEmits(['reset', 'edit'])
 // --- Dynamic Messaging System ---
 const messageBank = [
   // Relatable Nursing Humor
-  { title: "Did you steal a pen?", subtitle: "Check your pockets. We won't tell." },
-  { title: "Not your circus.", subtitle: "Not your monkeys. (Until tomorrow)." },
-  { title: "Hydrate.", subtitle: "And no, coffee doesn't count." },
-  { title: "Hello, fresh air.", subtitle: "Remember what the sun looks like?" },
-  { title: "Uniform: Off.", subtitle: "Human mode: Activated." },
-  
+  { title: "Check your pockets.", subtitle: "Three pens, two swabs, one mystery syringe cap." },
+  { title: "Not your circus anymore.", subtitle: "Not your monkeys. (Until tomorrow)." },
+  { title: "Right—hydrate.", subtitle: "And no, coffee doesn't count this time." },
+  { title: "Remember daylight?", subtitle: "It's still out there. Go find it." },
+  { title: "Uniform off.", subtitle: "Human mode: reactivated." },
+
   // Affirmation & Pride
-  { title: "You kept people alive.", subtitle: "That is actually a huge deal." },
-  { title: "Shift: Conquered.", subtitle: "You handled the chaos. Well done." },
-  { title: "Handover complete.", subtitle: "You left the ward better than you found it." },
-  { title: "You made a difference.", subtitle: "Even if nobody said 'thank you' today." },
-  
+  { title: "You kept people alive today.", subtitle: "That's not nothing." },
+  { title: "Shift conquered.", subtitle: "You handled it. All of it." },
+  { title: "Handover done.", subtitle: "You left things better than you found them." },
+  { title: "You made a difference.", subtitle: "Even if nobody said thank you." },
+
   // Pure Relief
-  { title: "Go home.", subtitle: "Your bed has missed you." },
-  { title: "Silence is golden.", subtitle: "No call bells. No alarms. Just peace." },
-  { title: "Phone: Silent.", subtitle: "The hospital cannot hurt you now." },
-  { title: "Eat something nice.", subtitle: "You earned a hot meal sitting down." },
+  { title: "Go home.", subtitle: "Your bed's been waiting." },
+  { title: "No call bells from here.", subtitle: "No alarms. Just quiet." },
+  { title: "Your phone's on silent.", subtitle: "The ward can't reach you now." },
+  { title: "Eat something proper.", subtitle: "Hot food. Sitting down. Revolutionary." },
   
   // The "Safe to Leave" Reassurance
-  { title: "No U-turns tonight.", subtitle: "Keys? Checked. Meds? Checked. Drive on." },
-  { title: "Brain: Power Down.", subtitle: "Leave the thinking for the next shift." },
-  
-  // Classic Reassuring (kept for variety)
-  { title: "All done.", subtitle: "You can relax now." },
-  { title: "Everything's checked.", subtitle: "Safe to go home." },
-  { title: "You're all set.", subtitle: "Drive home in peace." },
-  { title: "Nothing forgotten.", subtitle: "Time to rest." },
-  { title: "Shift complete.", subtitle: "Well done today." },
-  { title: "That's everything.", subtitle: "Nice work." },
-  { title: "All sorted.", subtitle: "You've earned your rest." },
-  { title: "You're free.", subtitle: "Keys? ✓ Meds? ✓ Handover? ✓" },
-  { title: "Sleep easy.", subtitle: "No 2am drives back tonight!" },
-  { title: "You're done.", subtitle: "Leave work at work." }
+  { title: "You're good to go.", subtitle: "Keys, phone, brain mostly intact. Drive safe." },
+  { title: "Everything's handed over.", subtitle: "You can stop thinking now." }
 ]
 
 const currentMessage = ref(messageBank[0])
@@ -230,6 +221,12 @@ const formatShareMessage = () => {
   return message
 }
 
+// Detect if we're on a mobile device
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+         (window.innerWidth <= 768)
+}
+
 const handleShare = async () => {
   const message = formatShareMessage()
   const shareData = {
@@ -237,8 +234,8 @@ const handleShare = async () => {
     text: message
   }
 
-  // Try Web Share API first (works with WhatsApp/SMS on mobile)
-  if (navigator.share) {
+  // On mobile: Try Web Share API first (shows WhatsApp in native share sheet)
+  if (navigator.share && isMobile()) {
     try {
       await navigator.share(shareData)
       return
@@ -250,15 +247,32 @@ const handleShare = async () => {
     }
   }
   
-  // Fallback: Show share options modal
+  // Desktop or Web Share API not available: Show share options modal
+  // On mobile, this will also show WhatsApp as the first option
   showShareModal.value = true
 }
 
 const shareViaWhatsApp = () => {
   const message = formatShareMessage()
   const encodedMessage = encodeURIComponent(message)
+  // Use wa.me for universal WhatsApp sharing (works on mobile and desktop)
   const whatsappUrl = `https://wa.me/?text=${encodedMessage}`
-  window.open(whatsappUrl, '_blank')
+  
+  // On mobile, try to open WhatsApp app directly
+  if (isMobile()) {
+    // Try WhatsApp app first (whatsapp://)
+    const whatsappAppUrl = `whatsapp://send?text=${encodedMessage}`
+    window.location.href = whatsappAppUrl
+    
+    // Fallback to web if app doesn't open (after a short delay)
+    setTimeout(() => {
+      window.open(whatsappUrl, '_blank')
+    }, 500)
+  } else {
+    // Desktop: open WhatsApp Web
+    window.open(whatsappUrl, '_blank')
+  }
+  
   showShareModal.value = false
 }
 
@@ -369,13 +383,14 @@ onUnmounted(() => {
 
 <style scoped>
 .shift-complete {
-  @apply flex flex-col items-center h-full w-full max-h-full relative;
+  @apply flex flex-col items-center w-full relative;
   animation: fadeIn 0.5s ease-in;
-  /* Ensure content is scrollable on mobile if needed */
-  overflow-y: auto;
-  padding-bottom: env(safe-area-inset-bottom, 20px);
-  /* Ensure action buttons are always accessible */
-  min-height: 100vh;
+  /* Don't take full height - allow footer to be visible */
+  min-height: auto;
+  width: 100%;
+  max-width: 28rem; /* Match card-stack-container max-w-sm */
+  /* Ensure content flows naturally */
+  padding-bottom: 1rem;
 }
 
 .confetti-canvas {
@@ -385,12 +400,15 @@ onUnmounted(() => {
 }
 
 .header-section {
-  @apply flex-none flex flex-col items-center justify-center py-6 relative z-10;
+  @apply flex-none flex flex-col items-center justify-center py-4 relative z-10;
+  /* Reduced padding to save space for footer */
 }
 
 .success-icon {
-  @apply text-green-500 mb-4;
+  @apply text-green-500 mb-4 flex items-center justify-center;
   animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* Ensure proper alignment */
+  width: 100%;
 }
 
 .success-title {
@@ -404,16 +422,16 @@ onUnmounted(() => {
 /* Completed Items Section */
 .completed-list-section {
   @apply flex-none w-full max-w-md px-6 mb-4 relative z-10;
-  /* Limit height on mobile to ensure buttons are visible */
-  max-height: 40vh;
+  /* Limit height on mobile to ensure buttons and footer are visible */
+  max-height: 30vh;
   overflow: hidden;
 }
 
 /* Scrollable Review List */
 .review-list {
   @apply w-full overflow-y-auto px-2 mb-4 scrollbar-hide relative z-10;
-  /* Reduced max height to ensure share button is always visible on mobile */
-  max-height: 35vh;
+  /* Reduced max height to ensure share button and footer are always visible on mobile */
+  max-height: 25vh;
   mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
 }
@@ -458,47 +476,56 @@ onUnmounted(() => {
   @apply flex-none w-full flex flex-col items-center pb-6 pt-2 relative z-10 px-4;
   /* Ensure buttons are always visible on mobile */
   min-height: fit-content;
-  /* Add extra padding on mobile for safe area */
-  padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
+  /* Reduced padding to allow footer to be visible */
+  padding-bottom: 1rem;
   /* Ensure it's not hidden behind other elements */
   position: relative;
 }
 
-/* Primary Share Button - Prominent and Always Visible */
-.share-button-primary {
-  @apply w-full max-w-xs bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg 
-         active:scale-95 transition-all flex items-center justify-center gap-2 mb-3
-         min-h-[56px] text-base;
-  /* Make it stand out on mobile */
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+/* Three Equal Buttons Row */
+.buttons-row {
+  @apply flex w-full max-w-xs gap-2 mb-4 items-stretch;
 }
 
-.share-button-primary:active {
+/* Base action button style */
+.action-button {
+  @apply flex-1 font-bold py-3 px-4 rounded-xl shadow-lg 
+         active:scale-95 transition-all 
+         flex items-center justify-center gap-1.5 
+         min-h-[48px] text-sm;
+}
+
+/* Share button - WhatsApp-like green */
+.action-button.share-button {
+  @apply bg-green-600 hover:bg-green-500 text-white !important;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+.share-button:active {
   transform: scale(0.98);
 }
 
-.buttons-row {
-  @apply flex w-full max-w-xs gap-3 mb-4 items-stretch;
+/* New button - blue */
+.action-button.new-button {
+  @apply bg-blue-600 hover:bg-blue-500 text-white !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
-.edit-button {
-  @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-3 rounded-xl shadow-lg 
-         hover:bg-zinc-700 hover:text-white active:scale-95 transition-all 
-         flex items-center justify-center gap-2 min-h-[48px] text-sm;
+.new-button:active {
+  transform: scale(0.98);
 }
 
-.start-shift-button-inline {
-  @apply flex-1 bg-zinc-100 text-zinc-950 font-bold py-3 rounded-xl shadow-lg 
-         hover:bg-white active:scale-95 transition-all 
-         flex items-center justify-center gap-2 min-h-[48px] text-sm;
+/* Edit button - slight orange/orangey background */
+.action-button.edit-button {
+  @apply bg-orange-600 hover:bg-orange-500 text-white !important;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);
 }
 
-/* Legacy button styles (kept for compatibility) */
-.share-button {
-  @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-4 rounded-xl shadow-lg 
-         hover:bg-zinc-700 hover:text-white active:scale-95 transition-all 
-         flex items-center justify-center gap-2 min-h-[56px];
+.edit-button:active {
+  transform: scale(0.98);
 }
+
+/* Legacy button styles removed - using new action-button styles */
 
 .start-shift-section {
   @apply w-full max-w-xs mt-4;

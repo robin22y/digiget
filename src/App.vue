@@ -75,7 +75,7 @@
             @confirm="handleConfirm"
           />
         </div>
-        <div v-else-if="safetyChecks.length === 0" class="card-stack-container">
+        <div v-else-if="safetyChecks.length === 0" class="card-stack-container shift-complete-container">
           <ShiftComplete 
             :completed-items="completedItems"
             :skipped-items="skippedItems"
@@ -1324,7 +1324,10 @@ const formatNoticeDate = (dateString) => {
 }
 
 .main-content {
-  @apply flex-1 flex flex-col items-center justify-center p-6 overflow-hidden;
+  @apply flex-1 flex flex-col items-center justify-center p-6;
+  /* Allow scrolling when content is too tall */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .shift-selector-wrapper {
@@ -1338,6 +1341,14 @@ const formatNoticeDate = (dateString) => {
 .card-stack-container {
   @apply relative w-full max-w-sm h-full max-h-[600px] flex items-center justify-center;
   perspective: 1000px;
+}
+
+/* Special styling for ShiftComplete container - don't take full height */
+.shift-complete-container {
+  @apply h-auto max-h-none;
+  /* Allow content to flow naturally and show footer */
+  flex: 0 1 auto;
+  min-height: auto;
 }
 
 .modal-backdrop {
