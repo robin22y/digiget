@@ -11,3 +11,5 @@ CREATE POLICY "Users can insert their own admin device"
   TO authenticated
   WITH CHECK (true);
 
+
+

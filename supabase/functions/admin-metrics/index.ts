@@ -30,12 +30,13 @@ Deno.serve(async (req) => {
     }
 
     // Verify admin password (should match your frontend admin password)
-    const ADMIN_PASSWORD = Deno.env.get('ADMIN_PASSWORD') || 'your-admin-password-here'
+    const ADMIN_PASSWORD = Deno.env.get('ADMIN_PASSWORD') || 'Rncdm@2025'
     const providedPassword = authHeader.replace('Bearer ', '')
     
     if (providedPassword !== ADMIN_PASSWORD) {
+      console.error('Unauthorized access attempt. Password mismatch.')
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ logs: null, error: 'Unauthorized' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -73,13 +74,17 @@ Deno.serve(async (req) => {
     if (error) {
       console.error('Error fetching logs:', error)
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ logs: null, error: error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    // Ensure logs is always an array (even if empty)
+    const logsArray = logs || []
+    console.log(`Fetched ${logsArray.length} logs from database`)
+
     return new Response(
-      JSON.stringify({ logs, error: null }),
+      JSON.stringify({ logs: logsArray, error: null }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

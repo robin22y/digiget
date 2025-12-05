@@ -52,3 +52,5 @@ If you want to remove the RLS read policy entirely:
 
 This is more secure but requires the Edge Function to always be available.
 
+
+

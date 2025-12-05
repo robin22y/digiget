@@ -68,3 +68,5 @@ If you still see "Invalid API key":
 - Copy the key again from Supabase dashboard
 - Make sure you're using the **anon public** key (not service_role key)
 
+
+

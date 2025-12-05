@@ -80,3 +80,5 @@ Anonymous user signed in: [some-uuid]
 
 If you still see errors, the API key in your `.env` doesn't match the one in Supabase dashboard.
 
+
+

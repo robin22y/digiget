@@ -717,45 +717,102 @@ const calculateMetrics = (allLogs) => {
   const thirtyDaysAgo = new Date(today)
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   
-  // Helper to get date from timestamp
+  // Helper to get date from timestamp (normalize to midnight UTC)
   const getDate = (timestamp) => {
     if (!timestamp) return null
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid timestamp:', timestamp)
+        return null
+      }
+      // Normalize to midnight in local timezone
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    } catch (e) {
+      console.warn('Error parsing timestamp:', timestamp, e)
+      return null
+    }
   }
   
   // Filter logs by date (using production logs only)
   const todayLogs = productionLogs.filter(log => {
     const logDate = getDate(log.timestamp)
-    return logDate && logDate.getTime() === today.getTime()
+    if (!logDate) return false
+    return logDate.getTime() === today.getTime()
   })
   
   const last30DaysLogs = productionLogs.filter(log => {
     const logDate = getDate(log.timestamp)
-    return logDate && logDate >= thirtyDaysAgo
+    if (!logDate) return false
+    return logDate >= thirtyDaysAgo
   })
+  
+  if (import.meta.env.DEV) {
+    console.log('📅 Date filtering:', {
+      today: today.toISOString(),
+      todayLogsCount: todayLogs.length,
+      last30DaysLogsCount: last30DaysLogs.length,
+      totalProductionLogs: productionLogs.length
+    })
+  }
   
   // Calculate unique users (from production logs only)
   const allUserIds = new Set(productionLogs.map(log => log.userId).filter(Boolean))
   const todayUserIds = new Set(todayLogs.map(log => log.userId).filter(Boolean))
   const last30DaysUserIds = new Set(last30DaysLogs.map(log => log.userId).filter(Boolean))
   
-  // New users today (first time appearing today)
+  if (import.meta.env.DEV) {
+    console.log('👥 User counts:', {
+      totalUsers: allUserIds.size,
+      todayUsers: todayUserIds.size,
+      last30DaysUsers: last30DaysUserIds.size
+    })
+  }
+  
+  // New users today (first time appearing in ALL logs is today)
+  // Build map of first appearance date for each user
   const userFirstSeen = new Map()
   productionLogs.forEach(log => {
     if (!log.userId) return
     const logDate = getDate(log.timestamp)
     if (!logDate) return
     
+    // Track the earliest date we've seen this user
     if (!userFirstSeen.has(log.userId) || logDate < userFirstSeen.get(log.userId)) {
       userFirstSeen.set(log.userId, logDate)
     }
   })
   
-  const newUsersToday = Array.from(todayUserIds).filter(userId => {
-    const firstSeen = userFirstSeen.get(userId)
-    return firstSeen && firstSeen.getTime() === today.getTime()
-  }).length
+  // Count ALL users whose first appearance date is today
+  // This is the correct way: check every user, not just today's users
+  let newUsersToday = 0
+  const todayTime = today.getTime()
+  
+  userFirstSeen.forEach((firstSeenDate, userId) => {
+    if (firstSeenDate.getTime() === todayTime) {
+      newUsersToday++
+    }
+  })
+  
+  if (import.meta.env.DEV) {
+    const newUserIds = Array.from(userFirstSeen.entries())
+      .filter(([_, date]) => date.getTime() === todayTime)
+      .map(([id, _]) => id.substring(0, 8) + '...')
+    
+    console.log('🆕 New users calculation:', {
+      newUsersToday,
+      totalUsers: allUserIds.size,
+      todayUsers: todayUserIds.size,
+      userFirstSeenMapSize: userFirstSeen.size,
+      todayDate: today.toISOString(),
+      sampleNewUserIds: newUserIds.slice(0, 5),
+      sampleFirstSeenDates: Array.from(userFirstSeen.entries()).slice(0, 10).map(([id, date]) => ({
+        userId: id.substring(0, 8) + '...',
+        firstSeen: date.toISOString(),
+        isToday: date.getTime() === todayTime
+      }))
+    })
+  }
   
   // Session completion (sessions that completed = have itemsChecked)
   const completedSessions = productionLogs.filter(log => log.itemsChecked !== undefined && log.itemsChecked > 0).length
@@ -964,6 +1021,15 @@ onMounted(async () => {
     try {
       const allLogs = await fetchAllShiftLogs()
       
+      if (import.meta.env.DEV) {
+        console.log(`✅ Admin Dashboard: Fetched ${allLogs?.length || 0} logs via Edge Function`)
+        if (allLogs && allLogs.length > 0) {
+          console.log("📊 Sample log:", allLogs[0])
+        } else {
+          console.warn("⚠️ No logs returned from edge function. Check if edge function is deployed and has data.")
+        }
+      }
+      
       // Convert Supabase format to expected format for calculateMetrics
       // Supabase returns ISO date strings, which getDate() can handle directly
       // Note: Test data is filtered out in calculateMetrics function
@@ -979,8 +1045,28 @@ onMounted(async () => {
       }))
       
       if (import.meta.env.DEV) {
-        console.log(`✅ Admin Dashboard: Fetched ${convertedLogs.length} logs via Edge Function`)
-        console.log("📊 Sample log:", convertedLogs[0] || "No logs found")
+        console.log(`✅ Converted ${convertedLogs.length} logs for metrics calculation`)
+        if (convertedLogs.length > 0) {
+          console.log("📊 Sample converted log:", {
+            id: convertedLogs[0].id,
+            userId: convertedLogs[0].userId,
+            timestamp: convertedLogs[0].timestamp,
+            timestampType: typeof convertedLogs[0].timestamp,
+            parsedDate: convertedLogs[0].timestamp ? new Date(convertedLogs[0].timestamp).toISOString() : 'null',
+            isTest: convertedLogs[0].isTest
+          })
+          
+          // Check for today's logs
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const todayLogsSample = convertedLogs.filter(log => {
+            if (!log.timestamp) return false
+            const logDate = new Date(log.timestamp)
+            logDate.setHours(0, 0, 0, 0)
+            return logDate.getTime() === today.getTime()
+          })
+          console.log(`📅 Logs from today: ${todayLogsSample.length} out of ${convertedLogs.length}`)
+        }
       }
       
       // Calculate metrics from all fetched logs
@@ -990,7 +1076,9 @@ onMounted(async () => {
           totalUsers: metrics.value.totalUsers,
           dau: metrics.value.dau,
           mau: metrics.value.mau,
-          totalSessions: metrics.value.totalSessions
+          totalSessions: metrics.value.totalSessions,
+          completedSessions: metrics.value.completedSessions,
+          completionRate: metrics.value.completionRate
         })
       }
       loadingMetrics.value = false
@@ -1023,7 +1111,36 @@ onMounted(async () => {
         .subscribe()
     } catch (error) {
       console.error("❌ Logs Access Error:", error)
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
+      // Set metrics to show error state
+      metrics.value = {
+        ...metrics.value,
+        totalUsers: 0,
+        newUsersToday: 0,
+        dau: 0,
+        mau: 0,
+        retentionRate: 0,
+        completionRate: 0,
+        completedSessions: 0,
+        totalSessions: 0,
+        crashes: 0,
+        growthData: [],
+        shiftDistribution: [],
+        topCities: [],
+        mostActiveCities: [],
+        leastActiveCities: [],
+        growingCities: [],
+        peakHours: [],
+        maxHourlyUsage: 1,
+        peakHour: null,
+        peakHourCount: 0
+      }
       loadingMetrics.value = false
+      alert(`Failed to load metrics: ${error.message}. Check console for details.`)
     }
 
     // 2. Fetch Ads via Edge Function (secure, bypasses RLS)
@@ -1096,6 +1213,35 @@ const toggleTestMode = () => {
   localStorage.setItem('digiget_test_mode', isTestMode.value.toString())
   // Force reload to apply the "Test Mode" banner in App.vue
   window.location.reload()
+}
+
+// Load metrics function (can be called to refresh)
+const loadMetrics = async () => {
+  loadingMetrics.value = true
+  try {
+    const allLogs = await fetchAllShiftLogs()
+    
+    if (import.meta.env.DEV) {
+      console.log(`✅ Refreshing metrics: Fetched ${allLogs?.length || 0} logs`)
+    }
+    
+    const convertedLogs = (allLogs || []).map(log => ({
+      id: log.id,
+      userId: log.user_id,
+      itemsChecked: log.items_checked,
+      skippedItems: log.skipped_items || [],
+      shiftType: log.shift_type,
+      location: log.location,
+      isTest: log.is_test || false,
+      timestamp: log.created_at || null
+    }))
+    
+    metrics.value = calculateMetrics(convertedLogs)
+    loadingMetrics.value = false
+  } catch (error) {
+    console.error("❌ Error loading metrics:", error)
+    loadingMetrics.value = false
+  }
 }
 
 const purgeTestDataHandler = async () => {

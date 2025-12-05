@@ -25,3 +25,5 @@ CREATE POLICY "Users can update their admin device last_used_at"
   USING (true)
   WITH CHECK (true);
 
+
+

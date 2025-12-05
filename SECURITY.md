@@ -34,3 +34,5 @@
 The current code includes fallback values for development, but these should be removed once you've set up your `.env` file. The fallback values are only there to prevent the app from breaking during the transition.
 
 
+
+

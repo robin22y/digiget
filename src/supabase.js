@@ -596,12 +596,36 @@ const callEdgeFunction = async (functionName, options = {}) => {
 export const fetchAllShiftLogs = async () => {
   try {
     const result = await callEdgeFunction('admin-metrics', { method: 'POST' })
-    return result.logs || []
-  } catch (error) {
+    
     if (import.meta.env.DEV) {
-      console.error('Error fetching shift logs:', error)
+      console.log('📊 Edge function response:', {
+        hasLogs: !!result.logs,
+        logsCount: result.logs?.length || 0,
+        hasError: !!result.error,
+        error: result.error
+      })
     }
-    return []
+    
+    if (result.error) {
+      console.error('❌ Edge function returned error:', result.error)
+      throw new Error(result.error)
+    }
+    
+    if (!result.logs) {
+      console.warn('⚠️ Edge function returned no logs array. Response:', result)
+      return []
+    }
+    
+    return result.logs
+  } catch (error) {
+    console.error('❌ Error fetching shift logs:', error)
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    })
+    // Re-throw so AdminDashboard can handle it
+    throw error
   }
 }
 

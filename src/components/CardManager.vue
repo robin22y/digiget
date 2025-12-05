@@ -53,14 +53,10 @@
           <button 
             @click="$emit('add-new')"
             class="add-card-btn"
-            :disabled="allCards.length >= 10"
           >
             <Plus :size="20" />
             <span>Add New Card</span>
           </button>
-          <p v-if="allCards.length >= 10" class="text-xs text-zinc-500 mt-2 text-center">
-            Maximum 10 cards allowed
-          </p>
         </div>
       </div>
     </div>

@@ -488,6 +488,7 @@ const safetyChecks = ref([])
 const completedItems = ref([])
 const skippedItems = ref([])
 const undoHistory = ref([])
+const deletedCardIds = ref(new Set()) // Track deleted card IDs to prevent them from reappearing
 
 const restoreIcons = (items) => {
   return items.map(item => ({
@@ -506,15 +507,27 @@ const loadState = () => {
       const state = JSON.parse(saved)
       customChecks.value = restoreIcons(state.customChecks || [])
       
+      // Load deleted card IDs
+      if (state.deletedCardIds && Array.isArray(state.deletedCardIds)) {
+        deletedCardIds.value = new Set(state.deletedCardIds)
+      } else {
+        deletedCardIds.value = new Set()
+      }
+      
       if (state.safetyChecks) {
         const savedChecks = restoreIcons(state.safetyChecks)
         // Merge new default cards with saved state
         // Add any new default cards that don't exist in saved state
+        // But exclude any that have been deleted
         const savedIds = new Set(savedChecks.map(c => c.id))
-        const newDefaults = freshDefaults.filter(d => !savedIds.has(d.id))
+        const newDefaults = freshDefaults.filter(d => 
+          !savedIds.has(d.id) && !deletedCardIds.value.has(d.id)
+        )
         safetyChecks.value = [...savedChecks, ...newDefaults]
       } else {
-        safetyChecks.value = [...freshDefaults, ...customChecks.value]
+        // Filter out deleted default cards
+        const activeDefaults = freshDefaults.filter(d => !deletedCardIds.value.has(d.id))
+        safetyChecks.value = [...activeDefaults, ...customChecks.value]
       }
       
       completedItems.value = restoreIcons(state.completedItems || [])
@@ -526,10 +539,12 @@ const loadState = () => {
         
     } else {
       customChecks.value = []
+      deletedCardIds.value = new Set()
       safetyChecks.value = freshDefaults
     }
   } catch (e) {
     safetyChecks.value = getFreshChecks()
+    deletedCardIds.value = new Set()
   }
 }
 
@@ -548,7 +563,8 @@ const saveState = () => {
     undoHistory: undoHistory.value.map(item => ({
       ...item,
       check: serialize([item.check])[0]
-    }))
+    })),
+    deletedCardIds: Array.from(deletedCardIds.value) // Save deleted card IDs
   }
   localStorage.setItem('digiget-state', JSON.stringify(state))
 }
@@ -557,7 +573,7 @@ const saveState = () => {
 checkVisitHistory() // Check if user has visited before
 loadState()
 
-watch([safetyChecks, customChecks, completedItems, skippedItems, undoHistory], () => {
+watch([safetyChecks, customChecks, completedItems, skippedItems, undoHistory, deletedCardIds], () => {
   saveState()
 }, { deep: true })
 
@@ -681,21 +697,25 @@ const handleResetDay = () => {
     // Reset only today's session - preserves custom cards and historical data
     // Get all cards (including edited defaults that are now in customChecks)
     // Start with fresh defaults, but replace with custom versions if they exist
+    // But exclude deleted cards
     const freshDefaults = getFreshChecks()
-    const allCards = freshDefaults.map(defaultCard => {
-      // Check if this default card has been customized
-      const customVersion = customChecks.value.find(c => 
-        c.id === defaultCard.id || 
-        (c.title === defaultCard.title && c.iconName === defaultCard.iconName)
-      )
-      return customVersion || defaultCard
-    })
+    const allCards = freshDefaults
+      .filter(defaultCard => !deletedCardIds.value.has(defaultCard.id)) // Exclude deleted defaults
+      .map(defaultCard => {
+        // Check if this default card has been customized
+        const customVersion = customChecks.value.find(c => 
+          c.id === defaultCard.id || 
+          (c.title === defaultCard.title && c.iconName === defaultCard.iconName)
+        )
+        return customVersion || defaultCard
+      })
     
-    // Add any additional custom cards that aren't defaults
+    // Add any additional custom cards that aren't defaults (and aren't deleted)
     const defaultTitles = new Set(freshDefaults.map(c => c.title))
     const additionalCustoms = customChecks.value.filter(c => 
       !defaultTitles.has(c.title) && 
-      !freshDefaults.some(d => d.id === c.id)
+      !freshDefaults.some(d => d.id === c.id) &&
+      !deletedCardIds.value.has(c.id) // Exclude deleted custom cards
     )
     
     // Reset only current session data (today's entry)
@@ -816,7 +836,10 @@ const handleEditShift = () => {
   }
   
   // Ensure icons are properly restored and all properties are present
-  const restoredCards = restoreIcons(allSwipedCards).map(card => {
+  // Also filter out any deleted cards (shouldn't happen, but safety check)
+  const restoredCards = restoreIcons(allSwipedCards)
+    .filter(card => !deletedCardIds.value.has(card.id)) // Exclude deleted cards
+    .map(card => {
     // Find the icon if it's missing
     let icon = card.icon
     if (!icon && card.iconName) {
@@ -850,17 +873,20 @@ const handleEditShift = () => {
   if (restoredCards.length === 0) {
     console.warn('No cards to restore! Restoring from defaults...')
     const freshDefaults = getFreshChecks()
-    const allDefaultCards = freshDefaults.map(defaultCard => {
-      const customVersion = customChecks.value.find(c => 
-        c.id === defaultCard.id || 
-        (c.title === defaultCard.title && c.iconName === defaultCard.iconName)
-      )
-      return customVersion || defaultCard
-    })
+    const allDefaultCards = freshDefaults
+      .filter(defaultCard => !deletedCardIds.value.has(defaultCard.id)) // Exclude deleted defaults
+      .map(defaultCard => {
+        const customVersion = customChecks.value.find(c => 
+          c.id === defaultCard.id || 
+          (c.title === defaultCard.title && c.iconName === defaultCard.iconName)
+        )
+        return customVersion || defaultCard
+      })
     const defaultTitles = new Set(freshDefaults.map(c => c.title))
     const additionalCustoms = customChecks.value.filter(c => 
       !defaultTitles.has(c.title) && 
-      !freshDefaults.some(d => d.id === c.id)
+      !freshDefaults.some(d => d.id === c.id) &&
+      !deletedCardIds.value.has(c.id) // Exclude deleted custom cards
     )
     safetyChecks.value = [...allDefaultCards, ...additionalCustoms]
   } else {
@@ -886,12 +912,18 @@ const handleEditShift = () => {
 // Get all cards for management (combine default and custom, but use current state)
 const allCardsForManagement = computed(() => {
   // Get all unique cards - always include defaults, plus any custom/edited versions
+  // But exclude deleted cards
   const allCardIds = new Set()
   const allCards = []
   
-  // Start with default cards - these are always available for editing
+  // Start with default cards - these are always available for editing (unless deleted)
   const defaultCards = getFreshChecks()
   defaultCards.forEach(card => {
+    // Skip if this card has been deleted
+    if (deletedCardIds.value.has(card.id)) {
+      return
+    }
+    
     // Check if there's a custom/edited version of this default card
     const customVersion = customChecks.value.find(c => 
       c.id === card.id || 
@@ -900,47 +932,38 @@ const allCardsForManagement = computed(() => {
     
     // Use custom version if it exists, otherwise use default
     const cardToAdd = customVersion || card
-    if (!allCardIds.has(cardToAdd.id)) {
+    if (!allCardIds.has(cardToAdd.id) && !deletedCardIds.value.has(cardToAdd.id)) {
       allCardIds.add(cardToAdd.id)
       allCards.push(cardToAdd)
     }
   })
   
-  // Add any additional custom cards that aren't defaults
+  // Add any additional custom cards that aren't defaults (and aren't deleted)
   customChecks.value.forEach(card => {
     const isDefault = defaultCards.some(d => d.id === card.id)
-    if (!isDefault && !allCardIds.has(card.id)) {
+    if (!isDefault && !allCardIds.has(card.id) && !deletedCardIds.value.has(card.id)) {
       allCardIds.add(card.id)
       allCards.push(card)
     }
   })
   
   // Add cards from current safety checks (in case they're not in defaults or custom)
+  // But exclude deleted ones
   safetyChecks.value.forEach(card => {
-    if (!allCardIds.has(card.id)) {
+    if (!allCardIds.has(card.id) && !deletedCardIds.value.has(card.id)) {
       allCardIds.add(card.id)
       allCards.push(card)
     }
   })
   
-  // Add cards from completed/skipped that might have been removed from stack
-  const completedAndSkipped = [...completedItems.value, ...skippedItems.value]
-  completedAndSkipped.forEach(card => {
-    if (!allCardIds.has(card.id)) {
-      allCardIds.add(card.id)
-      allCards.push(card)
-    }
-  })
+  // Don't include cards from completed/skipped if they've been deleted
+  // They should only appear if they're still active cards
   
   return allCards.sort((a, b) => a.title.localeCompare(b.title))
 })
 
 const openAddModal = () => {
   cardToEdit.value = null
-  if (allCardsForManagement.value.length >= 10) {
-    alert("You can only have up to 10 cards total.")
-    return
-  }
   showAddModal.value = true
 }
 
@@ -961,6 +984,9 @@ const handleEditCard = (card) => {
 }
 
 const handleDeleteCard = (card) => {
+  // Mark card as deleted so it doesn't reappear
+  deletedCardIds.value.add(card.id)
+  
   // Remove from custom checks if it's there
   customChecks.value = customChecks.value.filter(c => c.id !== card.id)
   
