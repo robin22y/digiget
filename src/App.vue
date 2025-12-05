@@ -414,7 +414,7 @@ const showNoticesModal = ref(false) // Show notices modal
 const allNotices = ref([]) // All active notices for the modal
 const loadingNotices = ref(false) // Loading state for notices
 
-// --- PWA Install Logic ---
+// --- PWA Install Logic & Update Checking ---
 onMounted(() => {
   // Check if this device is already trusted as admin
   checkAdminDevice().then(isAdmin => {
@@ -423,6 +423,28 @@ onMounted(() => {
   
   // Check Test Mode
   isTestMode.value = localStorage.getItem('digiget_test_mode') === 'true'
+  
+  // Register service worker update handler
+  if ('serviceWorker' in navigator) {
+    let refreshing = false
+    
+    // Listen for service worker updates
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return
+      refreshing = true
+      // Reload page when new service worker takes control
+      window.location.reload()
+    })
+    
+    // Check for updates periodically (every 5 minutes)
+    setInterval(() => {
+      navigator.serviceWorker.getRegistration().then(registration => {
+        if (registration) {
+          registration.update()
+        }
+      })
+    }, 5 * 60 * 1000) // 5 minutes
+  }
   
   // Detect iOS
   const userAgent = window.navigator.userAgent.toLowerCase()
@@ -809,7 +831,7 @@ const handleResetDay = () => {
     
     // Reset only current session data (today's entry)
     // Note: customChecks is preserved (user's custom cards)
-    // Note: Historical Firebase logs are preserved (already saved separately)
+    // Note: Historical Supabase logs are preserved (already saved separately)
     safetyChecks.value = [...allCards, ...additionalCustoms]
     completedItems.value = []
     skippedItems.value = []

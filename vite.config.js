@@ -32,6 +32,12 @@ export default defineConfig({
 
       injectRegister: 'script',
 
+      // Force immediate updates - skip waiting for service worker
+      devOptions: {
+        enabled: true,
+        type: 'module'
+      },
+
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'logo.svg'],
 
       manifestFilename: 'manifest.webmanifest',
@@ -116,7 +122,46 @@ export default defineConfig({
 
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
 
+        // Force immediate activation of new service worker
+        skipWaiting: true,
+        clientsClaim: true,
+
+        // Use NetworkFirst for HTML to always get latest version
+        navigationPreload: true,
+
         runtimeCaching: [
+          
+          // HTML files - always check network first for updates
+          {
+            urlPattern: /\.html$/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 // 1 day
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+
+          // JS and CSS files - NetworkFirst to get updates
+          {
+            urlPattern: /\.(js|css)$/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'static-resources',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
 
           {
 

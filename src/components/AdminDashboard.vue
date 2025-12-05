@@ -109,6 +109,33 @@
           </div>
         </div>
 
+        <!-- Second Row: Repeat Users and City Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Repeat Users -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <UserPlus :size="20" class="text-orange-400" />
+              <span class="metric-label">Repeat Users</span>
+            </div>
+            <div class="metric-value">{{ metrics.repeatUsers.toLocaleString() }}</div>
+            <div class="metric-change" :class="metrics.repeatUserPercentage >= 30 ? 'text-green-400' : metrics.repeatUserPercentage >= 20 ? 'text-yellow-400' : 'text-zinc-500'">
+              {{ metrics.repeatUserPercentage }}% of total users
+            </div>
+          </div>
+
+          <!-- City Summary -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <Globe :size="20" class="text-cyan-400" />
+              <span class="metric-label">Cities Active</span>
+            </div>
+            <div class="metric-value">{{ metrics.topCities.length }}</div>
+            <div class="metric-change text-zinc-500">
+              {{ metrics.topCities.length > 0 ? metrics.topCities[0].name : 'No data' }} leading
+            </div>
+          </div>
+        </div>
+
         <!-- Retention Metric (DAU/MAU) -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
           <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -189,6 +216,34 @@
           </div>
           <div class="mt-4 text-xs text-zinc-500">
             <span class="font-bold text-zinc-400">Insight:</span> {{ getShiftInsight(metrics.shiftDistribution) }}
+          </div>
+        </div>
+
+        <!-- City Analytics Summary -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Globe :size="20" class="text-purple-400" />
+            City Analytics Summary
+          </h3>
+          <div v-if="metrics.topCities.length === 0" class="text-zinc-500 text-sm">
+            No location data available yet.
+          </div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-4">
+              <div class="text-xs text-zinc-500 uppercase mb-1">Total Cities</div>
+              <div class="text-2xl font-bold text-white">{{ metrics.topCities.length }}</div>
+              <div class="text-xs text-zinc-600 mt-1">With active users</div>
+            </div>
+            <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-4">
+              <div class="text-xs text-zinc-500 uppercase mb-1">Top City (Users)</div>
+              <div class="text-lg font-bold text-white">{{ metrics.topCities[0].name }}</div>
+              <div class="text-xs text-zinc-600 mt-1">{{ metrics.topCities[0].users }} users, {{ metrics.topCities[0].sessions }} sessions</div>
+            </div>
+            <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-4">
+              <div class="text-xs text-zinc-500 uppercase mb-1">Most Active City</div>
+              <div class="text-lg font-bold text-white">{{ metrics.mostActiveCities[0].name }}</div>
+              <div class="text-xs text-zinc-600 mt-1">{{ metrics.mostActiveCities[0].sessions }} sessions, {{ metrics.mostActiveCities[0].users }} users</div>
+            </div>
           </div>
         </div>
 
@@ -742,7 +797,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker, Pencil } from 'lucide-vue-next'
+import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker, Pencil, UserPlus } from 'lucide-vue-next'
 import { supabase } from '../supabase'
 import { 
   fetchAllShiftLogs,
@@ -776,6 +831,8 @@ const activeTab = ref('metrics') // 'metrics' or 'ads'
 const metrics = ref({
   totalUsers: 0,
   newUsersToday: 0,
+  repeatUsers: 0,
+  repeatUserPercentage: 0,
   dau: 0,
   mau: 0,
   retentionRate: 0,
@@ -894,6 +951,16 @@ const calculateMetrics = (allLogs) => {
   const allUserIds = new Set(productionLogs.map(log => log.userId).filter(Boolean))
   const todayUserIds = new Set(todayLogs.map(log => log.userId).filter(Boolean))
   const last30DaysUserIds = new Set(last30DaysLogs.map(log => log.userId).filter(Boolean))
+  
+  // Calculate repeat users (users with more than 1 session)
+  const userSessionCounts = new Map()
+  productionLogs.forEach(log => {
+    if (log.userId) {
+      userSessionCounts.set(log.userId, (userSessionCounts.get(log.userId) || 0) + 1)
+    }
+  })
+  const repeatUsers = Array.from(userSessionCounts.values()).filter(count => count > 1).length
+  const repeatUserPercentage = allUserIds.size > 0 ? Math.round((repeatUsers / allUserIds.size) * 100) : 0
   
   if (import.meta.env.DEV) {
     console.log('👥 User counts:', {
@@ -1104,6 +1171,8 @@ const calculateMetrics = (allLogs) => {
   return {
     totalUsers: allUserIds.size,
     newUsersToday,
+    repeatUsers,
+    repeatUserPercentage,
     dau,
     mau,
     retentionRate,
