@@ -61,11 +61,13 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Delete all test logs
+    // Delete all test logs and return the deleted rows using .select()
+    // This allows us to count how many were actually deleted
     const { data, error } = await supabaseAdmin
       .from('shift_logs')
-      .delete({ count: 'exact' })
+      .delete()
       .eq('is_test', true)
+      .select('id') // Select only id to minimize data transfer, but get all deleted rows
 
     if (error) {
       console.error('Error purging test data:', error)
@@ -75,8 +77,11 @@ Deno.serve(async (req) => {
       )
     }
 
+    // data will be an array of deleted rows, so its length is the count
+    const deletedCount = data ? data.length : 0
+
     return new Response(
-      JSON.stringify({ deleted_count: data?.length || 0, error: null }),
+      JSON.stringify({ deleted_count: deletedCount, error: null }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

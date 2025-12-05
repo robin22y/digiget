@@ -191,24 +191,40 @@ const formatShareMessage = () => {
   const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   
+  // Deduplicate items by ID to prevent repeated lines
+  const getUniqueItems = (items) => {
+    const seen = new Set()
+    return items.filter(item => {
+      const id = item.id || item.title // Use ID if available, fallback to title
+      if (seen.has(id)) {
+        return false // Skip duplicate
+      }
+      seen.add(id)
+      return true
+    })
+  }
+  
+  const uniqueCompleted = getUniqueItems(props.completedItems)
+  const uniqueSkipped = getUniqueItems(props.skippedItems)
+  
   // Now includes the Shift Type boldly at the top
   let message = `✅ ${props.shiftType} Shift Handover - ${date} ${time}\n\n`
   
   message += `Verified via Digiget App\n`
   message += `━━━━━━━━━━━━━━━━━━━━\n\n`
   
-  message += `Completed: ${props.completedItems.length}\n`
+  message += `Completed: ${uniqueCompleted.length}\n`
   
-  if (props.completedItems.length > 0) {
+  if (uniqueCompleted.length > 0) {
     message += `\n✅ Done:\n`
-    props.completedItems.forEach(item => {
+    uniqueCompleted.forEach(item => {
       message += `  • ${item.title}\n`
     })
   }
   
-  if (props.skippedItems.length > 0) {
+  if (uniqueSkipped.length > 0) {
     message += `\n⚠️ Skipped:\n`
-    props.skippedItems.forEach(item => {
+    uniqueSkipped.forEach(item => {
       message += `  • ${item.title}\n`
     })
   } else {

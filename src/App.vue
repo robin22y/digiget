@@ -747,6 +747,17 @@ const handleSwipe = (checkId, direction) => {
   const swipedCheck = safetyChecks.value.find(c => c.id === checkId)
   if (!swipedCheck) return
 
+  // Prevent duplicates - check if item already exists in the target array
+  const alreadyCompleted = completedItems.value.some(item => item.id === checkId)
+  const alreadySkipped = skippedItems.value.some(item => item.id === checkId)
+  
+  if (alreadyCompleted || alreadySkipped) {
+    if (import.meta.env.DEV) {
+      console.warn('Attempted to add duplicate item:', checkId)
+    }
+    return // Don't add duplicate
+  }
+
   undoHistory.value.push({
     check: swipedCheck,
     direction,
