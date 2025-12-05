@@ -22,6 +22,13 @@
             Ad Manager
           </button>
           <button 
+            @click="activeTab = 'notices'" 
+            class="pb-1 transition-colors"
+            :class="activeTab === 'notices' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-zinc-500 hover:text-zinc-300'"
+          >
+            Notices
+          </button>
+          <button 
             @click="activeTab = 'testing'" 
             class="pb-1 transition-colors"
             :class="activeTab === 'testing' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-zinc-500 hover:text-zinc-300'"
@@ -524,6 +531,114 @@
       </div>
     </div>
 
+    <!-- NOTICES TAB -->
+    <div v-if="activeTab === 'notices'" class="p-6 overflow-y-auto flex-1">
+      <!-- Create New Notice Form -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8">
+        <h3 class="text-lg font-bold text-white mb-4">Create New Notice</h3>
+        
+        <div class="grid gap-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Status</label>
+              <select v-model="newNotice.isActive" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-300">
+                <option :value="true">Active (Visible to Users)</option>
+                <option :value="false">Draft (Hidden)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Priority</label>
+              <input v-model.number="newNotice.priority" type="number" min="0" max="10" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white" placeholder="0 (default)" />
+              <p class="text-[10px] text-zinc-600 mt-1">Higher priority shows first</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Title</label>
+            <input v-model="newNotice.title" type="text" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white" placeholder="e.g. New Update Available" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Content</label>
+            <textarea v-model="newNotice.content" rows="4" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white" placeholder="Enter the notice message. Users will see this in a popup."></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Link URL (Optional)</label>
+              <input v-model="newNotice.link" type="text" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white" placeholder="https://..." />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Link Text (Optional)</label>
+              <input v-model="newNotice.linkText" type="text" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white" placeholder="Learn More" />
+            </div>
+          </div>
+
+          <button 
+            @click="createNewNotice" 
+            :disabled="isSavingNotice"
+            class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg mt-4 disabled:opacity-50"
+          >
+            {{ isSavingNotice ? 'Publishing...' : 'Publish Notice' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Existing Notices List -->
+      <h3 class="text-lg font-bold text-white mb-4">All Notices</h3>
+      <div v-if="loadingNotices" class="text-zinc-500">Loading notices...</div>
+      <div v-else class="space-y-4">
+        <div v-for="notice in notices" :key="notice.id" class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex justify-between items-start group">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-2">
+              <span 
+                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                :class="notice.is_active ? 'bg-green-900/30 text-green-400 border border-green-900/50' : 'bg-zinc-800 text-zinc-500'"
+              >
+                {{ notice.is_active ? 'ACTIVE' : 'DRAFT' }}
+              </span>
+              <span class="text-xs text-zinc-500">Priority: {{ notice.priority || 0 }}</span>
+            </div>
+            <h4 class="font-bold text-zinc-200 mb-2">{{ notice.title }}</h4>
+            <p class="text-sm text-zinc-400 mb-2 whitespace-pre-line">{{ notice.content }}</p>
+            <div v-if="notice.link" class="text-xs text-blue-400">
+              <a :href="notice.link" target="_blank" class="hover:underline">{{ notice.link_text || notice.link }}</a>
+            </div>
+            <div class="text-xs text-zinc-600 mt-2">
+              Created: {{ formatNoticeDate(notice.created_at) }}
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2 ml-4">
+            <button 
+              @click="toggleNoticeStatus(notice)"
+              class="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+              title="Toggle Active Status"
+            >
+              <Power :size="18" :class="notice.is_active ? 'text-green-400' : 'text-zinc-500'" />
+            </button>
+            <button 
+              @click="editNoticeHandler(notice)"
+              class="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+              title="Edit Notice"
+            >
+              <Pencil :size="18" />
+            </button>
+            <button 
+              @click="deleteNoticeHandler(notice.id)"
+              class="p-2 rounded-lg bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 transition-colors"
+              title="Delete Notice"
+            >
+              <Trash2 :size="18" />
+            </button>
+          </div>
+        </div>
+        <div v-if="notices.length === 0" class="text-zinc-600 text-sm text-center py-8">
+          No notices found. Create one above.
+        </div>
+      </div>
+    </div>
+
     <!-- TESTING TAB -->
     <div v-if="activeTab === 'testing'" class="p-6 overflow-y-auto flex-1">
       <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6">
@@ -627,7 +742,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker } from 'lucide-vue-next'
+import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker, Pencil } from 'lucide-vue-next'
 import { supabase } from '../supabase'
 import { 
   fetchAllShiftLogs,
@@ -637,7 +752,11 @@ import {
   deleteAd,
   fetchAllAdminDevices,
   deleteAdminDeviceSecure,
-  purgeTestData
+  purgeTestData,
+  fetchAllNotices,
+  createNotice,
+  updateNotice,
+  deleteNotice
 } from '../supabase'
 
 const emit = defineEmits(['close'])
@@ -693,6 +812,22 @@ const pollingInterval = ref(null)
 const adminDevices = ref([])
 const loadingDevices = ref(false)
 const isDeletingDevice = ref(null)
+
+// Notices Data
+const notices = ref([])
+const loadingNotices = ref(false)
+const isSavingNotice = ref(false)
+const noticeToEdit = ref(null)
+
+// New Notice Form State
+const newNotice = ref({
+  title: '',
+  content: '',
+  link: '',
+  linkText: '',
+  isActive: true,
+  priority: 0
+})
 
 // New Ad Form State
 const newAd = ref({
@@ -1107,6 +1242,9 @@ onMounted(async () => {
     console.error("Ads Access Error:", error)
     loadingAds.value = false
   }
+
+  // --- 3. Fetch Notices Logic ---
+  await loadNotices()
 })
 
 // Clean up interval on destroy
@@ -1327,6 +1465,18 @@ const formatDate = (timestamp) => {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' })
 }
 
+const formatNoticeDate = (dateString) => {
+  if (!dateString) return 'Unknown'
+  const date = new Date(dateString)
+  return date.toLocaleString('en-GB', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 const formatChartDate = (daysAgo) => {
   const date = new Date()
   date.setDate(date.getDate() - (29 - daysAgo))
@@ -1367,6 +1517,111 @@ const getShiftInsight = (shiftDist) => {
   }
   
   return `Usage is distributed across shifts. ${topShift.type} shift leads with ${topShift.percentage}%.`
+}
+
+// --- Notice Actions ---
+const loadNotices = async () => {
+  loadingNotices.value = true
+  try {
+    const noticesData = await fetchAllNotices()
+    notices.value = noticesData || []
+  } catch (e) {
+    console.error("Error loading notices:", e)
+  } finally {
+    loadingNotices.value = false
+  }
+}
+
+const createNewNotice = async () => {
+  if (!newNotice.value.title || !newNotice.value.content) {
+    alert("Please fill in Title and Content fields.")
+    return
+  }
+
+  isSavingNotice.value = true
+  try {
+    const result = await createNotice({
+      title: newNotice.value.title,
+      content: newNotice.value.content,
+      link: newNotice.value.link || null,
+      link_text: newNotice.value.linkText || null,
+      is_active: newNotice.value.isActive,
+      priority: newNotice.value.priority || 0
+    })
+    
+    if (result.error) {
+      throw new Error(result.error)
+    }
+    
+    // Reset Form
+    newNotice.value = {
+      title: '',
+      content: '',
+      link: '',
+      linkText: '',
+      isActive: true,
+      priority: 0
+    }
+    
+    // Reload notices
+    await loadNotices()
+    
+    alert("Notice published successfully.")
+  } catch (e) {
+    console.error("Error creating notice:", e)
+    alert("Failed to publish notice. Check console.")
+  } finally {
+    isSavingNotice.value = false
+  }
+}
+
+const toggleNoticeStatus = async (notice) => {
+  try {
+    const result = await updateNotice(notice.id, { is_active: !notice.is_active })
+    if (result.error) {
+      throw new Error(result.error)
+    }
+    
+    // Update local state
+    const noticeIndex = notices.value.findIndex(n => n.id === notice.id)
+    if (noticeIndex !== -1) {
+      notices.value[noticeIndex].is_active = !notice.is_active
+    }
+  } catch (e) {
+    console.error("Error toggling notice:", e)
+    alert("Failed to update notice. Check console.")
+  }
+}
+
+const editNoticeHandler = (notice) => {
+  noticeToEdit.value = notice
+  newNotice.value = {
+    title: notice.title,
+    content: notice.content,
+    link: notice.link || '',
+    linkText: notice.link_text || '',
+    isActive: notice.is_active,
+    priority: notice.priority || 0
+  }
+  // Scroll to top to show the form
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const deleteNoticeHandler = async (noticeId) => {
+  if (!confirm("Are you sure you want to delete this notice? This cannot be undone.")) return
+  try {
+    const result = await deleteNotice(noticeId)
+    if (result.error) {
+      throw new Error(result.error)
+    }
+    
+    // Remove from local state
+    notices.value = notices.value.filter(n => n.id !== noticeId)
+    alert("Notice deleted successfully.")
+  } catch (e) {
+    console.error("Error deleting notice:", e)
+    alert("Failed to delete notice. Check console for details.")
+  }
 }
 </script>
 

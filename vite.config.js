@@ -113,6 +113,10 @@ export default defineConfig({
       },
 
       workbox: {
+        // ✅ Auto-update settings: Activate immediately and clean up old caches
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
 
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
 

@@ -43,6 +43,16 @@
           </div>
         </div>
         
+        <!-- Notices/Info Button (middle) -->
+        <button 
+          @click="showNoticesModal = true"
+          class="notices-info-button"
+          :title="unreadNoticesCount > 0 ? `${unreadNoticesCount} new notice${unreadNoticesCount > 1 ? 's' : ''}` : 'View notices'"
+        >
+          <Bell :size="18" />
+          <span v-if="unreadNoticesCount > 0" class="notice-badge">{{ unreadNoticesCount }}</span>
+        </button>
+        
         <!-- Install Button (right side) -->
         <button 
           class="install-banner-button"
@@ -159,6 +169,68 @@
       @add="handleAddNewCard"
       @update="handleUpdateCard"
     />
+
+    <!-- Notice Popup (only show when not on welcome screen) -->
+    <NoticePopup 
+      v-if="currentNotice && !showWelcome && !showNoticesModal"
+      :notice="currentNotice"
+      @dismiss="handleNoticeDismiss"
+    />
+
+    <!-- Notices Modal (View All Notices) -->
+    <div v-if="showNoticesModal" class="modal-backdrop" @click.self="showNoticesModal = false">
+      <div class="modal-content bg-zinc-900 border border-zinc-800 p-6 max-w-lg w-full rounded-2xl max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <Bell :size="24" class="text-blue-400" />
+            <h3 class="text-xl font-bold text-white">Notices & Updates</h3>
+          </div>
+          <button @click="showNoticesModal = false" class="text-zinc-500 hover:text-white">
+            <X :size="24" />
+          </button>
+        </div>
+        
+        <div class="overflow-y-auto flex-1">
+          <div v-if="loadingNotices" class="text-zinc-500 text-center py-8">
+            Loading notices...
+          </div>
+          <div v-else-if="allNotices.length === 0" class="text-zinc-500 text-center py-8">
+            No notices available.
+          </div>
+          <div v-else class="space-y-4">
+            <div 
+              v-for="notice in allNotices" 
+              :key="notice.id"
+              class="bg-zinc-950 border border-zinc-800 rounded-xl p-4"
+            >
+              <div class="flex items-start justify-between mb-2">
+                <h4 class="font-bold text-white text-lg">{{ notice.title }}</h4>
+                <span 
+                  v-if="!isNoticeSeen(notice.id)"
+                  class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-900/30 text-blue-400 border border-blue-900/50"
+                >
+                  NEW
+                </span>
+              </div>
+              <p class="text-zinc-300 text-sm mb-3 whitespace-pre-line">{{ notice.content }}</p>
+              <div v-if="notice.link" class="mb-2">
+                <a 
+                  :href="notice.link" 
+                  target="_blank" 
+                  class="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1"
+                >
+                  {{ notice.link_text || notice.link }}
+                  <ExternalLink :size="14" />
+                </a>
+              </div>
+              <div class="text-xs text-zinc-600">
+                {{ formatNoticeDate(notice.created_at) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Contact Us Modal -->
     <div v-if="showContactModal" class="modal-backdrop" @click.self="showContactModal = false">
@@ -311,11 +383,12 @@ import CardManager from './components/CardManager.vue'
 import AdminDashboard from './components/AdminDashboard.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import InfoPages from './components/InfoPages.vue'
-import { logShiftComplete, checkAdminDevice, registerAdminDevice } from './supabase.js'
+import NoticePopup from './components/NoticePopup.vue'
+import { logShiftComplete, checkAdminDevice, registerAdminDevice, fetchActiveNotices, supabase } from './supabase.js'
 import { inject } from '@vercel/analytics'
 import { 
   Key, CreditCard, Lock, FileX, FileText, Pen, Radio, 
-  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download, X
+  Clipboard, AlertCircle, Syringe, UserPlus, Droplets, Thermometer, Download, X, Info, Bell, ExternalLink
 } from 'lucide-vue-next'
 
 const iconMap = {
@@ -336,6 +409,10 @@ const isSendingContact = ref(false)
 const deferredPrompt = ref(null)
 const cardToEdit = ref(null)
 const currentShift = ref('Day') // Store the selected shift type
+const currentNotice = ref(null) // Current notice to display
+const showNoticesModal = ref(false) // Show notices modal
+const allNotices = ref([]) // All active notices for the modal
+const loadingNotices = ref(false) // Loading state for notices
 
 // --- PWA Install Logic ---
 onMounted(() => {
@@ -414,6 +491,12 @@ const checkVisitHistory = () => {
   if (hasVisited) {
     // Returning user: Skip welcome, go straight to app
     showWelcome.value = false
+    // Check for notices after app loads
+    setTimeout(() => {
+      checkForNotices()
+      // Also load notices for the badge count
+      loadAllNotices()
+    }, 1500)
   } else {
     // New user: Show welcome screen (which has its own selector)
     showWelcome.value = true
@@ -425,6 +508,12 @@ const startApp = (selectedShift) => {
   currentShift.value = selectedShift || 'Day'
   showWelcome.value = false
   localStorage.setItem('digiget-visited', 'true')
+  // Check for notices after starting the app
+  setTimeout(() => {
+    checkForNotices()
+    // Also load notices for the badge count
+    loadAllNotices()
+  }, 500)
 }
 
 const openInfoPage = (pageName) => {
@@ -1061,6 +1150,150 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
   
   closeCardModal()
 }
+
+// --- Notice Logic ---
+const checkForNotices = async () => {
+  if (!supabase) {
+    if (import.meta.env.DEV) {
+      console.log('⚠️ Notices: Supabase not initialized')
+    }
+    return
+  }
+
+  try {
+    if (import.meta.env.DEV) {
+      console.log('🔔 Checking for notices...')
+    }
+    
+    const activeNotices = await fetchActiveNotices()
+    
+    if (import.meta.env.DEV) {
+      console.log('📋 Active notices:', activeNotices)
+    }
+    
+    if (!activeNotices || activeNotices.length === 0) {
+      if (import.meta.env.DEV) {
+        console.log('ℹ️ No active notices found')
+      }
+      return
+    }
+
+    // Get list of seen notice IDs from localStorage
+    const seenNotices = JSON.parse(localStorage.getItem('digiget_seen_notices') || '[]')
+    
+    if (import.meta.env.DEV) {
+      console.log('👀 Seen notices:', seenNotices)
+    }
+    
+    // Find the first notice that hasn't been seen (sorted by priority)
+    // Convert notice.id to string for comparison since localStorage stores strings
+    const unseenNotice = activeNotices.find(notice => {
+      const noticeIdStr = String(notice.id)
+      return !seenNotices.includes(noticeIdStr) && !seenNotices.includes(notice.id)
+    })
+    
+    if (unseenNotice) {
+      if (import.meta.env.DEV) {
+        console.log('✅ Found unseen notice:', unseenNotice)
+      }
+      // Show the notice after a short delay to let the app load
+      setTimeout(() => {
+        currentNotice.value = unseenNotice
+        if (import.meta.env.DEV) {
+          console.log('🎯 Displaying notice popup')
+        }
+      }, 1000)
+    } else {
+      if (import.meta.env.DEV) {
+        console.log('ℹ️ All notices have been seen')
+      }
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('❌ Error checking for notices:', error)
+    }
+  }
+}
+
+const handleNoticeDismiss = () => {
+  if (currentNotice.value?.id) {
+    markNoticeAsSeen(currentNotice.value.id)
+  }
+  currentNotice.value = null
+  // Re-check for more notices after dismissing (in case there are multiple)
+  setTimeout(() => {
+    checkForNotices()
+  }, 500)
+}
+
+// Helper function to mark notice as seen
+const markNoticeAsSeen = (noticeId) => {
+  const seenNotices = JSON.parse(localStorage.getItem('digiget_seen_notices') || '[]')
+  const noticeIdStr = String(noticeId)
+  // Check both string and number format for compatibility
+  if (!seenNotices.includes(noticeIdStr) && !seenNotices.includes(noticeId)) {
+    seenNotices.push(noticeIdStr) // Store as string for consistency
+    localStorage.setItem('digiget_seen_notices', JSON.stringify(seenNotices))
+    if (import.meta.env.DEV) {
+      console.log('✅ Marked notice as seen:', noticeIdStr)
+    }
+  }
+}
+
+// Check if notice has been seen
+const isNoticeSeen = (noticeId) => {
+  const seenNotices = JSON.parse(localStorage.getItem('digiget_seen_notices') || '[]')
+  const noticeIdStr = String(noticeId)
+  return seenNotices.includes(noticeIdStr) || seenNotices.includes(noticeId)
+}
+
+// Get count of unread notices
+const unreadNoticesCount = computed(() => {
+  if (allNotices.value.length === 0) return 0
+  const seenNotices = JSON.parse(localStorage.getItem('digiget_seen_notices') || '[]')
+  return allNotices.value.filter(notice => {
+    const noticeIdStr = String(notice.id)
+    return !seenNotices.includes(noticeIdStr) && !seenNotices.includes(notice.id)
+  }).length
+})
+
+// Load all notices for the modal
+const loadAllNotices = async () => {
+  if (!supabase) return
+  
+  loadingNotices.value = true
+  try {
+    const notices = await fetchActiveNotices()
+    allNotices.value = notices || []
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error loading notices for modal:', error)
+    }
+    allNotices.value = []
+  } finally {
+    loadingNotices.value = false
+  }
+}
+
+// Watch for modal opening to load notices
+watch(showNoticesModal, (isOpen) => {
+  if (isOpen) {
+    loadAllNotices()
+  }
+})
+
+// Format notice date
+const formatNoticeDate = (dateString) => {
+  if (!dateString) return 'Unknown'
+  const date = new Date(dateString)
+  return date.toLocaleString('en-GB', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 </script>
 
 <style scoped>
@@ -1112,6 +1345,14 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
 
 .install-banner-button.install-disabled {
   @apply bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-50;
+}
+
+.notices-info-button {
+  @apply relative flex items-center justify-center w-10 h-10 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors shadow-lg;
+}
+
+.notice-badge {
+  @apply absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center;
 }
 
 /* Footer */

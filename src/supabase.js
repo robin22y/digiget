@@ -827,3 +827,142 @@ export const purgeTestData = async () => {
   }
 }
 
+/**
+ * Fetch active notices (public - for users)
+ */
+export const fetchActiveNotices = async () => {
+  if (!supabase) {
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ fetchActiveNotices: Supabase not initialized')
+    }
+    return []
+  }
+
+  try {
+    const { data: notices, error } = await supabase
+      .from('notices')
+      .select('*')
+      .eq('is_active', true)
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error('❌ Error fetching notices:', error)
+        // Check if table doesn't exist
+        if (error.code === '42P01') {
+          console.error('⚠️ Notices table does not exist. Please run the SQL schema to create it.')
+        }
+      }
+      return []
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('📋 Fetched notices:', notices?.length || 0, 'notices')
+    }
+
+    return notices || []
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('❌ Exception fetching notices:', error)
+    }
+    return []
+  }
+}
+
+/**
+ * Fetch all notices (admin - via Edge Function)
+ */
+export const fetchAllNotices = async () => {
+  try {
+    const result = await callEdgeFunction('admin-notices', { method: 'GET' })
+    return result.notices || []
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error fetching notices:', error)
+    }
+    return []
+  }
+}
+
+/**
+ * Create a new notice (admin - via Edge Function)
+ */
+export const createNotice = async (noticeData) => {
+  try {
+    const result = await callEdgeFunction('admin-notices', {
+      method: 'POST',
+      body: noticeData
+    })
+    return { notice: result.notice, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error creating notice:', error)
+    }
+    return { notice: null, error: error.message }
+  }
+}
+
+/**
+ * Update a notice (admin - via Edge Function)
+ */
+export const updateNotice = async (noticeId, updates) => {
+  try {
+    const url = getEdgeFunctionUrl('admin-notices')
+    const response = await fetch(`${url}?id=${noticeId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        'x-admin-password': ADMIN_PASSWORD
+      },
+      body: JSON.stringify(updates)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    return { notice: result.notice, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error updating notice:', error)
+    }
+    return { notice: null, error: error.message }
+  }
+}
+
+/**
+ * Delete a notice (admin - via Edge Function)
+ */
+export const deleteNotice = async (noticeId) => {
+  try {
+    const url = getEdgeFunctionUrl('admin-notices')
+    const response = await fetch(`${url}?id=${noticeId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        'x-admin-password': ADMIN_PASSWORD
+      }
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    return { success: result.success, error: result.error }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error deleting notice:', error)
+    }
+    return { success: false, error: error.message }
+  }
+}
+

@@ -193,7 +193,47 @@ CREATE POLICY "Users can insert their own admin device"
 --   USING (auth.uid() IN ('admin-uuid-1', 'admin-uuid-2'));
 
 -- ============================================
--- 4. Migration: Add is_test column (for existing databases)
+-- 4. Create notices table (for admin announcements)
+-- ============================================
+CREATE TABLE IF NOT EXISTS notices (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  link TEXT,
+  link_text TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  priority INTEGER NOT NULL DEFAULT 0, -- Higher priority shows first
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_notices_is_active ON notices(is_active);
+CREATE INDEX IF NOT EXISTS idx_notices_priority ON notices(priority DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notices_created_at ON notices(created_at DESC);
+
+-- Enable Row Level Security
+ALTER TABLE notices ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Anyone can read active notices" ON notices;
+
+-- Create policy: Anyone can read active notices (for public display)
+CREATE POLICY "Anyone can read active notices"
+  ON notices
+  FOR SELECT
+  TO anon, authenticated
+  USING (is_active = true);
+
+-- ✅ SECURE: Notice management policies removed
+-- Admin dashboard uses Edge Functions with service role key (bypasses RLS)
+-- This ensures only authorized admins can manage notices
+-- 
+-- Public users can only read active notices (for display)
+-- Admin operations are handled via: supabase/functions/admin-notices
+
+-- ============================================
+-- 5. Migration: Add is_test column (for existing databases)
 -- ============================================
 -- Run this if you already have the shift_logs table and need to add the is_test column
 -- ALTER TABLE shift_logs ADD COLUMN IF NOT EXISTS is_test BOOLEAN NOT NULL DEFAULT false;
