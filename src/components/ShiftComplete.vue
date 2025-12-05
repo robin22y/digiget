@@ -31,19 +31,19 @@
     </div>
 
     <div class="action-section">
+      <!-- Share Button - Prominent on Mobile -->
+      <button class="share-button-primary" @click="handleShare">
+        <Share2 :size="22" />
+        <span>Share Report</span>
+      </button>
+      
       <div class="buttons-row">
-        <button class="share-button" @click="handleShare">
-          <Share2 :size="20" />
-          Share
-        </button>
         <button class="edit-button" @click="handleEditClick">
           <Edit :size="20" />
           Edit
         </button>
-      </div>
-      <div class="start-shift-section">
-        <button class="start-shift-button" @click="$emit('reset')">
-          Start Shift Check
+        <button class="start-shift-button-inline" @click="$emit('reset')">
+          Start New Shift
         </button>
       </div>
       <AdContainer :current-shift="shiftType" />
@@ -352,6 +352,11 @@ onUnmounted(() => {
 .shift-complete {
   @apply flex flex-col items-center h-full w-full max-h-full relative;
   animation: fadeIn 0.5s ease-in;
+  /* Ensure content is scrollable on mobile if needed */
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  /* Ensure action buttons are always accessible */
+  min-height: 100vh;
 }
 
 .confetti-canvas {
@@ -380,12 +385,16 @@ onUnmounted(() => {
 /* Completed Items Section */
 .completed-list-section {
   @apply flex-none w-full max-w-md px-6 mb-4 relative z-10;
+  /* Limit height on mobile to ensure buttons are visible */
+  max-height: 40vh;
+  overflow: hidden;
 }
 
 /* Scrollable Review List */
 .review-list {
-  @apply flex-1 w-full overflow-y-auto px-2 mb-4 scrollbar-hide relative z-10;
-  max-height: 300px;
+  @apply w-full overflow-y-auto px-2 mb-4 scrollbar-hide relative z-10;
+  /* Reduced max height to ensure share button is always visible on mobile */
+  max-height: 35vh;
   mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
 }
@@ -427,20 +436,46 @@ onUnmounted(() => {
 }
 
 .action-section {
-  @apply flex-none w-full flex flex-col items-center pb-6 pt-2 relative z-10;
+  @apply flex-none w-full flex flex-col items-center pb-6 pt-2 relative z-10 px-4;
+  /* Ensure buttons are always visible on mobile */
+  min-height: fit-content;
+  /* Add extra padding on mobile for safe area */
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
+  /* Ensure it's not hidden behind other elements */
+  position: relative;
+}
+
+/* Primary Share Button - Prominent and Always Visible */
+.share-button-primary {
+  @apply w-full max-w-xs bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg 
+         active:scale-95 transition-all flex items-center justify-center gap-2 mb-3
+         min-h-[56px] text-base;
+  /* Make it stand out on mobile */
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.share-button-primary:active {
+  transform: scale(0.98);
 }
 
 .buttons-row {
   @apply flex w-full max-w-xs gap-3 mb-4 items-stretch;
 }
 
-.share-button {
-  @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-4 rounded-xl shadow-lg 
+.edit-button {
+  @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-3 rounded-xl shadow-lg 
          hover:bg-zinc-700 hover:text-white active:scale-95 transition-all 
-         flex items-center justify-center gap-2 min-h-[56px];
+         flex items-center justify-center gap-2 min-h-[48px] text-sm;
 }
 
-.edit-button {
+.start-shift-button-inline {
+  @apply flex-1 bg-zinc-100 text-zinc-950 font-bold py-3 rounded-xl shadow-lg 
+         hover:bg-white active:scale-95 transition-all 
+         flex items-center justify-center gap-2 min-h-[48px] text-sm;
+}
+
+/* Legacy button styles (kept for compatibility) */
+.share-button {
   @apply flex-1 bg-zinc-800 text-zinc-300 font-bold py-4 rounded-xl shadow-lg 
          hover:bg-zinc-700 hover:text-white active:scale-95 transition-all 
          flex items-center justify-center gap-2 min-h-[56px];
