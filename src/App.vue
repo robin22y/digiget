@@ -745,17 +745,38 @@ const vibrate = (pattern = [50]) => {
 
 const handleSwipe = (checkId, direction) => {
   const swipedCheck = safetyChecks.value.find(c => c.id === checkId)
-  if (!swipedCheck) return
+  if (!swipedCheck) {
+    // Card not found in safetyChecks - might have already been swiped
+    // This can happen if the swipe event fires multiple times or there's a race condition
+    if (import.meta.env.DEV) {
+      console.warn('Swipe attempted on card not in safetyChecks:', checkId)
+    }
+    return
+  }
 
-  // Prevent duplicates - check if item already exists in the target array
+  // If card is in safetyChecks, it's a valid swipe - allow it
+  // Only prevent if somehow the card is already in both arrays (shouldn't happen, but safety check)
   const alreadyCompleted = completedItems.value.some(item => item.id === checkId)
   const alreadySkipped = skippedItems.value.some(item => item.id === checkId)
   
-  if (alreadyCompleted || alreadySkipped) {
+  // If card exists in both arrays (data corruption), clean it up first
+  if (alreadyCompleted && alreadySkipped) {
     if (import.meta.env.DEV) {
-      console.warn('Attempted to add duplicate item:', checkId)
+      console.warn('Card found in both arrays, cleaning up:', checkId)
     }
-    return // Don't add duplicate
+    completedItems.value = completedItems.value.filter(item => item.id !== checkId)
+    skippedItems.value = skippedItems.value.filter(item => item.id !== checkId)
+  }
+  // If card exists in the target array but is still in safetyChecks, remove from array first
+  else if ((direction === 'right' && alreadyCompleted) || (direction === 'left' && alreadySkipped)) {
+    if (import.meta.env.DEV) {
+      console.warn('Card found in target array but still in safetyChecks, cleaning up:', checkId)
+    }
+    if (direction === 'right') {
+      completedItems.value = completedItems.value.filter(item => item.id !== checkId)
+    } else {
+      skippedItems.value = skippedItems.value.filter(item => item.id !== checkId)
+    }
   }
 
   undoHistory.value.push({
