@@ -32,6 +32,8 @@ if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) {
 
 // Initialize Supabase client
 let supabase = null
+// Store the URL globally so edge functions can access it
+let storedSupabaseUrl = supabaseUrl
 
 if (supabaseUrl && supabaseAnonKey) {
   try {
@@ -428,12 +430,13 @@ export const checkAdminDevice = async () => {
     // Use Edge Function to check admin device status
     const url = getEdgeFunctionUrl('check-admin-device')
     
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${ADMIN_PASSWORD}`,
+        'Authorization': `Bearer ${anonKey}`, // Supabase requires anon key for edge function access
         'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+        'apikey': anonKey
       },
       body: JSON.stringify({ device_id: deviceId })
     })
@@ -546,10 +549,14 @@ const ADMIN_PASSWORD = 'Rncdm@2025' // Should match App.vue admin password
  * Get Supabase Edge Functions URL
  */
 const getEdgeFunctionUrl = (functionName) => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  // Try to get URL from environment variable first
+  let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || storedSupabaseUrl
+  
+  // If not in env, try to get it from the stored URL (from client initialization)
   if (!supabaseUrl) {
-    throw new Error('VITE_SUPABASE_URL not configured')
+    throw new Error('VITE_SUPABASE_URL not configured. Please set it in your .env file and restart the dev server.')
   }
+  
   // Edge Functions are at: https://<project-ref>.supabase.co/functions/v1/<function-name>
   const url = new URL(supabaseUrl)
   return `${url.protocol}//${url.host}/functions/v1/${functionName}`
@@ -561,12 +568,31 @@ const getEdgeFunctionUrl = (functionName) => {
 const callEdgeFunction = async (functionName, options = {}) => {
   const { method = 'GET', body = null } = options
   
-  const url = getEdgeFunctionUrl(functionName)
+  // Check if Supabase is configured
+  if (!supabase) {
+    throw new Error('Supabase client not initialized. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.')
+  }
   
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+  if (!anonKey) {
+    throw new Error('VITE_SUPABASE_ANON_KEY not configured. Edge functions require the anon key for authentication.')
+  }
+  
+  let url
+  try {
+    url = getEdgeFunctionUrl(functionName)
+  } catch (error) {
+    // If URL can't be determined, provide helpful error
+    throw new Error(`Cannot call edge function ${functionName}: ${error.message}`)
+  }
+  
+  // Supabase Edge Functions require the anon key as Bearer token for authentication
+  // We pass our custom admin password in a custom header that the edge function will check
   const headers = {
-    'Authorization': `Bearer ${ADMIN_PASSWORD}`,
+    'Authorization': `Bearer ${anonKey}`, // Supabase requires this for edge function access
     'Content-Type': 'application/json',
-    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    'apikey': anonKey,
+    'x-admin-password': ADMIN_PASSWORD // Custom header for our admin password check
   }
 
   try {

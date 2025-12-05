@@ -10,7 +10,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-password',
 }
 
 Deno.serve(async (req) => {
@@ -20,21 +20,20 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify admin password
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    // Verify admin password from custom header
+    const adminPasswordHeader = req.headers.get('x-admin-password')
+    if (!adminPasswordHeader) {
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
+        JSON.stringify({ error: 'Missing admin password header', deleted_count: 0 }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const ADMIN_PASSWORD = Deno.env.get('ADMIN_PASSWORD') || 'your-admin-password-here'
-    const providedPassword = authHeader.replace('Bearer ', '')
+    const ADMIN_PASSWORD = Deno.env.get('ADMIN_PASSWORD') || 'Rncdm@2025'
     
-    if (providedPassword !== ADMIN_PASSWORD) {
+    if (adminPasswordHeader !== ADMIN_PASSWORD) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized', deleted_count: 0 }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

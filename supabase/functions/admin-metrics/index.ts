@@ -10,7 +10,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-password',
 }
 
 Deno.serve(async (req) => {
@@ -20,20 +20,21 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get admin password from Authorization header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    // Get admin password from custom header (x-admin-password)
+    // The Authorization header contains the Supabase anon key (required by Supabase)
+    // Our custom admin password is in x-admin-password header
+    const adminPasswordHeader = req.headers.get('x-admin-password')
+    if (!adminPasswordHeader) {
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
+        JSON.stringify({ logs: null, error: 'Missing admin password header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // Verify admin password (should match your frontend admin password)
     const ADMIN_PASSWORD = Deno.env.get('ADMIN_PASSWORD') || 'Rncdm@2025'
-    const providedPassword = authHeader.replace('Bearer ', '')
     
-    if (providedPassword !== ADMIN_PASSWORD) {
+    if (adminPasswordHeader !== ADMIN_PASSWORD) {
       console.error('Unauthorized access attempt. Password mismatch.')
       return new Response(
         JSON.stringify({ logs: null, error: 'Unauthorized' }),

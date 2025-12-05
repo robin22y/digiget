@@ -677,18 +677,17 @@ const metrics = ref({
 })
 const loadingMetrics = ref(true)
 
-// Logs Data (used for metrics calculation only, not displayed)
-let logsChannel = null
-
 // Ads Data
 const ads = ref([])
 const loadingAds = ref(true)
 const isSavingAd = ref(false)
-let adsChannel = null
 
 // Test Mode
 const isTestMode = ref(false)
 const isPurging = ref(false)
+
+// Polling interval for metrics refresh
+const pollingInterval = ref(null)
 
 // Admin Devices
 const adminDevices = ref([])
@@ -992,47 +991,51 @@ const calculateMetrics = (allLogs) => {
 }
 
 onMounted(async () => {
-  // Check local storage for test mode status
   isTestMode.value = localStorage.getItem('digiget_test_mode') === 'true'
   
-  // Load admin devices
-  await loadAdminDevices()
-  
-  // 1. Fetch All Logs for Metrics (fetch more for accurate metrics)
-  // Note: Firestore has a limit of fetching documents, but this should work for most cases
-  // For very large datasets, consider pagination or Cloud Functions
-  // 1. Fetch Shift Logs for Metrics
+  // Check if Supabase is configured
   if (!supabase) {
-    console.error("Supabase not available")
+    console.error('❌ Supabase client not initialized')
     loadingMetrics.value = false
     loadingAds.value = false
+    alert('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file and restart the dev server.')
     return
   }
-
+  
+  // Check if VITE_SUPABASE_URL is configured (needed for edge functions)
+  if (!import.meta.env.VITE_SUPABASE_URL) {
+    console.error('❌ VITE_SUPABASE_URL not configured')
+    loadingMetrics.value = false
+    loadingAds.value = false
+    alert('VITE_SUPABASE_URL is not configured. Edge functions (metrics, ads) will not work. Please set VITE_SUPABASE_URL in your .env file and restart the dev server.')
+    return
+  }
+  
+  // Load admin devices (this might fail if edge functions aren't configured, but that's okay)
   try {
-    // Ensure user is authenticated for admin access
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      console.warn("⚠️ Admin dashboard: No authenticated session. Attempting anonymous sign-in...")
-      await supabase.auth.signInAnonymously()
-    }
+    await loadAdminDevices()
+  } catch (error) {
+    console.warn('⚠️ Could not load admin devices:', error.message)
+    // Don't block the rest of the initialization
+  }
 
-    // Fetch logs via Edge Function (secure, bypasses RLS)
+  // --- 1. Fetch Metrics Logic ---
+  const fetchMetrics = async () => {
     try {
+      if (import.meta.env.DEV) {
+        console.log('🔄 Fetching metrics...')
+      }
+      
+      // Fetch logs via Edge Function (Secure)
       const allLogs = await fetchAllShiftLogs()
       
       if (import.meta.env.DEV) {
-        console.log(`✅ Admin Dashboard: Fetched ${allLogs?.length || 0} logs via Edge Function`)
+        console.log(`✅ Fetched ${allLogs?.length || 0} logs from edge function`)
         if (allLogs && allLogs.length > 0) {
-          console.log("📊 Sample log:", allLogs[0])
-        } else {
-          console.warn("⚠️ No logs returned from edge function. Check if edge function is deployed and has data.")
+          console.log('📊 Sample log:', allLogs[0])
         }
       }
       
-      // Convert Supabase format to expected format for calculateMetrics
-      // Supabase returns ISO date strings, which getDate() can handle directly
-      // Note: Test data is filtered out in calculateMetrics function
       const convertedLogs = (allLogs || []).map(log => ({
         id: log.id,
         userId: log.user_id,
@@ -1040,171 +1043,75 @@ onMounted(async () => {
         skippedItems: log.skipped_items || [],
         shiftType: log.shift_type,
         location: log.location,
-        isTest: log.is_test || false, // Include is_test flag for filtering
-        timestamp: log.created_at || null // Pass ISO string directly, getDate() handles it
+        isTest: log.is_test || false,
+        timestamp: log.created_at || null
       }))
       
       if (import.meta.env.DEV) {
         console.log(`✅ Converted ${convertedLogs.length} logs for metrics calculation`)
-        if (convertedLogs.length > 0) {
-          console.log("📊 Sample converted log:", {
-            id: convertedLogs[0].id,
-            userId: convertedLogs[0].userId,
-            timestamp: convertedLogs[0].timestamp,
-            timestampType: typeof convertedLogs[0].timestamp,
-            parsedDate: convertedLogs[0].timestamp ? new Date(convertedLogs[0].timestamp).toISOString() : 'null',
-            isTest: convertedLogs[0].isTest
-          })
-          
-          // Check for today's logs
-          const today = new Date()
-          today.setHours(0, 0, 0, 0)
-          const todayLogsSample = convertedLogs.filter(log => {
-            if (!log.timestamp) return false
-            const logDate = new Date(log.timestamp)
-            logDate.setHours(0, 0, 0, 0)
-            return logDate.getTime() === today.getTime()
-          })
-          console.log(`📅 Logs from today: ${todayLogsSample.length} out of ${convertedLogs.length}`)
-        }
       }
       
-      // Calculate metrics from all fetched logs
-      metrics.value = calculateMetrics(convertedLogs)
+      const calculatedMetrics = calculateMetrics(convertedLogs)
+      metrics.value = calculatedMetrics
+      
       if (import.meta.env.DEV) {
-        console.log("📈 Calculated metrics:", {
-          totalUsers: metrics.value.totalUsers,
-          dau: metrics.value.dau,
-          mau: metrics.value.mau,
-          totalSessions: metrics.value.totalSessions,
-          completedSessions: metrics.value.completedSessions,
-          completionRate: metrics.value.completionRate
+        console.log('📈 Calculated metrics:', {
+          totalUsers: calculatedMetrics.totalUsers,
+          newUsersToday: calculatedMetrics.newUsersToday,
+          dau: calculatedMetrics.dau,
+          mau: calculatedMetrics.mau,
+          totalSessions: calculatedMetrics.totalSessions
         })
       }
+      
       loadingMetrics.value = false
-
-      // Set up real-time subscription for logs (still works for notifications)
-      // Note: Edge Functions don't support real-time, so we poll periodically
-      // or use Supabase real-time for notifications and refetch via Edge Function
-      logsChannel = supabase
-        .channel('shift_logs_changes')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'shift_logs' },
-          async () => {
-            // Refetch logs via Edge Function when changes occur
-            const updatedLogs = await fetchAllShiftLogs()
-            if (updatedLogs) {
-              const converted = updatedLogs.map(log => ({
-                id: log.id,
-                userId: log.user_id,
-                itemsChecked: log.items_checked,
-                skippedItems: log.skipped_items || [],
-                shiftType: log.shift_type,
-                location: log.location,
-                isTest: log.is_test || false,
-                timestamp: log.created_at || null
-              }))
-              metrics.value = calculateMetrics(converted)
-            }
-          }
-        )
-        .subscribe()
     } catch (error) {
-      console.error("❌ Logs Access Error:", error)
+      console.error("❌ Metrics Sync Error:", error)
       console.error("Error details:", {
         message: error.message,
         stack: error.stack,
         name: error.name
       })
-      // Set metrics to show error state
-      metrics.value = {
-        ...metrics.value,
-        totalUsers: 0,
-        newUsersToday: 0,
-        dau: 0,
-        mau: 0,
-        retentionRate: 0,
-        completionRate: 0,
-        completedSessions: 0,
-        totalSessions: 0,
-        crashes: 0,
-        growthData: [],
-        shiftDistribution: [],
-        topCities: [],
-        mostActiveCities: [],
-        leastActiveCities: [],
-        growingCities: [],
-        peakHours: [],
-        maxHourlyUsage: 1,
-        peakHour: null,
-        peakHourCount: 0
+      // Don't alert on polling errors to avoid spamming the admin
+      if (loadingMetrics.value) {
+        alert(`Failed to load metrics: ${error.message}. Check console for details.`)
+        loadingMetrics.value = false
       }
-      loadingMetrics.value = false
-      alert(`Failed to load metrics: ${error.message}. Check console for details.`)
     }
+  }
 
-    // 2. Fetch Ads via Edge Function (secure, bypasses RLS)
-    try {
-      const adsData = await fetchAllAds()
-      
-      // Convert snake_case to camelCase for compatibility
-      ads.value = (adsData || []).map(ad => ({
-        id: ad.id,
-        type: ad.type,
-        content: ad.content,
-        link: ad.link,
-        imageUrl: ad.image_url || ad.imageUrl,
-        isActive: ad.is_active !== undefined ? ad.is_active : ad.isActive,
-        targetCity: ad.target_city || ad.targetCity,
-        targetRegion: ad.target_region || ad.targetRegion,
-        targetShifts: ad.target_shifts || ad.targetShifts || [],
-        createdAt: ad.created_at ? { seconds: Math.floor(new Date(ad.created_at).getTime() / 1000) } : null
-      }))
-      loadingAds.value = false
+  // Initial Fetch
+  await fetchMetrics()
 
-      // Set up real-time subscription for ads (still works for notifications)
-      adsChannel = supabase
-        .channel('ads_changes')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'ads' },
-          async () => {
-            // Refetch ads via Edge Function when changes occur
-            const updatedAds = await fetchAllAds()
-            if (updatedAds) {
-              ads.value = updatedAds.map(ad => ({
-                id: ad.id,
-                type: ad.type,
-                content: ad.content,
-                link: ad.link,
-                imageUrl: ad.image_url || ad.imageUrl,
-                isActive: ad.is_active !== undefined ? ad.is_active : ad.isActive,
-                targetCity: ad.target_city || ad.targetCity,
-                targetRegion: ad.target_region || ad.targetRegion,
-                targetShifts: ad.target_shifts || ad.targetShifts || [],
-                createdAt: ad.created_at ? { seconds: Math.floor(new Date(ad.created_at).getTime() / 1000) } : null
-              }))
-            }
-          }
-        )
-        .subscribe()
-    } catch (error) {
-      console.error("Ads Access Error:", error)
-      loadingAds.value = false
-    }
+  // ✅ NEW: Poll every 30 seconds instead of using Realtime
+  // Realtime subscriptions are blocked by RLS for security, so we poll the Edge Function.
+  pollingInterval.value = setInterval(fetchMetrics, 30000)
+
+  // --- 2. Fetch Ads Logic ---
+  try {
+    const adsData = await fetchAllAds()
+    ads.value = (adsData || []).map(ad => ({
+      id: ad.id,
+      type: ad.type,
+      content: ad.content,
+      link: ad.link,
+      imageUrl: ad.image_url || ad.imageUrl,
+      isActive: ad.is_active !== undefined ? ad.is_active : ad.isActive,
+      targetCity: ad.target_city || ad.targetCity,
+      targetRegion: ad.target_region || ad.targetRegion,
+      targetShifts: ad.target_shifts || ad.targetShifts || [],
+      createdAt: ad.created_at ? { seconds: Math.floor(new Date(ad.created_at).getTime() / 1000) } : null
+    }))
+    loadingAds.value = false
   } catch (error) {
-    console.error("Error initializing dashboard:", error)
-    loadingMetrics.value = false
+    console.error("Ads Access Error:", error)
     loadingAds.value = false
   }
 })
 
+// Clean up interval on destroy
 onUnmounted(() => {
-  if (logsChannel) {
-    supabase.removeChannel(logsChannel)
-  }
-  if (adsChannel) {
-    supabase.removeChannel(adsChannel)
-  }
+  if (pollingInterval.value) clearInterval(pollingInterval.value)
 })
 
 // --- Test Mode Actions ---
