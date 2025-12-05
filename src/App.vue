@@ -794,7 +794,7 @@ const handleContactSubmit = () => {
   isSendingContact.value = true
   
   // Encode the email address so it's not visible in the UI
-  const email = 'admin@digiget.uk'
+  const email = 'hello@digiget.uk'
   const subject = encodeURIComponent('Digiget Feedback / Feature Request')
   const body = encodeURIComponent(contactMessage.value.trim())
   

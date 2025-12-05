@@ -40,10 +40,16 @@
         <button class="action-button new-button" @click="$emit('reset')">
           <span>New</span>
         </button>
-        <button class="action-button edit-button" @click="handleEditClick">
-          <Edit :size="20" />
-          <span>Edit</span>
-        </button>
+        <div class="flex-1 flex flex-col gap-2">
+          <button class="action-button edit-button" @click="handleEditClick">
+            <Edit :size="20" />
+            <span>Edit</span>
+          </button>
+          <button class="action-button contact-button" @click="handleContact" title="hello@digiget.uk">
+            <Mail :size="18" />
+            <span>Contact</span>
+          </button>
+        </div>
       </div>
       <AdContainer :current-shift="shiftType" />
     </div>
@@ -121,7 +127,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { CheckCircle, Share2, Edit } from 'lucide-vue-next'
+import { CheckCircle, Share2, Edit, Mail } from 'lucide-vue-next'
 import AdContainer from './AdContainer.vue'
 
 const props = defineProps({
@@ -310,6 +316,26 @@ const copyToClipboard = async () => {
     console.error('Failed to copy:', err)
     alert('Failed to copy. Please try again.')
   }
+}
+
+const handleContact = () => {
+  const email = 'hello@digiget.uk'
+  
+  // Show email in alert first, then try to open email client
+  alert(`Contact us at: ${email}`)
+  
+  // Try to open email client
+  const mailtoLink = `mailto:${email}?subject=Digiget App Inquiry`
+  window.location.href = mailtoLink
+  
+  // Fallback: copy email to clipboard
+  setTimeout(async () => {
+    try {
+      await navigator.clipboard.writeText(email)
+    } catch (err) {
+      console.error('Failed to copy email:', err)
+    }
+  }, 500)
 }
 
 // --- Confetti Logic ---
@@ -539,6 +565,28 @@ onUnmounted(() => {
 
 .edit-button:active {
   transform: scale(0.98);
+}
+
+/* Contact button - purple/violet background */
+.action-button.contact-button {
+  @apply bg-purple-600 hover:bg-purple-500 text-white !important;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.3);
+  /* Smaller button to fit under New */
+  min-height: 40px;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.contact-button:active {
+  transform: scale(0.98);
+}
+
+/* Container for New and Contact buttons */
+.buttons-row > div.flex-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
 }
 
 /* Legacy button styles removed - using new action-button styles */
