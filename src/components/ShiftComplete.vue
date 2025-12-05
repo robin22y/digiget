@@ -140,18 +140,37 @@ const emit = defineEmits(['reset', 'edit'])
 
 // --- Dynamic Messaging System ---
 const messageBank = [
-  // Reassuring
+  // Relatable Nursing Humor
+  { title: "Did you steal a pen?", subtitle: "Check your pockets. We won't tell." },
+  { title: "Not your circus.", subtitle: "Not your monkeys. (Until tomorrow)." },
+  { title: "Hydrate.", subtitle: "And no, coffee doesn't count." },
+  { title: "Hello, fresh air.", subtitle: "Remember what the sun looks like?" },
+  { title: "Uniform: Off.", subtitle: "Human mode: Activated." },
+  
+  // Affirmation & Pride
+  { title: "You kept people alive.", subtitle: "That is actually a huge deal." },
+  { title: "Shift: Conquered.", subtitle: "You handled the chaos. Well done." },
+  { title: "Handover complete.", subtitle: "You left the ward better than you found it." },
+  { title: "You made a difference.", subtitle: "Even if nobody said 'thank you' today." },
+  
+  // Pure Relief
+  { title: "Go home.", subtitle: "Your bed has missed you." },
+  { title: "Silence is golden.", subtitle: "No call bells. No alarms. Just peace." },
+  { title: "Phone: Silent.", subtitle: "The hospital cannot hurt you now." },
+  { title: "Eat something nice.", subtitle: "You earned a hot meal sitting down." },
+  
+  // The "Safe to Leave" Reassurance
+  { title: "No U-turns tonight.", subtitle: "Keys? Checked. Meds? Checked. Drive on." },
+  { title: "Brain: Power Down.", subtitle: "Leave the thinking for the next shift." },
+  
+  // Classic Reassuring (kept for variety)
   { title: "All done.", subtitle: "You can relax now." },
   { title: "Everything's checked.", subtitle: "Safe to go home." },
   { title: "You're all set.", subtitle: "Drive home in peace." },
   { title: "Nothing forgotten.", subtitle: "Time to rest." },
-  
-  // Celebratory
   { title: "Shift complete.", subtitle: "Well done today." },
   { title: "That's everything.", subtitle: "Nice work." },
   { title: "All sorted.", subtitle: "You've earned your rest." },
-  
-  // Context Specific
   { title: "You're free.", subtitle: "Keys? ✓ Meds? ✓ Handover? ✓" },
   { title: "Sleep easy.", subtitle: "No 2am drives back tonight!" },
   { title: "You're done.", subtitle: "Leave work at work." }
