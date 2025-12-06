@@ -110,9 +110,12 @@ const handleDelete = (card) => {
 onMounted(() => {
   nextTick(() => {
     if (cardsListRef.value) {
+      // Detect if we're on a touch device
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+      
       sortableInstance = Sortable.create(cardsListRef.value, {
-        animation: 150,
-        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        animation: 200,
+        easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         handle: '.drag-handle, .card-info',
         filter: '.card-actions, .action-btn',
         preventOnFilter: true,
@@ -122,9 +125,19 @@ onMounted(() => {
         fallbackOnBody: true,
         swapThreshold: 0.65,
         invertSwap: false,
-        forceFallback: true, // Force fallback for better mobile experience
-        touchStartThreshold: 3, // Lower threshold for easier touch activation
+        // Force fallback on touch devices for better mobile experience
+        // Use native drag on desktop for better performance
+        forceFallback: isTouchDevice,
         fallbackTolerance: 0,
+        touchStartThreshold: isTouchDevice ? 5 : 0,
+        // Improve rendering performance
+        forceAutoScroll: true,
+        scrollSensitivity: 100,
+        scrollSpeed: 20,
+        // Ensure drag works on both desktop and mobile
+        delay: 0,
+        delayOnTouchStart: false,
+        delayOnTouchOnly: false,
         onStart: (evt) => {
           // Haptic feedback on mobile
           if ('vibrate' in navigator) {
@@ -214,51 +227,68 @@ onUnmounted(() => {
 .card-item {
   @apply flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700;
   cursor: move;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  touch-action: none; /* Prevent scrolling while dragging on mobile */
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Only disable touch actions on mobile */
   -webkit-touch-callout: none; /* Disable long press menu on iOS */
   user-select: none;
+  /* Ensure clean rendering */
+  transform-origin: center center;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Touch-specific styles for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .card-item {
+    touch-action: none; /* Prevent scrolling while dragging on mobile */
+  }
 }
 
 /* SortableJS classes */
 .sortable-ghost {
-  opacity: 0.3;
-  background-color: rgba(59, 130, 246, 0.15);
+  opacity: 0.4;
+  background-color: rgba(59, 130, 246, 0.1);
   border-color: rgb(59 130 246);
   border-width: 2px;
   border-style: dashed;
+  /* Ensure ghost doesn't have rotation */
+  transform: none !important;
 }
 
 .sortable-chosen {
   cursor: grabbing;
   opacity: 1;
-  transform: scale(1.08) rotate(2deg);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(59, 130, 246, 0.5);
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(59, 130, 246, 0.6);
   z-index: 1000 !important;
   background-color: rgb(24 24 27) !important;
   border-color: rgb(59 130 246) !important;
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
 }
 
 .sortable-drag {
   opacity: 1 !important;
-  transform: scale(1.08) rotate(2deg) !important;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(59, 130, 246, 0.6) !important;
   z-index: 1000 !important;
   background-color: rgb(24 24 27) !important;
   border-color: rgb(59 130 246) !important;
   pointer-events: none !important;
+  /* Remove any rotation or tilt */
+  transform-origin: center center;
 }
 
 /* Ensure dragged element is visible on mobile */
 @media (max-width: 768px) {
   .sortable-drag {
-    transform: scale(1.1) rotate(3deg) !important;
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(59, 130, 246, 0.7) !important;
+    transform: scale(1.06) !important;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(59, 130, 246, 0.7) !important;
   }
   
   .sortable-chosen {
-    transform: scale(1.1) rotate(3deg) !important;
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(59, 130, 246, 0.7) !important;
+    transform: scale(1.06) !important;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(59, 130, 246, 0.7) !important;
   }
 }
 
