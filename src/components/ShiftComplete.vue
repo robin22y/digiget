@@ -464,18 +464,44 @@ onUnmounted(() => {
 /* Completed Items Section */
 .completed-list-section {
   @apply flex-none w-full max-w-md px-6 mb-4 relative z-10;
-  /* Limit height on mobile to ensure buttons and footer are visible */
-  max-height: 30vh;
-  overflow: hidden;
 }
 
-/* Scrollable Review List */
+/* Scrollable Review List - 2 rows with horizontal scroll */
 .review-list {
-  @apply w-full overflow-y-auto px-2 mb-4 scrollbar-hide relative z-10;
-  /* Reduced max height to ensure share button and footer are always visible on mobile */
-  max-height: 25vh;
-  mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+  @apply w-full px-2 mb-2 relative z-10;
+  /* Use CSS Grid for 2 rows with horizontal scrolling */
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+  grid-auto-flow: column;
+  gap: 0.5rem;
+  align-content: start;
+  /* Limit to 2 rows height */
+  max-height: calc(2 * 3.5rem + 0.5rem); /* 2 rows: item height + gap */
+  /* Enable horizontal scrolling */
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Enable smooth scrolling */
+  scroll-behavior: smooth;
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.3) transparent;
+}
+
+.review-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.review-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.review-list::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.3);
+  border-radius: 3px;
+}
+
+.review-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.5);
 }
 
 .list-header {
