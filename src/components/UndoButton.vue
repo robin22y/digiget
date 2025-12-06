@@ -3,6 +3,10 @@
     v-if="canUndo"
     @click="$emit('undo')"
     class="undo-button"
+    :class="{
+      'undo-done': lastAction === 'right',
+      'undo-skip': lastAction === 'left'
+    }"
     aria-label="Undo last swipe"
   >
     <RotateCcw :size="20" />
@@ -16,6 +20,10 @@ defineProps({
   canUndo: {
     type: Boolean,
     default: false
+  },
+  lastAction: {
+    type: String,
+    default: null
   }
 })
 
@@ -34,6 +42,22 @@ defineEmits(['undo'])
 
 .undo-button:active {
   @apply bg-zinc-800;
+}
+
+.undo-button.undo-done {
+  @apply border-green-500/50 text-green-400;
+}
+
+.undo-button.undo-done:hover {
+  @apply border-green-500 text-green-300 bg-green-500/10;
+}
+
+.undo-button.undo-skip {
+  @apply border-red-500/50 text-red-400;
+}
+
+.undo-button.undo-skip:hover {
+  @apply border-red-500 text-red-300 bg-red-500/10;
 }
 </style>
 

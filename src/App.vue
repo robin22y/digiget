@@ -97,6 +97,7 @@
           />
           <UndoButton 
             :can-undo="undoHistory.length > 0" 
+            :last-action="lastUndoAction"
             @undo="handleUndo" 
           />
         </div>
@@ -1084,6 +1085,13 @@ const handleEditShift = () => {
 }
 
 // Get all cards for management (combine default and custom, but use current state)
+// Computed property to get the last undo action direction
+const lastUndoAction = computed(() => {
+  if (undoHistory.value.length === 0) return null
+  const lastItem = undoHistory.value[undoHistory.value.length - 1]
+  return lastItem?.direction || null
+})
+
 // Computed property to sort safetyChecks by position
 const sortedSafetyChecks = computed(() => {
   const checks = [...safetyChecks.value]
