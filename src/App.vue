@@ -605,8 +605,23 @@ const restoreIcons = (items) => {
   return items.map(item => ({
     ...item,
     icon: item.iconName ? iconMap[item.iconName] : item.icon,
-    color: item.color || '#27272a' // Ensure color is always present
+    color: item.color || '#27272a', // Ensure color is always present
+    repeatDays: item.repeatDays || null // Preserve repeatDays
   }))
+}
+
+// Helper function to check if a card should appear today based on repeatDays
+const shouldCardAppearToday = (card) => {
+  // If no repeatDays specified, show every day
+  if (!card.repeatDays || card.repeatDays.length === 0) {
+    return true
+  }
+  
+  // Get current day of week (0 = Sunday, 1 = Monday, etc.)
+  const today = new Date().getDay()
+  
+  // Check if today is in the repeatDays array
+  return card.repeatDays.includes(today)
 }
 
 const loadState = () => {
@@ -634,11 +649,15 @@ const loadState = () => {
         const newDefaults = freshDefaults.filter(d => 
           !savedIds.has(d.id) && !deletedCardIds.value.has(d.id)
         )
-        safetyChecks.value = [...savedChecks, ...newDefaults]
+        // Filter all cards by repeatDays - only show cards that should appear today
+        const allCards = [...savedChecks, ...newDefaults]
+        safetyChecks.value = allCards.filter(card => shouldCardAppearToday(card))
       } else {
         // Filter out deleted default cards
         const activeDefaults = freshDefaults.filter(d => !deletedCardIds.value.has(d.id))
-        safetyChecks.value = [...activeDefaults, ...customChecks.value]
+        // Filter all cards by repeatDays - only show cards that should appear today
+        const allCards = [...activeDefaults, ...customChecks.value]
+        safetyChecks.value = allCards.filter(card => shouldCardAppearToday(card))
       }
       
       completedItems.value = restoreIcons(state.completedItems || [])
@@ -651,10 +670,12 @@ const loadState = () => {
     } else {
       customChecks.value = []
       deletedCardIds.value = new Set()
-      safetyChecks.value = freshDefaults
+      // Filter defaults based on repeatDays (though defaults don't have repeatDays, so all will show)
+      safetyChecks.value = freshDefaults.filter(card => shouldCardAppearToday(card))
     }
   } catch (e) {
-    safetyChecks.value = getFreshChecks()
+    const freshDefaults = getFreshChecks()
+    safetyChecks.value = freshDefaults.filter(card => shouldCardAppearToday(card))
     deletedCardIds.value = new Set()
   }
 }
@@ -663,7 +684,8 @@ const saveState = () => {
   const serialize = (items) => items.map(item => ({
     ...item,
     iconName: item.iconName || Object.keys(iconMap).find(key => iconMap[key] === item.icon) || 'Clipboard',
-    icon: undefined
+    icon: undefined,
+    repeatDays: item.repeatDays || null // Preserve repeatDays
   }))
 
   const state = {
@@ -864,7 +886,9 @@ const handleResetDay = () => {
     // Reset only current session data (today's entry)
     // Note: customChecks is preserved (user's custom cards)
     // Note: Historical Supabase logs are preserved (already saved separately)
-    safetyChecks.value = [...allCards, ...additionalCustoms]
+    // Filter all cards by repeatDays - only show cards that should appear today
+    const allAvailableCards = [...allCards, ...additionalCustoms]
+    safetyChecks.value = allAvailableCards.filter(card => shouldCardAppearToday(card))
     completedItems.value = []
     skippedItems.value = []
     undoHistory.value = []
@@ -918,7 +942,9 @@ const handleRetry = () => {
   // Move skipped items back to safetyChecks
   // Restore icons for skipped items before adding them back
   const skippedToRestore = restoreIcons([...skippedItems.value])
-  safetyChecks.value = [...skippedToRestore, ...safetyChecks.value]
+  // Filter by repeatDays - only include cards that should appear today
+  const filteredSkipped = skippedToRestore.filter(card => shouldCardAppearToday(card))
+  safetyChecks.value = [...filteredSkipped, ...safetyChecks.value.filter(card => shouldCardAppearToday(card))]
   skippedItems.value = []
   showReviewScreen.value = false
 }
@@ -1031,10 +1057,12 @@ const handleEditShift = () => {
       !freshDefaults.some(d => d.id === c.id) &&
       !deletedCardIds.value.has(c.id) // Exclude deleted custom cards
     )
-    safetyChecks.value = [...allDefaultCards, ...additionalCustoms]
+    // Filter by repeatDays - only show cards that should appear today
+    const allCards = [...allDefaultCards, ...additionalCustoms]
+    safetyChecks.value = allCards.filter(card => shouldCardAppearToday(card))
   } else {
-    // Restore the cards to safetyChecks
-    safetyChecks.value = restoredCards
+    // Restore the cards to safetyChecks, but filter by repeatDays
+    safetyChecks.value = restoredCards.filter(card => shouldCardAppearToday(card))
   }
   
   // Clear completed/skipped and undo history
@@ -1146,26 +1174,32 @@ const handleDeleteCard = (card) => {
   undoHistory.value = undoHistory.value.filter(item => item.check.id !== card.id)
 }
 
-const handleAddNewCard = ({ title, iconName, color }) => {
+const handleAddNewCard = ({ title, iconName, color, repeatDays }) => {
   const newCard = {
     id: Date.now(),
     title: title,
     iconName: iconName,
     icon: iconMap[iconName],
-    color: color
+    color: color,
+    repeatDays: repeatDays || null
   }
   customChecks.value.push(newCard)
-  safetyChecks.value.unshift(newCard)
+  
+  // Only add to safetyChecks if it should appear today
+  if (shouldCardAppearToday(newCard)) {
+    safetyChecks.value.unshift(newCard)
+  }
   closeCardModal()
 }
 
-const handleUpdateCard = ({ id, title, iconName, color }) => {
+const handleUpdateCard = ({ id, title, iconName, color, repeatDays }) => {
   const updatedCard = {
     id: id,
     title: title,
     iconName: iconName,
     icon: iconMap[iconName],
-    color: color
+    color: color,
+    repeatDays: repeatDays || null
   }
   
   // Update in custom checks if it exists there
@@ -1177,10 +1211,20 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
     customChecks.value.push(updatedCard)
   }
   
-  // Update in safety checks
+  // Update in safetyChecks if it exists there
   const safetyIndex = safetyChecks.value.findIndex(c => c.id === id)
   if (safetyIndex !== -1) {
-    safetyChecks.value[safetyIndex] = updatedCard
+    // If card should appear today, update it; otherwise remove it
+    if (shouldCardAppearToday(updatedCard)) {
+      safetyChecks.value[safetyIndex] = updatedCard
+    } else {
+      safetyChecks.value.splice(safetyIndex, 1)
+    }
+  } else {
+    // If card should appear today and not in safetyChecks, add it
+    if (shouldCardAppearToday(updatedCard)) {
+      safetyChecks.value.unshift(updatedCard)
+    }
   }
   
   // Update in completed items
@@ -1196,11 +1240,10 @@ const handleUpdateCard = ({ id, title, iconName, color }) => {
   }
   
   // Update in undo history
-  undoHistory.value.forEach(item => {
-    if (item.check.id === id) {
-      item.check = updatedCard
-    }
-  })
+  const undoIndex = undoHistory.value.findIndex(item => item.check.id === id)
+  if (undoIndex !== -1) {
+    undoHistory.value[undoIndex].check = updatedCard
+  }
   
   closeCardModal()
 }

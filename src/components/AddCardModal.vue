@@ -71,6 +71,25 @@
             </button>
           </div>
         </div>
+
+        <!-- Repeat Days Selection -->
+        <div class="form-group mt-6">
+          <label class="label">Repeat On (Optional)</label>
+          <p class="text-xs text-zinc-500 mb-3">
+            Select days when this card should automatically appear. Leave empty to show every day.
+          </p>
+          <div class="days-grid">
+            <button 
+              v-for="day in daysOfWeek" 
+              :key="day.value"
+              @click="toggleDay(day.value)"
+              class="day-button"
+              :class="{ 'selected': selectedDays.includes(day.value) }"
+            >
+              {{ day.label }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -107,6 +126,7 @@ const selectedIcon = ref('Clipboard')
 // Default color (zinc-800 equivalent or transparent if we want standard look)
 const selectedColor = ref('#27272a') 
 const inputRef = ref(null)
+const selectedDays = ref([]) // Array of day numbers (0=Sunday, 1=Monday, etc.)
 
 // The specific placeholders you requested
 const quickTags = [
@@ -134,40 +154,77 @@ const availableColors = [
   { name: 'Purple', value: '#581c87' },    // Dark Purple
 ]
 
+const daysOfWeek = [
+  { label: 'Sun', value: 0 },
+  { label: 'Mon', value: 1 },
+  { label: 'Tue', value: 2 },
+  { label: 'Wed', value: 3 },
+  { label: 'Thu', value: 4 },
+  { label: 'Fri', value: 5 },
+  { label: 'Sat', value: 6 }
+]
+
+const toggleDay = (dayValue) => {
+  const index = selectedDays.value.indexOf(dayValue)
+  if (index > -1) {
+    selectedDays.value.splice(index, 1)
+  } else {
+    selectedDays.value.push(dayValue)
+  }
+}
+
 const handleAdd = () => {
   if (!title.value.trim()) return
+  
+  const cardData = {
+    title: title.value.trim(),
+    iconName: selectedIcon.value,
+    color: selectedColor.value,
+    repeatDays: selectedDays.value.length > 0 ? [...selectedDays.value].sort() : null // null means show every day
+  }
   
   if (isEditMode.value) {
     emit('update', {
       id: props.card.id,
-      title: title.value.trim(),
-      iconName: selectedIcon.value,
-      color: selectedColor.value
+      ...cardData
     })
   } else {
-    emit('add', {
-      title: title.value.trim(),
-      iconName: selectedIcon.value,
-      color: selectedColor.value
-    })
+    emit('add', cardData)
   }
 }
 
-// Initialize form when editing
+// Initialize form when editing - watch for card prop changes
 watch(() => props.card, (card) => {
   if (card) {
     title.value = card.title || ''
     selectedIcon.value = card.iconName || 'Clipboard'
     selectedColor.value = card.color || '#27272a'
+    // Properly handle repeatDays - could be array, null, or undefined
+    if (card.repeatDays && Array.isArray(card.repeatDays) && card.repeatDays.length > 0) {
+      selectedDays.value = [...card.repeatDays]
+    } else {
+      selectedDays.value = []
+    }
+  } else {
+    // Reset when adding new card
+    selectedDays.value = []
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
 onMounted(() => {
-  // Initialize if editing
+  // Initialize if editing - this runs after watch, so it's a backup
   if (props.card) {
     title.value = props.card.title || ''
     selectedIcon.value = props.card.iconName || 'Clipboard'
     selectedColor.value = props.card.color || '#27272a'
+    // Properly handle repeatDays - could be array, null, or undefined
+    if (props.card.repeatDays && Array.isArray(props.card.repeatDays) && props.card.repeatDays.length > 0) {
+      selectedDays.value = [...props.card.repeatDays]
+    } else {
+      selectedDays.value = []
+    }
+  } else {
+    selectedDays.value = []
   }
   // Focus input on open
   if (inputRef.value) inputRef.value.focus()
@@ -242,6 +299,19 @@ onMounted(() => {
 
 .color-option.selected {
   @apply border-white scale-110 shadow-lg;
+}
+
+/* Days Grid */
+.days-grid {
+  @apply grid grid-cols-7 gap-2;
+}
+
+.day-button {
+  @apply py-2 px-2 rounded-lg bg-zinc-800 text-zinc-400 border border-zinc-700 text-xs font-medium transition-all hover:bg-zinc-700;
+}
+
+.day-button.selected {
+  @apply bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20;
 }
 
 .modal-footer {
