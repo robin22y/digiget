@@ -1501,6 +1501,8 @@ const formatNoticeDate = (dateString) => {
   /* Allow scrolling when content is too tall */
   overflow-y: auto;
   overflow-x: hidden;
+  /* Add bottom padding to ensure footer is visible */
+  padding-bottom: 80px;
 }
 
 .shift-selector-wrapper {
@@ -1564,25 +1566,9 @@ const formatNoticeDate = (dateString) => {
 /* Footer */
 .app-footer {
   @apply w-full py-3 px-4 border-t border-zinc-900/50 bg-zinc-950/50 backdrop-blur-sm shrink-0;
-  /* Add padding for Android navigation buttons */
+  /* Add padding for Android navigation buttons and push footer down a bit more */
   /* Use safe area inset if available, otherwise use fixed 56px for typical Android nav bar */
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 56px));
-}
-
-/* Ensure footer is visible on mobile */
-@media (max-width: 768px) {
-  .app-footer {
-    /* Ensure footer is visible and accessible */
-    position: relative;
-    z-index: 10;
-    /* Add minimal padding for UndoButton space */
-    padding-bottom: calc(0.75rem + 70px + env(safe-area-inset-bottom, 56px));
-  }
-  
-  .main-content {
-    /* Add bottom padding so footer is visible when scrolling */
-    padding-bottom: 20px;
-  }
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 56px));
 }
 
 .footer-links {
