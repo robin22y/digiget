@@ -1485,10 +1485,7 @@ const formatNoticeDate = (dateString) => {
 
 <style scoped>
 .app-container {
-  @apply min-h-screen w-screen flex flex-col bg-zinc-950;
-  /* Allow scrolling on mobile to see footer */
-  overflow-y: auto;
-  overflow-x: hidden;
+  @apply h-screen w-screen flex flex-col bg-zinc-950 overflow-hidden;
 }
 
 .main-content {
@@ -1496,8 +1493,6 @@ const formatNoticeDate = (dateString) => {
   /* Allow scrolling when content is too tall */
   overflow-y: auto;
   overflow-x: hidden;
-  /* Ensure footer can be seen */
-  min-height: 0;
 }
 
 .shift-selector-wrapper {
@@ -1561,55 +1556,21 @@ const formatNoticeDate = (dateString) => {
 /* Footer */
 .app-footer {
   @apply w-full py-3 px-4 border-t border-zinc-900/50 bg-zinc-950/50 backdrop-blur-sm shrink-0;
-  /* Ensure footer is always visible */
-  position: relative;
-  z-index: 10;
   /* Add padding for Android navigation buttons */
   /* Use safe area inset if available, otherwise use fixed 56px for typical Android nav bar */
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 56px));
-  /* Ensure footer is visible on all devices */
-  min-height: 60px;
-}
-
-/* On mobile, ensure footer is visible and not hidden */
-@media (max-width: 768px) {
-  .app-footer {
-    /* Ensure it's above other content */
-    z-index: 20;
-    /* Make it more visible on mobile with solid background */
-    background-color: rgba(9, 9, 11, 0.98);
-    backdrop-filter: blur(8px);
-    /* Add extra bottom padding to account for UndoButton (80px) + safe area */
-    padding-bottom: calc(1rem + 80px + env(safe-area-inset-bottom, 56px));
-    /* Ensure footer stays visible */
-    position: relative;
-  }
-  
-  .app-container {
-    /* Ensure container allows footer to be visible */
-    padding-bottom: 0;
-  }
 }
 
 .footer-links {
   @apply flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-[10px] text-zinc-600;
 }
 
-/* Make footer links more visible on mobile */
-@media (max-width: 768px) {
-  .footer-links {
-    @apply gap-x-3 gap-y-2;
-    font-size: 11px;
-  }
-  
-  .footer-link {
-    @apply text-zinc-500;
-    padding: 2px 4px;
-    /* Make touch targets larger on mobile */
-    min-height: 32px;
-    display: flex;
-    align-items: center;
-  }
+.footer-link {
+  @apply hover:text-zinc-400 transition-colors cursor-pointer;
+}
+
+.dot {
+  @apply text-zinc-800;
 }
 
 .footer-link {
