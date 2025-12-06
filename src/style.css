@@ -20,7 +20,7 @@
 
     overflow: hidden;
 
-    height: 100vh;
+    height: 100dvh;
 
     width: 100vw;
 
@@ -34,7 +34,7 @@
 
   #app {
 
-    @apply h-screen w-screen overflow-hidden;
+    @apply h-[100dvh] w-screen overflow-hidden;
 
   }
 

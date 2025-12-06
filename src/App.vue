@@ -1485,7 +1485,7 @@ const formatNoticeDate = (dateString) => {
 
 <style scoped>
 .app-container {
-  @apply h-screen w-screen flex flex-col bg-zinc-950 overflow-hidden;
+  @apply h-[100dvh] w-screen flex flex-col bg-zinc-950 overflow-hidden fixed inset-0;
 }
 
 /* On mobile, allow scrolling to see footer */
