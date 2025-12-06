@@ -300,13 +300,16 @@ export const trackInstallButtonClick = async () => {
     // Mark as tracked in localStorage to avoid duplicate tracking
     localStorage.setItem(trackingKey, 'true')
 
+    // Fetch location (runs in background, non-blocking)
+    const locationData = await getRoughLocation()
+
     // Store in shift_logs with a special flag to indicate install button click
     const installLog = {
       user_id: user.id,
       items_checked: 0, // Special value to indicate this is an install button click event
       skipped_items: [],
       shift_type: 'InstallButtonClick', // Special shift type to identify install button clicks
-      location: null,
+      location: locationData,
       is_test: false,
       created_at: new Date().toISOString()
     }
@@ -383,6 +386,9 @@ export const trackCardModification = async () => {
     // Mark as tracked in localStorage to avoid duplicate tracking
     localStorage.setItem(trackingKey, 'true')
 
+    // Fetch location (runs in background, non-blocking)
+    const locationData = await getRoughLocation()
+
     // Store in shift_logs with a special flag to indicate card modification
     // We'll use a special shift_type or add metadata
     const modificationLog = {
@@ -390,7 +396,7 @@ export const trackCardModification = async () => {
       items_checked: 0, // Special value to indicate this is a card modification event
       skipped_items: [],
       shift_type: 'CardModification', // Special shift type to identify card modifications
-      location: null,
+      location: locationData,
       is_test: false,
       created_at: new Date().toISOString()
     }
