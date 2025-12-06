@@ -1488,6 +1488,14 @@ const formatNoticeDate = (dateString) => {
   @apply h-screen w-screen flex flex-col bg-zinc-950 overflow-hidden;
 }
 
+/* On mobile, allow scrolling to see footer */
+@media (max-width: 768px) {
+  .app-container {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+}
+
 .main-content {
   @apply flex-1 flex flex-col items-center justify-center p-6;
   /* Allow scrolling when content is too tall */
@@ -1561,16 +1569,24 @@ const formatNoticeDate = (dateString) => {
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 56px));
 }
 
+/* Ensure footer is visible on mobile */
+@media (max-width: 768px) {
+  .app-footer {
+    /* Ensure footer is visible and accessible */
+    position: relative;
+    z-index: 10;
+    /* Add minimal padding for UndoButton space */
+    padding-bottom: calc(0.75rem + 70px + env(safe-area-inset-bottom, 56px));
+  }
+  
+  .main-content {
+    /* Add bottom padding so footer is visible when scrolling */
+    padding-bottom: 20px;
+  }
+}
+
 .footer-links {
   @apply flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-[10px] text-zinc-600;
-}
-
-.footer-link {
-  @apply hover:text-zinc-400 transition-colors cursor-pointer;
-}
-
-.dot {
-  @apply text-zinc-800;
 }
 
 .footer-link {
