@@ -86,13 +86,13 @@
         </div>
         <div v-else class="card-stack-container">
           <SwipeCard
-            v-for="(check, index) in safetyChecks"
+            v-for="(check, index) in sortedSafetyChecks"
             :key="check.id"
             :title="check.title"
             :icon="check.icon"
             :index="index"
             :color="check.color || '#27272a'"
-            :style="{ zIndex: safetyChecks.length - index }"
+            :style="{ zIndex: sortedSafetyChecks.length - index }"
             @swiped="handleSwipe(check.id, $event)"
           />
           <UndoButton 
@@ -159,6 +159,7 @@
       @edit="handleEditCard"
       @delete="handleDeleteCard"
       @add-new="handleAddNewFromManager"
+      @reorder="handleCardReorder"
     />
 
     <!-- Add/Edit Card Modal -->
@@ -606,7 +607,8 @@ const restoreIcons = (items) => {
     ...item,
     icon: item.iconName ? iconMap[item.iconName] : item.icon,
     color: item.color || '#27272a', // Ensure color is always present
-    repeatDays: item.repeatDays || null // Preserve repeatDays
+    repeatDays: item.repeatDays || null, // Preserve repeatDays
+    position: item.position !== undefined ? item.position : undefined // Preserve position
   }))
 }
 
@@ -685,7 +687,8 @@ const saveState = () => {
     ...item,
     iconName: item.iconName || Object.keys(iconMap).find(key => iconMap[key] === item.icon) || 'Clipboard',
     icon: undefined,
-    repeatDays: item.repeatDays || null // Preserve repeatDays
+    repeatDays: item.repeatDays || null, // Preserve repeatDays
+    position: item.position !== undefined ? item.position : undefined // Preserve position
   }))
 
   const state = {
@@ -1081,6 +1084,22 @@ const handleEditShift = () => {
 }
 
 // Get all cards for management (combine default and custom, but use current state)
+// Computed property to sort safetyChecks by position
+const sortedSafetyChecks = computed(() => {
+  const checks = [...safetyChecks.value]
+  return checks.sort((a, b) => {
+    // If both have position, sort by position
+    if (a.position !== undefined && b.position !== undefined) {
+      return a.position - b.position
+    }
+    // If only one has position, prioritize it
+    if (a.position !== undefined) return -1
+    if (b.position !== undefined) return 1
+    // Fallback: maintain original order (by id as tiebreaker)
+    return a.id - b.id
+  })
+})
+
 const allCardsForManagement = computed(() => {
   // Get all unique cards - always include defaults, plus any custom/edited versions
   // But exclude deleted cards
@@ -1130,7 +1149,18 @@ const allCardsForManagement = computed(() => {
   // Don't include cards from completed/skipped if they've been deleted
   // They should only appear if they're still active cards
   
-  return allCards.sort((a, b) => a.title.localeCompare(b.title))
+  // Sort by position if available, otherwise by title
+  return allCards.sort((a, b) => {
+    // If both have position, sort by position
+    if (a.position !== undefined && b.position !== undefined) {
+      return a.position - b.position
+    }
+    // If only one has position, prioritize it
+    if (a.position !== undefined) return -1
+    if (b.position !== undefined) return 1
+    // Fallback to title sorting
+    return a.title.localeCompare(b.title)
+  })
 })
 
 const openAddModal = () => {
@@ -1174,20 +1204,72 @@ const handleDeleteCard = (card) => {
   undoHistory.value = undoHistory.value.filter(item => item.check.id !== card.id)
 }
 
+const handleCardReorder = ({ card, newIndex, oldIndex }) => {
+  // Get all cards in current management order
+  const allCards = [...allCardsForManagement.value]
+  
+  // Remove the dragged card from its old position
+  const draggedCard = allCards.splice(oldIndex, 1)[0]
+  
+  // Insert it at the new position
+  allCards.splice(newIndex, 0, draggedCard)
+  
+  // Update positions for all cards based on their new order
+  allCards.forEach((c, index) => {
+    c.position = index
+    
+    // Update position in customChecks if it exists there
+    const customCard = customChecks.value.find(cc => cc.id === c.id)
+    if (customCard) {
+      customCard.position = index
+    } else if (c.id === card.id) {
+      // It's a default card being reordered, create a custom version to store position
+      const defaultCards = getFreshChecks()
+      const isDefault = defaultCards.some(d => d.id === c.id)
+      if (isDefault) {
+        customChecks.value.push({
+          ...c,
+          position: index
+        })
+      }
+    }
+    
+    // Update position in safetyChecks if it exists there
+    const safetyCard = safetyChecks.value.find(sc => sc.id === c.id)
+    if (safetyCard) {
+      safetyCard.position = index
+    }
+  })
+  
+  // Re-sort safetyChecks by position
+  safetyChecks.value.sort((a, b) => {
+    const posA = a.position !== undefined ? a.position : 999
+    const posB = b.position !== undefined ? b.position : 999
+    return posA - posB
+  })
+}
+
 const handleAddNewCard = ({ title, iconName, color, repeatDays }) => {
+  // Get the highest position from existing cards, or start at 0
+  const maxPosition = Math.max(
+    ...allCardsForManagement.value.map(c => c.position !== undefined ? c.position : -1),
+    -1
+  )
+  
   const newCard = {
     id: Date.now(),
     title: title,
     iconName: iconName,
     icon: iconMap[iconName],
     color: color,
-    repeatDays: repeatDays || null
+    repeatDays: repeatDays || null,
+    position: maxPosition + 1 // Add at the end
   }
   customChecks.value.push(newCard)
   
   // Only add to safetyChecks if it should appear today
   if (shouldCardAppearToday(newCard)) {
-    safetyChecks.value.unshift(newCard)
+    safetyChecks.value.push(newCard) // Add at the end to maintain position order
   }
   closeCardModal()
 }
