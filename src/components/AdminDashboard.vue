@@ -107,6 +107,30 @@
               {{ metrics.completedSessions }} / {{ metrics.totalSessions }} sessions
             </div>
           </div>
+
+          <!-- Users Who Modified Cards -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <Edit :size="20" class="text-orange-400" />
+              <span class="metric-label">Customized Cards</span>
+            </div>
+            <div class="metric-value">{{ metrics.usersWhoModifiedCards.toLocaleString() }}</div>
+            <div class="metric-change text-zinc-500">
+              users modified default cards
+            </div>
+          </div>
+
+          <!-- Users Who Clicked Install -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <Download :size="20" class="text-cyan-400" />
+              <span class="metric-label">Install Views</span>
+            </div>
+            <div class="metric-value">{{ metrics.usersWhoClickedInstall.toLocaleString() }}</div>
+            <div class="metric-change text-zinc-500">
+              users clicked install button
+            </div>
+          </div>
         </div>
 
         <!-- Second Row: Repeat Users and City Summary -->
@@ -797,7 +821,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker, Pencil, UserPlus } from 'lucide-vue-next'
+import { Database, LogOut, Trash2, Power, Users, Activity, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Globe, Lock, Beaker, Pencil, UserPlus, Edit, Download } from 'lucide-vue-next'
 import { supabase } from '../supabase'
 import { 
   fetchAllShiftLogs,
@@ -840,6 +864,8 @@ const metrics = ref({
   completedSessions: 0,
   totalSessions: 0,
   crashes: 0,
+  usersWhoModifiedCards: 0,
+  usersWhoClickedInstall: 0,
   growthData: [],
   shiftDistribution: [],
   topCities: [],
@@ -1015,10 +1041,23 @@ const calculateMetrics = (allLogs) => {
     })
   }
   
+  // Filter out CardModification and InstallButtonClick logs from regular session metrics
+  const regularSessionLogs = productionLogs.filter(log => 
+    log.shiftType !== 'CardModification' && log.shiftType !== 'InstallButtonClick'
+  )
+  
   // Session completion (sessions that completed = have itemsChecked)
-  const completedSessions = productionLogs.filter(log => log.itemsChecked !== undefined && log.itemsChecked > 0).length
-  const totalSessions = productionLogs.length
+  const completedSessions = regularSessionLogs.filter(log => log.itemsChecked !== undefined && log.itemsChecked > 0).length
+  const totalSessions = regularSessionLogs.length
   const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0
+  
+  // Count users who modified default cards (shift_type === 'CardModification')
+  const cardModificationLogs = productionLogs.filter(log => log.shiftType === 'CardModification')
+  const usersWhoModifiedCards = new Set(cardModificationLogs.map(log => log.userId).filter(Boolean)).size
+  
+  // Count users who clicked install button (shift_type === 'InstallButtonClick')
+  const installButtonLogs = productionLogs.filter(log => log.shiftType === 'InstallButtonClick')
+  const usersWhoClickedInstall = new Set(installButtonLogs.map(log => log.userId).filter(Boolean)).size
   
   // Growth data (last 30 days)
   const growthMap = new Map()
@@ -1180,6 +1219,8 @@ const calculateMetrics = (allLogs) => {
     completedSessions,
     totalSessions,
     crashes: 0, // TODO: Track crashes separately
+    usersWhoModifiedCards,
+    usersWhoClickedInstall,
     growthData,
     maxDailyGrowth,
     shiftDistribution,

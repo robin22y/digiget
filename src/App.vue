@@ -386,7 +386,7 @@ import AdminDashboard from './components/AdminDashboard.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import InfoPages from './components/InfoPages.vue'
 import NoticePopup from './components/NoticePopup.vue'
-import { logShiftComplete, checkAdminDevice, registerAdminDevice, fetchActiveNotices, supabase } from './supabase.js'
+import { logShiftComplete, checkAdminDevice, registerAdminDevice, fetchActiveNotices, trackCardModification, trackInstallButtonClick, supabase } from './supabase.js'
 import { inject } from '@vercel/analytics'
 import { 
   Key, CreditCard, Lock, FileX, FileText, Pen, Radio, 
@@ -494,6 +494,13 @@ onMounted(() => {
 })
 
 const handleInstall = async () => {
+  // Track install button click
+  trackInstallButtonClick().catch(err => {
+    if (import.meta.env.DEV) {
+      console.warn('Failed to track install button click:', err)
+    }
+  })
+  
   // Show iOS help modal for iOS users
   if (isIOS.value) {
     showIOSInstallHelp.value = true
@@ -724,6 +731,14 @@ watch(safetyChecks, async (newChecks) => {
     
     // If no skipped items, log immediately (existing flow)
     if (completedItems.value.length > 0) {
+      // Skip logging if admin is logged in
+      if (isAdminDevice.value) {
+        if (import.meta.env.DEV) {
+          console.log('⏭️ Skipping shift log - admin device detected')
+        }
+        return
+      }
+      
       try {
         // Ensure test mode is up-to-date from localStorage
         const currentTestMode = localStorage.getItem('digiget_test_mode') === 'true'
@@ -956,6 +971,14 @@ const handleRetry = () => {
 const handleConfirm = async () => {
   // Log the shift as-is (with skips) and proceed to success screen
   showReviewScreen.value = false
+  
+  // Skip logging if admin is logged in
+  if (isAdminDevice.value) {
+    if (import.meta.env.DEV) {
+      console.log('⏭️ Skipping shift log - admin device detected')
+    }
+    return
+  }
   
   try {
     // Ensure test mode is up-to-date from localStorage
@@ -1239,6 +1262,13 @@ const handleCardReorder = ({ card, newIndex, oldIndex }) => {
           ...c,
           position: index
         })
+        
+        // Track that user modified a default card (only once per user)
+        trackCardModification().catch(err => {
+          if (import.meta.env.DEV) {
+            console.warn('Failed to track card modification:', err)
+          }
+        })
       }
     }
     
@@ -1292,6 +1322,10 @@ const handleUpdateCard = ({ id, title, iconName, color, repeatDays }) => {
     repeatDays: repeatDays || null
   }
   
+  // Check if this is a default card being modified
+  const defaultCards = getFreshChecks()
+  const isDefaultCard = defaultCards.some(d => d.id === id)
+  
   // Update in custom checks if it exists there
   const customIndex = customChecks.value.findIndex(c => c.id === id)
   if (customIndex !== -1) {
@@ -1299,6 +1333,15 @@ const handleUpdateCard = ({ id, title, iconName, color, repeatDays }) => {
   } else {
     // If it's a default card, add it to custom checks so it persists
     customChecks.value.push(updatedCard)
+    
+    // Track that user modified a default card (only once per user)
+    if (isDefaultCard) {
+      trackCardModification().catch(err => {
+        if (import.meta.env.DEV) {
+          console.warn('Failed to track card modification:', err)
+        }
+      })
+    }
   }
   
   // Update in safetyChecks if it exists there

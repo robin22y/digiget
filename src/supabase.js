@@ -251,6 +251,173 @@ export const logShiftComplete = async (itemsChecked, skippedItems = [], shiftTyp
 }
 
 /**
+ * Track when a user clicks the install button
+ * This is used for metrics to count how many users view/click the install button
+ * @returns {Promise<{success: boolean}>} Result of the operation
+ */
+export const trackInstallButtonClick = async () => {
+  if (!supabase) {
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ Supabase not available - install button click not tracked')
+    }
+    return { success: false }
+  }
+
+  // Skip tracking if admin is logged in
+  const isAdmin = await checkAdminDevice()
+  if (isAdmin) {
+    if (import.meta.env.DEV) {
+      console.log('⏭️ Skipping install button click tracking - admin device')
+    }
+    return { success: false }
+  }
+
+  try {
+    // Ensure user is authenticated
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session) {
+      const user = await signInAnonymouslyUser()
+      if (!user) {
+        return { success: false }
+      }
+    }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false }
+    }
+
+    // Check if we've already tracked this user's install button click
+    const trackingKey = `digiget-install-button-clicked-${user.id}`
+    const alreadyTracked = localStorage.getItem(trackingKey)
+    
+    if (alreadyTracked) {
+      // Already tracked this user, skip
+      return { success: true, alreadyTracked: true }
+    }
+
+    // Mark as tracked in localStorage to avoid duplicate tracking
+    localStorage.setItem(trackingKey, 'true')
+
+    // Store in shift_logs with a special flag to indicate install button click
+    const installLog = {
+      user_id: user.id,
+      items_checked: 0, // Special value to indicate this is an install button click event
+      skipped_items: [],
+      shift_type: 'InstallButtonClick', // Special shift type to identify install button clicks
+      location: null,
+      is_test: false,
+      created_at: new Date().toISOString()
+    }
+
+    const { error } = await supabase
+      .from('shift_logs')
+      .insert([installLog])
+
+    if (error) {
+      console.error('❌ Error tracking install button click:', error)
+      // Remove the localStorage flag so we can retry
+      localStorage.removeItem(trackingKey)
+      return { success: false }
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('✅ Install button click tracked for user:', user.id)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('❌ Error tracking install button click:', error)
+    return { success: false }
+  }
+}
+
+/**
+ * Track when a user modifies a default card
+ * This is used for metrics to count how many users customize their cards
+ * @returns {Promise<{success: boolean}>} Result of the operation
+ */
+export const trackCardModification = async () => {
+  if (!supabase) {
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ Supabase not available - card modification not tracked')
+    }
+    return { success: false }
+  }
+
+  // Skip tracking if admin is logged in
+  const isAdmin = await checkAdminDevice()
+  if (isAdmin) {
+    if (import.meta.env.DEV) {
+      console.log('⏭️ Skipping card modification tracking - admin device')
+    }
+    return { success: false }
+  }
+
+  try {
+    // Ensure user is authenticated
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session) {
+      const user = await signInAnonymouslyUser()
+      if (!user) {
+        return { success: false }
+      }
+    }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false }
+    }
+
+    // Check if we've already tracked this user's card modification
+    const trackingKey = `digiget-card-modification-tracked-${user.id}`
+    const alreadyTracked = localStorage.getItem(trackingKey)
+    
+    if (alreadyTracked) {
+      // Already tracked this user, skip
+      return { success: true, alreadyTracked: true }
+    }
+
+    // Mark as tracked in localStorage to avoid duplicate tracking
+    localStorage.setItem(trackingKey, 'true')
+
+    // Store in shift_logs with a special flag to indicate card modification
+    // We'll use a special shift_type or add metadata
+    const modificationLog = {
+      user_id: user.id,
+      items_checked: 0, // Special value to indicate this is a card modification event
+      skipped_items: [],
+      shift_type: 'CardModification', // Special shift type to identify card modifications
+      location: null,
+      is_test: false,
+      created_at: new Date().toISOString()
+    }
+
+    const { error } = await supabase
+      .from('shift_logs')
+      .insert([modificationLog])
+
+    if (error) {
+      console.error('❌ Error tracking card modification:', error)
+      // Remove the localStorage flag so we can retry
+      localStorage.removeItem(trackingKey)
+      return { success: false }
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('✅ Card modification tracked for user:', user.id)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('❌ Error tracking card modification:', error)
+    return { success: false }
+  }
+}
+
+/**
  * GDPR: Delete all data for the current user
  * This function finds all shift logs belonging to the current user and deletes them
  * @returns {Promise<{success: boolean, message: string}>} Result of the operation
